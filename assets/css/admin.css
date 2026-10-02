@@ -1,0 +1,2 @@
+.sbs-admin{max-width:1180px}.sbs-admin .sbs-card{background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:22px;margin-top:20px;box-shadow:0 1px 2px rgba(0,0,0,.04)}.sbs-admin .sbs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px}.sbs-admin .sbs-grid .sbs-card{margin-top:20px}.sbs-admin input[type=file]{display:block;margin:15px 0}.sbs-status{font-weight:700}.sbs-status.ok{color:#157f3b}.sbs-status.bad{color:#b32d2e}.sbs-admin code{word-break:break-all}
+
