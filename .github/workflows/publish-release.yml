@@ -1,0 +1,51 @@
+name: Publish plugin release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: smutty-studio-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build release
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^ \* Version: \([0-9A-Za-z.+-]*\)$/\1/p' smutty-bear-studio.php)"
+          echo "version=$version" >> "$GITHUB_ENV"
+          export SBS_UPDATE_BASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${version}"
+          tools/build-release.sh
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          package="$(find build/release -maxdepth 1 -name '*.zip' -print -quit)"
+          test -n "$package"
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v$version already exists; bump the plugin version before publishing." >&2
+            exit 1
+          fi
+          gh release create "v$version" "$package" build/release/release-feed.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Smutty Studio v$version" \
+            --generate-notes
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smutty-studio-${{ env.version }}
+          path: build/release/
