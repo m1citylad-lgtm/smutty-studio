@@ -26,6 +26,7 @@ jobs:
           version="$(sed -n 's/^ \* Version: \([0-9A-Za-z.+-]*\)$/\1/p' smutty-bear-studio.php)"
           echo "version=$version" >> "$GITHUB_ENV"
           export SBS_UPDATE_BASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${version}"
+          export SBS_DEFAULT_UPDATE_FEED_URL="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/release-feed.json"
           tools/build-release.sh
 
       - name: Publish GitHub release

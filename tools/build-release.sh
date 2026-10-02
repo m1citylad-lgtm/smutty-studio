@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SLUG="smutty-bear-studio"
 BASE_URL="${1:-${SBS_UPDATE_BASE_URL:-}}"
+FEED_URL="${SBS_DEFAULT_UPDATE_FEED_URL:-}"
 OUT="$ROOT/build/release"
 MAIN="$ROOT/smutty-bear-studio.php"
 
@@ -12,6 +13,9 @@ command -v git >/dev/null || fail "git is required"
 command -v python3 >/dev/null || fail "python3 is required"
 [[ "$BASE_URL" =~ ^https://[^/]+(/.*)?$ ]] || fail "provide an HTTPS update base URL"
 BASE_URL="${BASE_URL%/}"
+if [[ -n "$FEED_URL" ]]; then
+  [[ "$FEED_URL" =~ ^https://[^/]+(/.*)?$ ]] || fail "default update feed URL must use HTTPS"
+fi
 
 HEADER_VERSION="$(sed -n 's/^ \* Version: \([0-9A-Za-z.+-]*\)$/\1/p' "$MAIN")"
 CONST_VERSION="$(sed -n "s/^define('SBS_VERSION', '\([^']*\)');$/\1/p" "$MAIN")"
@@ -32,6 +36,15 @@ while IFS= read -r -d '' file; do
   mkdir -p "$OUT/stage/$SLUG/$(dirname "$file")"
   cp "$ROOT/$file" "$OUT/stage/$SLUG/$file"
 done < <(git -C "$ROOT" ls-files -z)
+
+if [[ -n "$FEED_URL" ]]; then
+  python3 - "$OUT/stage/$SLUG/config/update-feed.php" "$FEED_URL" <<'PY'
+import pathlib, sys
+path, url = pathlib.Path(sys.argv[1]), sys.argv[2]
+escaped = url.replace('\\', '\\\\').replace("'", "\\'")
+path.write_text("<?php\n\nreturn '" + escaped + "';\n", encoding='utf-8')
+PY
+fi
 
 python3 - "$OUT/stage/$SLUG" "$HEADER_VERSION" <<'PY'
 import hashlib, json, pathlib, sys

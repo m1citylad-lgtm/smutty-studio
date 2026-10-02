@@ -3,7 +3,7 @@
  * Plugin Name: Smutty Bear Creative Studio
  * Plugin URI: https://smuttybear.com/
  * Description: A private, reference-grounded character image and merchandise design studio.
- * Version: 0.2.17
+ * Version: 0.2.19
  * Requires at least: 5.8.17
  * Requires PHP: 7.4
  * Author: Smutty Bear
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SBS_VERSION', '0.2.17');
+define('SBS_VERSION', '0.2.19');
 define('SBS_DB_VERSION', '2');
 define('SBS_PLUGIN_FILE', __FILE__);
 define('SBS_PLUGIN_DIR', plugin_dir_path(__FILE__));
