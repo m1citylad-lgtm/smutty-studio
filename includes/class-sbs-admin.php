@@ -148,7 +148,7 @@ final class SBS_Admin
         self::field('Replicate API token', 'replicate_api_token', '', 'password', SBS_Replicate::is_configured() ? 'Configured. Leave blank to keep it.' : 'Optional; enables AI upscaling.');
         self::field('Replicate model version', 'replicate_model_version', get_option('sbs_replicate_model_version', SBS_Replicate::DEFAULT_VERSION), 'text', 'Pinned Real-ESRGAN version.');
         self::field('Estimated upscale cost (USD)', 'replicate_cost', get_option('sbs_replicate_cost_per_image', '0.002'), 'number', 'Used only for the local usage-derived ledger.');
-        self::field('Private update-feed URL', 'update_feed_url', get_option('sbs_update_feed_url', ''), 'url', 'Optional signed HTTPS feed.');
+        self::field('Private update-feed URL', 'update_feed_url', get_option('sbs_update_feed_url', ''), 'url', 'Optional override. Leave blank to use the GitHub release feed bundled with official builds.');
         self::field('Update-feed bearer token', 'update_feed_token', '', 'password', SBS_Crypto::setting('SBS_UPDATE_FEED_TOKEN', 'sbs_update_feed_token') ? 'Configured. Leave blank to keep it.' : 'Optional.');
         echo '</tbody></table>'; submit_button('Save settings'); echo '</form></div>';
     }
@@ -170,7 +170,7 @@ final class SBS_Admin
             }
             echo '</select>'; submit_button('Restore selected backup', 'secondary'); echo '</form>';
         }
-        echo '</section></div><div class="sbs-card"><h2>Release feed</h2><p>The optional HTTPS feed is configured under Settings. When a newer verified release is published, it appears on the normal WordPress Plugins screen and in the Studio Updates area.</p><p><strong>Installed version:</strong> ' . esc_html(SBS_VERSION) . '</p><p><strong>Studio update access:</strong> Re-enter the shared Studio password for a short-lived update session.</p></div>';
+        echo '</section></div><div class="sbs-card"><h2>Release feed</h2><p>Official builds check their bundled GitHub release feed automatically. A custom HTTPS feed can override it under Settings. When a newer verified release is published, it appears on the normal WordPress Plugins screen and in the Studio Updates area.</p><p><strong>Installed version:</strong> ' . esc_html(SBS_VERSION) . '</p><p><strong>Studio update access:</strong> Re-enter the shared Studio password for a short-lived update session.</p></div>';
     }
 
     private static function portability_tab()

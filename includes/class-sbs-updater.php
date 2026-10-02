@@ -9,6 +9,16 @@ final class SBS_Updater
     const SLUG = 'smutty-bear-studio';
     private static $handling_completion = false;
 
+    public static function feed_url()
+    {
+        $configured = trim((string) get_option('sbs_update_feed_url', ''));
+        if ($configured !== '') {
+            return $configured;
+        }
+        $bundled = file_exists(SBS_PLUGIN_DIR . 'config/update-feed.php') ? include SBS_PLUGIN_DIR . 'config/update-feed.php' : '';
+        return is_string($bundled) ? trim($bundled) : '';
+    }
+
     public static function verify_package($path, $allow_downgrade = false)
     {
         if (!class_exists('ZipArchive')) {
@@ -308,7 +318,7 @@ final class SBS_Updater
 
     public static function release_feed($force = false)
     {
-        $url = trim((string) get_option('sbs_update_feed_url', ''));
+        $url = self::feed_url();
         if (!$url || !wp_http_validate_url($url) || strtolower((string) wp_parse_url($url, PHP_URL_SCHEME)) !== 'https') {
             return null;
         }

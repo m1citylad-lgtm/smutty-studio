@@ -1644,7 +1644,7 @@ final class SBS_REST
             'installed_version' => SBS_VERSION,
             'wordpress_version' => (string) $wp_version,
             'php_version' => PHP_VERSION,
-            'feed_configured' => trim((string) get_option('sbs_update_feed_url', '')) !== '',
+            'feed_configured' => SBS_Updater::feed_url() !== '',
             'trusted_key_count' => count(SBS_Updater::public_keys()),
             'session_minutes' => (int) (SBS_Auth::UPDATE_SESSION_SECONDS / MINUTE_IN_SECONDS),
         );

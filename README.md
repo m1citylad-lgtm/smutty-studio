@@ -16,17 +16,21 @@ the normal release process is:
 3. Push the commit to the repository's main branch.
 
 The workflow creates the matching tag, builds the exact plugin ZIP and release
-feed, and attaches both to a GitHub Release in this repository. WordPress will
-offer the new version through its normal plugin updater after the feed has been
-configured. No command line, signing key, or GitHub secret setup is required.
+feed, and attaches both to a GitHub Release in this repository. The release ZIP
+contains the repository's GitHub feed URL, so WordPress will offer subsequent
+versions through its normal plugin updater without feed configuration. No
+command line, signing key, or GitHub secret setup is required.
 
-### One-time WordPress configuration
+### Existing installations and custom feeds
 
-On the WordPress site, set **Studio → Settings → Private update-feed URL** to
+An installation older than 0.2.18 must be given the feed once under **Studio →
+Settings → Private update-feed URL**:
 `https://github.com/OWNER/REPOSITORY/releases/latest/download/release-feed.json`,
-replacing `OWNER/REPOSITORY` with this repository's GitHub location. Leave the
-bearer token empty. GitHub Releases must be publicly downloadable; a private
-repository needs a separate authenticated release host instead.
+replacing `OWNER/REPOSITORY` with this repository's GitHub location. Once it
+installs 0.2.18 or later, official release packages carry that default. The
+setting remains available as an override for mirrors or private feeds. Leave
+the bearer token empty for public GitHub releases; a private repository needs
+a separate authenticated release host instead.
 
 There are no repository secrets and no separate release server. The workflow
 publishes updates rather than writing directly into the live plugin directory,
