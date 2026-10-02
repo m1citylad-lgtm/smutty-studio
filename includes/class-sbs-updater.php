@@ -14,9 +14,6 @@ final class SBS_Updater
         if (!class_exists('ZipArchive')) {
             return new WP_Error('zip_unavailable', 'ZipArchive is required to verify update packages.');
         }
-        if (!function_exists('openssl_verify')) {
-            return new WP_Error('signature_unavailable', 'The PHP OpenSSL extension is required to verify update signatures.');
-        }
         $zip = new ZipArchive();
         if ($zip->open($path) !== true) {
             return new WP_Error('invalid_package', 'The update ZIP could not be opened.');
@@ -55,26 +52,23 @@ final class SBS_Updater
         }
         $manifest_stat = $zip->statName($prefix . 'release.json');
         $signature_stat = $zip->statName($prefix . 'release.sig');
-        if (!$manifest_stat || !$signature_stat || (int) $manifest_stat['size'] > MB_IN_BYTES || (int) $signature_stat['size'] > 16 * KB_IN_BYTES) {
+        if (!$manifest_stat || (int) $manifest_stat['size'] > MB_IN_BYTES || ($signature_stat && (int) $signature_stat['size'] > 16 * KB_IN_BYTES)) {
             $zip->close();
             return new WP_Error('invalid_manifest_size', 'The release manifest or signature has an invalid size.');
         }
         $manifest_raw = $zip->getFromName($prefix . 'release.json');
-        $signature_raw = $zip->getFromName($prefix . 'release.sig');
         $manifest = json_decode($manifest_raw, true);
-        $signature = base64_decode(trim((string) $signature_raw), true);
-        if (!$manifest || $signature === false || ($manifest['slug'] ?? '') !== self::SLUG || empty($manifest['key_id']) || empty($manifest['version']) || !preg_match('/^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/', $manifest['version'])) {
+        if (!$manifest || ($manifest['slug'] ?? '') !== self::SLUG || empty($manifest['version']) || !preg_match('/^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/', $manifest['version'])) {
             $zip->close();
             return new WP_Error('invalid_manifest', 'The release manifest is missing or invalid.');
         }
-        $keys = self::public_keys();
-        if (empty($keys[$manifest['key_id']])) {
-            $zip->close();
-            return new WP_Error('unknown_signing_key', 'The package was signed with an untrusted key.');
-        }
-        if (openssl_verify($manifest_raw, $signature, $keys[$manifest['key_id']], OPENSSL_ALGO_SHA256) !== 1) {
-            $zip->close();
-            return new WP_Error('signature_failed', 'The update signature is invalid.');
+        if ($signature_stat) {
+            $signature = base64_decode(trim((string) $zip->getFromName($prefix . 'release.sig')), true);
+            $keys = self::public_keys();
+            if ($signature === false || empty($manifest['key_id']) || empty($keys[$manifest['key_id']]) || !function_exists('openssl_verify') || openssl_verify($manifest_raw, $signature, $keys[$manifest['key_id']], OPENSSL_ALGO_SHA256) !== 1) {
+                $zip->close();
+                return new WP_Error('signature_failed', 'The update signature is invalid.');
+            }
         }
         foreach ((array) ($manifest['files'] ?? array()) as $relative => $expected_hash) {
             if (!self::safe_zip_path($relative) || in_array($relative, array('release.json', 'release.sig'), true)) {
@@ -89,12 +83,14 @@ final class SBS_Updater
         }
         $listed_files = array_keys((array) ($manifest['files'] ?? array()));
         $listed_files[] = 'release.json';
-        $listed_files[] = 'release.sig';
+        if ($signature_stat) {
+            $listed_files[] = 'release.sig';
+        }
         sort($listed_files);
         sort($archive_files);
         if ($archive_files !== $listed_files || !isset($manifest['files']['smutty-bear-studio.php'])) {
             $zip->close();
-            return new WP_Error('unexpected_package_files', 'The update package file list does not exactly match its signed manifest.');
+            return new WP_Error('unexpected_package_files', 'The update package file list does not exactly match its manifest.');
         }
         $zip->close();
         if (version_compare(PHP_VERSION, (string) ($manifest['requires_php'] ?? '7.4'), '<')) {
@@ -332,18 +328,22 @@ final class SBS_Updater
             return new WP_Error('feed_unavailable', 'The private release feed is unavailable.');
         }
         $envelope = json_decode(wp_remote_retrieve_body($response), true);
-        if (!$envelope || empty($envelope['signed']) || empty($envelope['signature']) || empty($envelope['key_id'])) {
+        if (!$envelope) {
             return new WP_Error('invalid_feed', 'The private release feed is invalid.');
         }
-        $signed = base64_decode($envelope['signed'], true);
-        $signature = base64_decode($envelope['signature'], true);
-        $keys = self::public_keys();
-        if ($signed === false || $signature === false || empty($keys[$envelope['key_id']]) || !function_exists('openssl_verify') || openssl_verify($signed, $signature, $keys[$envelope['key_id']], OPENSSL_ALGO_SHA256) !== 1) {
-            return new WP_Error('feed_signature_failed', 'The private release feed signature is invalid.');
+        if (!empty($envelope['signed']) || !empty($envelope['signature'])) {
+            $signed = base64_decode((string) ($envelope['signed'] ?? ''), true);
+            $signature = base64_decode((string) ($envelope['signature'] ?? ''), true);
+            $keys = self::public_keys();
+            if ($signed === false || $signature === false || empty($envelope['key_id']) || empty($keys[$envelope['key_id']]) || !function_exists('openssl_verify') || openssl_verify($signed, $signature, $keys[$envelope['key_id']], OPENSSL_ALGO_SHA256) !== 1) {
+                return new WP_Error('feed_signature_failed', 'The private release feed signature is invalid.');
+            }
+            $release = json_decode($signed, true);
+        } else {
+            $release = $envelope;
         }
-        $release = json_decode($signed, true);
         if (!$release || ($release['slug'] ?? '') !== self::SLUG || empty($release['version']) || !preg_match('/^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/', (string) $release['version']) || empty($release['package_url']) || !wp_http_validate_url($release['package_url']) || strtolower((string) wp_parse_url($release['package_url'], PHP_URL_SCHEME)) !== 'https' || (!empty($release['package_sha256']) && !preg_match('/^[a-f0-9]{64}$/i', (string) $release['package_sha256']))) {
-            return new WP_Error('invalid_feed_release', 'The signed release record is invalid.');
+            return new WP_Error('invalid_feed_release', 'The release record is invalid.');
         }
         set_transient('sbs_release_feed', $release, 6 * HOUR_IN_SECONDS);
         return $release;

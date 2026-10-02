@@ -155,7 +155,7 @@ final class SBS_Admin
 
     private static function updates_tab()
     {
-        echo '<div class="sbs-grid"><section class="sbs-card"><h2>Install signed update</h2><p>Upload the release ZIP produced by the repository build tool. It is verified and backed up before WordPress replaces the plugin.</p><form method="post" enctype="multipart/form-data" action="' . esc_url(admin_url('admin-post.php')) . '">';
+        echo '<div class="sbs-grid"><section class="sbs-card"><h2>Install update</h2><p>Upload the release ZIP produced by the repository build tool. It is verified and backed up before WordPress replaces the plugin.</p><form method="post" enctype="multipart/form-data" action="' . esc_url(admin_url('admin-post.php')) . '">';
         wp_nonce_field('sbs_install_update');
         echo '<input type="hidden" name="action" value="sbs_install_update"><input type="file" name="release_zip" accept=".zip" required>';
         submit_button('Verify and install', 'primary'); echo '</form></section><section class="sbs-card"><h2>Rollback</h2>';
@@ -170,7 +170,7 @@ final class SBS_Admin
             }
             echo '</select>'; submit_button('Restore selected backup', 'secondary'); echo '</form>';
         }
-        echo '</section></div><div class="sbs-card"><h2>Release feed</h2><p>The optional signed feed is configured under Settings. When a newer verified release is published, it appears on the normal WordPress Plugins screen and in the Studio Updates area.</p><p><strong>Installed version:</strong> ' . esc_html(SBS_VERSION) . '</p><p><strong>Trusted signing keys:</strong> ' . count(SBS_Updater::public_keys()) . '</p><p><strong>Studio update access:</strong> Re-enter the shared Studio password for a short-lived update session.</p></div>';
+        echo '</section></div><div class="sbs-card"><h2>Release feed</h2><p>The optional HTTPS feed is configured under Settings. When a newer verified release is published, it appears on the normal WordPress Plugins screen and in the Studio Updates area.</p><p><strong>Installed version:</strong> ' . esc_html(SBS_VERSION) . '</p><p><strong>Studio update access:</strong> Re-enter the shared Studio password for a short-lived update session.</p></div>';
     }
 
     private static function portability_tab()

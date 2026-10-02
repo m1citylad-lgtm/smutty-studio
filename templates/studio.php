@@ -133,7 +133,7 @@
 
             <section class="sbs-panel" data-panel="updates">
                 <div class="sbs-panel-heading"><div><p class="sbs-kicker">SIGNED RELEASES</p><h1>Updates</h1></div><span class="sbs-pill">Password reconfirmation required</span></div>
-                <aside class="sbs-tab-help"><span aria-hidden="true">&#128274;</span><div><strong>Update the Studio without WordPress or FTP access.</strong> Re-enter the shared Studio password to start a short update session. Only cryptographically signed releases from a ZIP or the configured private feed can be installed; arbitrary plugin packages are rejected.</div></aside>
+                <aside class="sbs-tab-help"><span aria-hidden="true">&#128274;</span><div><strong>Update the Studio without WordPress or FTP access.</strong> Re-enter the shared Studio password to start a short update session. Release files and checksums are verified before installation.</div></aside>
                 <div id="sbs-update-root" class="sbs-update-root"><article class="sbs-card"><p class="sbs-muted">Open this tab to check update access.</p></article></div>
             </section>
         </section>
@@ -154,7 +154,7 @@
             <li><div class="sbs-guide-illustration"><span aria-hidden="true">&#9989;</span><b>5</b></div><div><h3>Test consistency</h3><p>At the bottom of Visual Development, generate as many approval-sheet candidates as needed, enlarge and inspect every view, then accept one genuinely on-model sheet. It is stored under Reference automatically; accepting another makes that one current.</p></div></li>
             <li><div class="sbs-guide-illustration"><span aria-hidden="true">&#128161;</span><b>6</b></div><div><h3>Create and refine</h3><p>Develop a joke in Idea Room, generate drafts, then use Creations to select, refine, polish or upscale the strongest result.</p></div></li>
             <li><div class="sbs-guide-illustration"><span aria-hidden="true">&#128085;</span><b>7</b></div><div><h3>Compose merchandise</h3><p>Combine artwork, references, typography and shapes in Merch Canvas. Save the editable design to its project and export at the required print dimensions.</p></div></li>
-            <li><div class="sbs-guide-illustration"><span aria-hidden="true">&#128274;</span><b>8</b></div><div><h3>Install signed updates</h3><p>Open the top-level Updates tab, reconfirm the shared Studio password, then install a signed ZIP or a newer release from the private feed. Unsigned, corrupted, incompatible or incorrectly structured packages are rejected automatically.</p></div></li>
+            <li><div class="sbs-guide-illustration"><span aria-hidden="true">&#128274;</span><b>8</b></div><div><h3>Install updates</h3><p>Open the top-level Updates tab, reconfirm the shared Studio password, then install a release ZIP or a newer release from the private feed. Corrupted, incompatible or incorrectly structured packages are rejected automatically.</p></div></li>
         </ol>
         <div class="sbs-guide-tip"><strong>Safe working rule:</strong> changing the saved character identity invalidates the previous approval. Generate and review a fresh approval sheet before relying on it for future work.</div>
     </dialog>
