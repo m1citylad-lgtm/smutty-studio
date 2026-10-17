@@ -1,0 +1,27 @@
+name: Validate Studio changes
+on:
+  push:
+    branches:
+      - 'codex/**'
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax and regression checks
+        run: |
+          find . -name '*.php' -not -path './build/*' -print0 | xargs -0 -n1 php -l
+          php tools/test-development.php
+          php tools/test-freestyle.php
+      - name: JavaScript and image export checks
+        run: |
+          node --check assets/js/studio.js
+          node --check assets/js/freestyle.js
+          node tools/test-development.cjs
+          node tools/test-freestyle.cjs
+          node tools/test-export.cjs
+          node tools/test-png-resolution.cjs

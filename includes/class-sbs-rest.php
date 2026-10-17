@@ -123,6 +123,7 @@ final class SBS_REST
             'projects' => self::project_list(),
             'active_jobs' => self::active_job_list(),
             'usage' => self::usage_summary(),
+            'freestyle_pack_uuid' => get_option('sbs_freestyle_pack_uuid', ''),
             'providers' => array('openai' => SBS_OpenAI::is_configured(), 'replicate' => SBS_Replicate::is_configured()),
             'defaults' => array('draft_count' => 4, 'quality' => 'medium', 'size' => '1024x1024', 'polish_quality' => 'high'),
         ));
@@ -980,20 +981,27 @@ final class SBS_REST
             }
         }
         $action = $parent ? 'edit' : 'generate';
-        $prompt = self::compose_prompt($identity, $scene, $action);
+        $freestyle = $request->get_param('purpose') === 'freestyle';
+        $freestyle_settings = $freestyle ? SBS_Freestyle::settings($request->get_param('freestyle_settings')) : null;
+        if (is_wp_error($freestyle_settings)) { return $freestyle_settings; }
+        $freestyle_concept = $freestyle ? json_decode($project['concept_json'], true) : array();
+        $freestyle_unbound = $freestyle && empty($freestyle_concept['character_uuid']);
+        if ($freestyle_unbound) { $identity = array('adult'=>true, 'summary'=>'No existing character selected. Invent an independent composition from the user brief.'); }
+        $prompt = $freestyle ? SBS_Freestyle::compose_prompt($identity, $scene, $action, $freestyle_settings) : self::compose_prompt($identity, $scene, $action);
         $asset_ids = array();
         if ($parent && $parent['output_asset_id']) {
             $asset_ids[] = (int) $parent['output_asset_id'];
         }
         $assets = SBS_DB::table('assets');
         $reference_ids = $wpdb->get_col($wpdb->prepare("SELECT id FROM {$assets} WHERE owner_type = 'pack_version' AND owner_id = %d AND role <> 'logo' ORDER BY CASE role WHEN 'face' THEN 1 WHEN 'full_body' THEN 2 WHEN 'master_reference' THEN 3 WHEN 'generated_reference' THEN 4 WHEN 'outfit' THEN 5 WHEN 'style' THEN 6 ELSE 9 END, id ASC LIMIT 8", (int) $version['id']));
+        if ($freestyle_unbound) { $reference_ids = array(); }
         $asset_ids = array_merge($asset_ids, array_map('intval', $reference_ids));
         $count = $parent ? 1 : max(1, min(4, (int) ($request->get_param('count') ?: 4)));
         $quality = sanitize_key($request->get_param('quality') ?: 'medium');
         $size = sanitize_text_field($request->get_param('size') ?: '1024x1024');
         $background = $request->get_param('background') === 'transparent' ? 'transparent' : 'opaque';
         $purpose = sanitize_key($request->get_param('purpose') ?: 'scene');
-        $allowed_purposes = array('scene', 'character_approval', 'development_concept', 'development_concept_refinement', 'development_reference_face', 'development_reference_full_body', 'development_reference_expression', 'development_reference_outfit', 'development_reference_style');
+        $allowed_purposes = array('freestyle', 'scene', 'character_approval', 'development_concept', 'development_concept_refinement', 'development_reference_face', 'development_reference_full_body', 'development_reference_expression', 'development_reference_outfit', 'development_reference_style');
         if (!in_array($purpose, $allowed_purposes, true)) {
             $purpose = 'scene';
         }
@@ -1011,6 +1019,8 @@ final class SBS_REST
                 'background' => $background,
                 'model' => SBS_OpenAI::image_model(),
                 'purpose' => $purpose,
+                'freestyle_instruction' => $freestyle ? $scene : '',
+                'freestyle_settings' => $freestyle_settings,
             ));
             if (is_wp_error($job)) {
                 return $job;
@@ -1304,6 +1314,7 @@ final class SBS_REST
             'created_at' => current_time('mysql', true),
         ));
         $generation_id = (int) $wpdb->insert_id;
+        SBS_Freestyle::completed((int) $payload['project_id'], $generation_id);
         $wpdb->update(SBS_DB::table('assets'), array('owner_type' => 'generation', 'owner_id' => $generation_id), array('id' => (int) $asset['id']));
         $wpdb->update(SBS_DB::table('projects'), array('current_generation_id' => $generation_id, 'updated_at' => current_time('mysql', true)), array('id' => (int) $payload['project_id']));
         $wpdb->update(SBS_DB::table('jobs'), array('status' => 'completed', 'result_json' => wp_json_encode(array('generation_id' => $generation_id, 'asset_uuid' => $asset['uuid'], 'response_id' => $parsed['response_id'])), 'progress' => 100, 'updated_at' => current_time('mysql', true)), array('id' => (int) $job['id']));
@@ -1339,6 +1350,7 @@ final class SBS_REST
             'usage_json' => wp_json_encode($response['metrics'] ?? array()), 'cost_estimate' => $cost, 'created_at' => current_time('mysql', true),
         ));
         $generation_id = (int) $wpdb->insert_id;
+        SBS_Freestyle::completed((int) $payload['project_id'], $generation_id);
         $wpdb->update(SBS_DB::table('assets'), array('owner_type' => 'generation', 'owner_id' => $generation_id), array('id' => (int) $asset['id']));
         $wpdb->update(SBS_DB::table('projects'), array('current_generation_id' => $generation_id, 'updated_at' => current_time('mysql', true)), array('id' => (int) $payload['project_id']));
         $wpdb->update(SBS_DB::table('jobs'), array('status' => 'completed', 'result_json' => wp_json_encode(array('generation_id' => $generation_id, 'asset_uuid' => $asset['uuid'], 'prediction' => $response)), 'progress' => 100, 'updated_at' => current_time('mysql', true)), array('id' => (int) $job['id']));
@@ -1407,7 +1419,7 @@ final class SBS_REST
     private static function pack_list()
     {
         global $wpdb;
-        $packs = $wpdb->get_results('SELECT * FROM ' . SBS_DB::table('packs') . ' ORDER BY updated_at DESC', ARRAY_A);
+        $packs = $wpdb->get_results('SELECT * FROM ' . SBS_DB::table('packs') . " WHERE status <> 'sandbox' ORDER BY updated_at DESC", ARRAY_A);
         return array_map(function ($pack) { return self::pack_by_uuid($pack['uuid']); }, $packs);
     }
 
@@ -1459,7 +1471,7 @@ final class SBS_REST
         $generations_table = SBS_DB::table('generations');
         $assets_table = SBS_DB::table('assets');
         $jobs_table = SBS_DB::table('jobs');
-        $generations = $wpdb->get_results($wpdb->prepare("SELECT g.*, a.uuid AS asset_uuid, a.filename AS asset_filename, j.payload_json AS job_payload_json FROM {$generations_table} g LEFT JOIN {$assets_table} a ON a.id = g.output_asset_id LEFT JOIN {$jobs_table} j ON j.id = g.job_id WHERE g.project_id = %d ORDER BY g.created_at DESC", (int) $project['id']), ARRAY_A);
+        $generations = $wpdb->get_results($wpdb->prepare("SELECT g.*, a.uuid AS asset_uuid, a.filename AS asset_filename, j.payload_json AS job_payload_json FROM {$generations_table} g LEFT JOIN {$assets_table} a ON a.id = g.output_asset_id LEFT JOIN {$jobs_table} j ON j.id = g.job_id WHERE g.project_id = %d ORDER BY g.created_at DESC, g.id DESC", (int) $project['id']), ARRAY_A);
         foreach ($generations as &$generation) {
             $generation['id'] = (int) $generation['id'];
             $generation['parent_id'] = $generation['parent_id'] ? (int) $generation['parent_id'] : null;
@@ -1468,6 +1480,8 @@ final class SBS_REST
             $generation['usage'] = json_decode($generation['usage_json'], true);
             $job_payload = !empty($generation['job_payload_json']) ? json_decode($generation['job_payload_json'], true) : array();
             $generation['purpose'] = is_array($job_payload) && !empty($job_payload['purpose']) ? sanitize_key($job_payload['purpose']) : 'scene';
+            $generation['freestyle_instruction'] = $job_payload['freestyle_instruction'] ?? '';
+            $generation['freestyle_settings'] = $job_payload['freestyle_settings'] ?? null;
             unset($generation['usage_json'], $generation['job_payload_json']);
         }
         unset($generation);
@@ -1477,7 +1491,7 @@ final class SBS_REST
         $project['concept'] = json_decode($project['concept_json'], true);
         $project['generations'] = $generations;
         $project_jobs = array();
-        if (is_array($project['concept']) && !empty($project['concept']['type']) && in_array($project['concept']['type'], array('character_visual_development', 'character_pack_test'), true)) {
+        if (is_array($project['concept']) && !empty($project['concept']['type']) && in_array($project['concept']['type'], array('character_visual_development', 'character_pack_test', 'freestyle'), true)) {
             $job_pattern = '%' . $wpdb->esc_like('"project_id":' . (int) $project['id'] . ',') . '%';
             $all_job_rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM {$jobs_table} WHERE payload_json LIKE %s ORDER BY created_at ASC", $job_pattern), ARRAY_A);
             foreach ($all_job_rows as $job_row) {

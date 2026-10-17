@@ -15,7 +15,7 @@ function fixture({ both = true, override = true, invalid = false, failAt = 0 } =
     assert.equal(multiplier,2); assert.equal(options.enableRetinaScaling,false);
     const visible=objects.filter(o=>o.visible!==false).map(o=>o.name||o.sbsType); snapshots.push(visible);
     const index=snapshots.length;
-    return {toBlob(callback,type){assert.equal(type,'image/png');setImmediate(()=>callback(index===failAt?null:new Blob([JSON.stringify(visible)],{type})));}};
+    return {toBlob(callback,type){assert.equal(type,'image/png');setImmediate(()=>callback(index===failAt?null:new Blob([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=','base64')],{type})));}};
   }};
   const context = {Blob,Promise,Number,Math,Date,setTimeout,clearTimeout,console,state:{canvas,activeProject:{title:'Test artwork'}},el,ensureCanvas(){},buttonBusy(button,busy){button.disabled=busy;},updateCanvasControls(){},showMessage(message,error){messages.push({message,error});},window:{confirm:()=>true},URL:{createObjectURL(blob){const key='blob:test-'+blobs.size;blobs.set(key,blob);return key;},revokeObjectURL(url){revoked.push(url);}},document:{createElement:()=>node()}};
   vm.createContext(context); vm.runInContext(exportCode,context);

@@ -9,6 +9,7 @@
         loadedFonts: {}, polling: {}, analysisSuggestion: null, developmentProjectUuid: '', developmentJobs: {}, updateStatus: null
     };
 
+    var freestyle = null;
     function el(id) { return document.getElementById(id); }
     function esc(value) { var node = document.createElement('div'); node.textContent = value == null ? '' : String(value); return node.innerHTML; }
     function money(value) { return '$' + Number(value || 0).toFixed(4); }
@@ -67,6 +68,8 @@
                 el('sbs-character-area').hidden = target !== 'characters';
                 document.querySelector('[data-panel="usage"]').classList.toggle('active', target === 'usage');
                 document.querySelector('[data-panel="updates"]').classList.toggle('active', target === 'updates');
+                document.querySelector('[data-panel="freestyle"]').classList.toggle('active', target === 'freestyle');
+                if (target === 'freestyle' && freestyle) { freestyle.render(); }
                 if (target === 'usage') { loadUsage(); }
                 if (target === 'updates') { loadUpdates(); }
             });
@@ -79,7 +82,7 @@
                 document.querySelectorAll('.sbs-tabs button').forEach(function (item) { item.classList.toggle('active', item === button); });
                 document.querySelectorAll('.sbs-panel').forEach(function (panel) { panel.classList.toggle('active', panel.getAttribute('data-panel') === button.getAttribute('data-tab')); });
                 if (button.getAttribute('data-tab') === 'development') { renderDevelopment(); }
-                if (button.getAttribute('data-tab') === 'canvas') { ensureCanvas(); renderCanvasOptions(); loadLatestCanvas(); resizeCanvasViewport(); }
+                if (button.getAttribute('data-tab') === 'canvas') { ensureCanvas(); renderCanvasOptions(); if(state.freestyleNewCanvas){state.freestyleNewCanvas=false;}else{loadLatestCanvas();} resizeCanvasViewport(); }
                 if (button.getAttribute('data-tab') === 'usage') { loadUsage(); }
             });
         });
@@ -92,8 +95,11 @@
             state.projects = data.projects || [];
             state.usage = data.usage || {};
             state.providers = data.providers || {};
+            state.freestylePackUuid = data.freestyle_pack_uuid || "";
+            state.freestyleReady = true;
             state.selectedPack = findPack(selectedUuid) || state.packs[0] || null;
             renderPackOptions(); renderPacks(); renderPackEditor(); renderDevelopment(); renderProjects(); renderUsage(state.usage); renderCanvasOptions(); renderCharacterContext();
+            if (freestyle) { freestyle.render(); }
             if (data.active_jobs && data.active_jobs.length) { trackJobs(data.active_jobs); }
             if (!state.providers.openai) { showMessage('OpenAI is not configured yet. An administrator can add the API key in WordPress.', true); }
         }).catch(function (error) {
@@ -536,15 +542,16 @@
     function trackJobs(jobs) {
         var ordinary = [];
         (jobs || []).forEach(function (job) {
-            if (isDevelopmentPurpose(developmentPurpose(job))) { state.developmentJobs[job.uuid] = job; } else { ordinary.push(job); }
+            if (freestyle && freestyle.isJob(job)) { freestyle.onJob(job); } else if (isDevelopmentPurpose(developmentPurpose(job))) { state.developmentJobs[job.uuid] = job; } else { ordinary.push(job); }
         });
         if (ordinary.length) { renderLiveJobs(ordinary); }
         renderDevelopment();
+        if (freestyle) { freestyle.render(); }
         pollJobs(jobs || []);
     }
     function renderLiveJobs(jobs) {
         var box = el('sbs-live-jobs');
-        jobs = jobs.filter(function (job) { return !isDevelopmentPurpose(developmentPurpose(job)) && (!job.pack_uuid || !state.selectedPack || job.pack_uuid === state.selectedPack.uuid); });
+        jobs = jobs.filter(function (job) { return !(freestyle && freestyle.isJob(job)) && !isDevelopmentPurpose(developmentPurpose(job)) && (!job.pack_uuid || !state.selectedPack || job.pack_uuid === state.selectedPack.uuid); });
         jobs.forEach(function (job) {
             var current = box.querySelector('[data-job="' + job.uuid + '"]');
             if (!current) { current = document.createElement('article'); current.className = 'sbs-job'; current.setAttribute('data-job', job.uuid); box.prepend(current); }
@@ -569,8 +576,8 @@
             state.polling[job.uuid] = true;
             (function tick(current) {
                 setTimeout(function () {
-                    api('jobs/' + current.uuid).catch(function (error) { return isDevelopmentPurpose(developmentPurpose(current)) ? Object.assign({}, current, { poll_error: error.message }) : { uuid: current.uuid, status: 'failed', error: { message: error.message } }; }).then(function (updated) {
-                        if (isDevelopmentPurpose(developmentPurpose(updated))) { state.developmentJobs[updated.uuid] = updated; renderDevelopment(); } else { renderLiveJobs([updated]); }
+                    api('jobs/' + current.uuid).catch(function (error) { return (isDevelopmentPurpose(developmentPurpose(current)) || (freestyle && freestyle.isJob(current))) ? Object.assign({}, current, { poll_error: error.message }) : { uuid: current.uuid, status: 'failed', error: { message: error.message } }; }).then(function (updated) {
+                        if (freestyle && freestyle.isJob(updated)) { freestyle.onJob(updated); freestyle.render(); } else if (isDevelopmentPurpose(developmentPurpose(updated))) { state.developmentJobs[updated.uuid] = updated; renderDevelopment(); } else { renderLiveJobs([updated]); }
                         if (['completed', 'failed', 'blocked', 'cancelled'].includes(updated.status)) { delete state.polling[updated.uuid]; refreshProjects(); } else { tick(updated); }
                     });
                 }, 2500);
@@ -587,7 +594,7 @@
         list.querySelectorAll('[data-delete-project]').forEach(function (button) { button.addEventListener('click', function (event) { event.stopPropagation(); deleteProjectSet(button.getAttribute('data-delete-project')); }); });
         renderProjectDetail();
     }
-    function characterProjects() { return state.selectedPack ? state.projects.filter(function (project) { return project.pack_uuid === state.selectedPack.uuid && (!project.concept || ['character_pack_test', 'character_visual_development'].indexOf(project.concept.type) < 0); }) : []; }
+    function characterProjects() { return state.selectedPack ? state.projects.filter(function (project) { return project.pack_uuid === state.selectedPack.uuid && (!project.concept || ['character_pack_test', 'character_visual_development'].indexOf(project.concept.type) < 0 && (project.concept.type !== 'freestyle' || project.concept.merch_ready)); }) : []; }
     function deleteProjectSet(uuid) {
         var project = state.projects.find(function (item) { return item.uuid === uuid; });
         if (!project || !window.confirm('Delete “' + project.title + '” and all of its generated images, canvas designs and uploaded project assets? This cannot be undone.')) { return; }
@@ -608,7 +615,7 @@
             return '<article class="sbs-generation sbs-saved-design"><button type="button" class="sbs-image-zoom" data-zoom-image="' + esc(design.preview_url) + '" data-zoom-caption="' + esc(design.name + ' · saved merchandise design') + '"><img src="' + esc(design.preview_url) + '" alt=""></button><footer><span>Merch design<br>' + esc(design.updated_at) + '</span><div class="sbs-creation-actions"><button type="button" class="sbs-remove-creation" data-delete-design="' + esc(design.uuid) + '" title="Remove this saved design"><span aria-hidden="true">🗑</span> Remove</button></div></footer></article>';
         }).join('');
         var cards = generationCards + designCards;
-        box.innerHTML = '<h2 class="sbs-stage-heading"><span class="sbs-stage-number">5.2</span> Inspect and select a creation</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Compare the images and select one to refine or use on the canvas.</p><div class="sbs-inline-heading"><div><p class="sbs-kicker">' + esc(project.pack_name || '') + '</p><h2>' + esc(project.title) + '</h2></div><button id="sbs-open-canvas" class="sbs-button">Open in canvas</button></div><div class="sbs-generation-grid sbs-creation-gallery">' + (cards || '<p class="sbs-muted">No completed creations yet.</p>') + '</div><div class="sbs-card" style="margin-top:18px"><h2 class="sbs-stage-heading"><span class="sbs-stage-number">5.3</span> Refine or finish the image</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Choose refinement, polish or upscale if needed; inspect the result before opening the canvas.</p><label>Refinement instruction<textarea id="sbs-refine-prompt" rows="4" placeholder="Change one thing at a time and say what must stay unchanged."></textarea></label><div class="sbs-row wrap"><button id="sbs-refine" class="sbs-button primary">Refine selected</button><button id="sbs-polish" class="sbs-button accent">High-quality polish</button><button id="sbs-upscale-2" class="sbs-button">AI upscale 2×</button><button id="sbs-upscale-4" class="sbs-button">AI upscale 4×</button></div></div>';
+        box.innerHTML = '<h2 class="sbs-stage-heading"><span class="sbs-stage-number">5.2</span> Inspect and select a creation</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Compare the images and select one to refine or use on the canvas.</p><div class="sbs-inline-heading"><div><p class="sbs-kicker">' + esc(project.pack_name || '') + '</p><h2>' + esc(project.title) + '</h2></div><button id="sbs-open-canvas" class="sbs-button">Open in canvas</button>' + (project.concept && project.concept.type==='freestyle' ? '<button type="button" id="sbs-new-freestyle-canvas" class="sbs-button">New print layout from selected image</button>' : '') + '</div><div class="sbs-generation-grid sbs-creation-gallery">' + (cards || '<p class="sbs-muted">No completed creations yet.</p>') + '</div><div class="sbs-card" style="margin-top:18px"><h2 class="sbs-stage-heading"><span class="sbs-stage-number">5.3</span> Refine or finish the image</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Choose refinement, polish or upscale if needed; inspect the result before opening the canvas.</p><label>Refinement instruction<textarea id="sbs-refine-prompt" rows="4" placeholder="Change one thing at a time and say what must stay unchanged."></textarea></label><div class="sbs-row wrap"><button id="sbs-refine" class="sbs-button primary">Refine selected</button><button id="sbs-polish" class="sbs-button accent">High-quality polish</button><button id="sbs-upscale-2" class="sbs-button">AI upscale 2×</button><button id="sbs-upscale-4" class="sbs-button">AI upscale 4×</button></div></div>';
         box.querySelectorAll('[data-select-generation]').forEach(function (button) { button.addEventListener('click', function () { state.selectedGeneration = project.generations.find(function (gen) { return gen.uuid === button.getAttribute('data-select-generation'); }); renderProjectDetail(); }); });
         bindCreationActions(box);
         el('sbs-refine').addEventListener('click', function () { refineSelected(false); });
@@ -616,6 +623,11 @@
         el('sbs-upscale-2').addEventListener('click', function () { upscaleSelected(2); });
         el('sbs-upscale-4').addEventListener('click', function () { upscaleSelected(4); });
         el('sbs-open-canvas').addEventListener('click', function () { activateTab('canvas'); renderCanvasOptions(); });
+        if(el('sbs-new-freestyle-canvas'))el('sbs-new-freestyle-canvas').addEventListener('click',function(){
+            if(!state.selectedGeneration){showMessage('Select an image for the new print layout.',true);return;}
+            if(state.canvas&&!state.canvasUuid&&state.canvas.getObjects().some(function(o){return o.sbsType!=='guide';})&&!window.confirm('Start a new print layout? Save the current unsaved canvas first if you want to keep it.'))return;
+            ensureCanvas();resetCanvasProject();state.freestyleNewCanvas=true;activateTab('canvas');prepareFreestyleCanvas();
+        });
         updateProjectActionControls();
     }
     function bindCreationActions(scope) {
@@ -686,6 +698,9 @@
         var instruction = el('sbs-refine-prompt').value.trim();
         if (!instruction) { instruction = polish ? 'Polish this exact image for premium merchandise printing. Preserve the character identity, scene, composition, palette and joke. Improve linework, texture, edge quality and finish only.' : ''; }
         if (!instruction) { showMessage('Enter a refinement instruction.', true); return; }
+        if(state.activeProject.concept && state.activeProject.concept.type==='freestyle'){
+            post('freestyle',{project_uuid:state.activeProject.uuid,parent_uuid:state.selectedGeneration.uuid,instruction:instruction,settings:state.selectedGeneration.freestyle_settings||state.activeProject.concept.settings}).then(function(data){replaceProject(data.project);freestyle.open(data.project.uuid);activateTab('freestyle');trackJobs(data.jobs||[]);}).catch(handleError);return;
+        }
         post('jobs/generate', { project_uuid: state.activeProject.uuid, parent_uuid: state.selectedGeneration.uuid, prompt: instruction, count: 1, quality: polish ? 'high' : 'medium', size: polish ? '2048x2048' : state.selectedGeneration.size, background: 'opaque' }).then(function (data) { activateTab('create'); trackJobs(data.jobs); }).catch(handleError);
     }
     function upscaleSelected(scale) {
@@ -778,7 +793,7 @@
 
     function ensureCanvas() {
         if (state.canvas || !window.fabric) { return; }
-        state.canvas = new fabric.Canvas('sbs-design-canvas', { preserveObjectStacking: true, selection: true, backgroundColor: null });
+        state.canvas = new fabric.Canvas('sbs-design-canvas', { preserveObjectStacking: true, selection: true, backgroundColor: '#ffffff' });
         state.canvas.on('selection:created', renderLayers); state.canvas.on('selection:updated', renderLayers); state.canvas.on('selection:cleared', renderLayers);
         state.canvas.on('object:added', captureCanvas); state.canvas.on('object:modified', captureCanvas); state.canvas.on('object:removed', captureCanvas);
         state.canvas.on('object:moving', snapObject);
@@ -834,12 +849,13 @@
         state.canvasUuid = '';
         if (!state.canvas) { return; }
         state.historyLock = true;
+        el('sbs-transparent').checked=false;state.canvas.setBackgroundColor('#ffffff',state.canvas.renderAll.bind(state.canvas));
         state.canvas.getObjects().filter(function (object) { return object.sbsType !== 'guide'; }).forEach(function (object) { state.canvas.remove(object); });
         state.historyLock = false; state.canvas.discardActiveObject(); state.canvas.requestRenderAll(); state.history = []; state.redo = []; renderLayers(); updateCanvasControls();
     }
     function addSelectedCreation() { ensureCanvas(); var creation = selectedCreation(); if (!creation) { showMessage('Choose a creation first.', true); return; } addCanvasImage(creation); }
     function addSelectedReference() { ensureCanvas(); var reference = selectedReference(); if (!reference) { showMessage('Choose a reference image first.', true); return; } addCanvasImage({ url: reference.url, label: reference.label || roleLabel(reference.role), sbsType: reference.role === 'logo' ? 'exact_asset' : 'reference_asset', maxWidth: 420, metadata: reference.metadata || {} }); }
-    function addCanvasImage(source) { fabric.Image.fromURL(source.url, function (img) { var settings = { left: 100, top: 100, name: source.label, sbsType: source.sbsType }; if (source.metadata && source.metadata.crop) { settings.cropX = Number(source.metadata.crop.x); settings.cropY = Number(source.metadata.crop.y); settings.width = Number(source.metadata.crop.width); settings.height = Number(source.metadata.crop.height); } img.set(settings); img.scaleToWidth(Math.min(source.maxWidth || 700, state.canvas.width * .8)); state.canvas.add(img).setActiveObject(img); state.canvas.requestRenderAll(); }); }
+    function addCanvasImage(source) { fabric.Image.fromURL(source.url, function (img) { var settings = { left: 100, top: 100, name: source.label, sbsType: source.sbsType }; if (source.metadata && source.metadata.crop) { settings.cropX = Number(source.metadata.crop.x); settings.cropY = Number(source.metadata.crop.y); settings.width = Number(source.metadata.crop.width); settings.height = Number(source.metadata.crop.height); } img.set(settings); if(source.fit){img.scaleToWidth(Math.min(state.canvas.width*.8,state.canvas.height*.8*img.width/img.height));img.set({left:state.canvas.width/2,top:state.canvas.height/2,originX:'center',originY:'center'});}else{img.scaleToWidth(Math.min(source.maxWidth || 700, state.canvas.width * .8));} state.canvas.add(img).setActiveObject(img); state.canvas.requestRenderAll(); }); }
     function canvasTool(tool) {
         ensureCanvas(); var canvas = state.canvas, obj = canvas.getActiveObject();
         if (tool === 'text') { var text = new fabric.IText('SMILE OUT LOUD', { left: 130, top: 120, fill: el('sbs-object-colour').value, fontFamily: el('sbs-font-family').value, fontWeight: 'bold', fontSize: 64, name: 'Text' }); canvas.add(text).setActiveObject(text); }
@@ -945,7 +961,18 @@
     }
     function loadLatestCanvas() {
         if (!state.activeProject || !state.canvas) { return; }
-        api('canvases?project_uuid=' + encodeURIComponent(state.activeProject.uuid)).then(function (rows) { if (!rows.length) { return; } var canvas = rows[0]; state.canvasUuid = canvas.uuid; state.historyLock = true; state.canvas.loadFromJSON(canvas.document.fabric, function () { state.historyLock = false; state.canvas.renderAll(); state.history = [JSON.stringify(canvas.document.fabric)]; renderLayers(); }); if (canvas.document.print) { el('sbs-print-method').value = canvas.document.print.method || 'dtg'; el('sbs-visual-treatment').value = canvas.document.print.visual_treatment || 'vintage-70-20-10'; el('sbs-brand-family').value = canvas.document.print.brand_mark || 'plain-copper'; el('sbs-print-width').value = canvas.document.print.width_inches; el('sbs-print-height').value = canvas.document.print.height_inches; el('sbs-print-dpi').value = canvas.document.print.dpi; updatePrintReadout(); } }).catch(handleError);
+        api('canvases?project_uuid=' + encodeURIComponent(state.activeProject.uuid)).then(function (rows) { if (!rows.length) { prepareFreestyleCanvas(); return; } var canvas = rows[0]; state.canvasUuid = canvas.uuid; if(canvas.document.artboard){state.canvas.setDimensions({width:Number(canvas.document.artboard.width)||900,height:Number(canvas.document.artboard.height)||900});el('sbs-transparent').checked=!!canvas.document.artboard.transparent;} state.historyLock = true; state.canvas.loadFromJSON(canvas.document.fabric, function () { state.historyLock = false; state.canvas.renderAll(); state.history = [JSON.stringify(canvas.document.fabric)]; renderLayers(); }); if (canvas.document.print) { el('sbs-print-method').value = canvas.document.print.method || 'dtg'; el('sbs-visual-treatment').value = canvas.document.print.visual_treatment || 'vintage-70-20-10'; el('sbs-brand-family').value = canvas.document.print.brand_mark || 'plain-copper'; el('sbs-print-width').value = canvas.document.print.width_inches; el('sbs-print-height').value = canvas.document.print.height_inches; el('sbs-print-dpi').value = canvas.document.print.dpi; updatePrintReadout(); } }).catch(handleError);
+    }
+    function prepareFreestyleCanvas() {
+        var p=state.activeProject;if(!p||!p.concept||p.concept.type!=='freestyle'||!p.concept.merch_ready||!state.canvas)return;
+        if(state.canvas.getObjects().some(function(o){return o.sbsType!=='guide';}))return;
+        var settings=p.concept.settings||{},w=Number(settings.width||15),h=Number(settings.height||18),cw=900*Math.min(1,w/h),ch=cw*h/w;
+        state.historyLock=true;state.canvas.getObjects().forEach(function(o){state.canvas.remove(o);});state.canvas.setDimensions({width:cw,height:ch});
+        el('sbs-print-width').value=w;el('sbs-print-height').value=h;el('sbs-print-dpi').value=300;el('sbs-transparent').checked=settings.background==='transparent';
+        el('sbs-visual-treatment').value=settings.treatment==='vintage'?'vintage-70-20-10':settings.treatment==='clean'?'clean':'custom';
+        state.canvas.setBackgroundColor(el('sbs-transparent').checked?null:'#ffffff',state.canvas.renderAll.bind(state.canvas));addGuides();state.historyLock=false;updatePrintReadout();
+        var g=state.selectedGeneration||p.generations.find(function(g){return g.uuid===p.concept.active_generation_uuid;})||p.generations[0];
+        if(g)addCanvasImage({url:g.asset_url,label:p.title,sbsType:'artwork',fit:true});
     }
     var sbsPreflight = null;
     function runPrintPreflight() {
@@ -953,7 +980,7 @@
         var w=Math.round(Number(el('sbs-print-width').value)*Number(el('sbs-print-dpi').value));
         var h=Math.round(Number(el('sbs-print-height').value)*Number(el('sbs-print-dpi').value));
         var dpi=Number(el('sbs-print-dpi').value);
-        var issues=[],warnings=[],objects=state.canvas.getObjects().filter(function(o){return o.sbsType!=='guide' && o.visible!==false;});
+        var issues=[],warnings=[],sourceChecks=[],objects=state.canvas.getObjects().filter(function(o){return o.sbsType!=='guide' && o.visible!==false;});
         var scaleX=w/state.canvas.width,scaleY=h/state.canvas.height;
         if (!Number.isFinite(w)||!Number.isFinite(h)||w<1||h<1) issues.push('Invalid print dimensions');
         if (Math.abs(scaleX-scaleY)>0.001) issues.push('Print aspect ratio differs from artboard');
@@ -965,14 +992,35 @@
         objects.forEach(function(o) {
             if (o.type==='image' && o.width && o.height) {
                 var sx=Math.abs(o.scaleX||1)*scaleX,sy=Math.abs(o.scaleY||1)*scaleY;
-                if (sx>1.5||sy>1.5) warnings.push('Image layer '+(o.name||'unnamed')+' is enlarged beyond source pixels; may print soft');
+                if (sx>1.05||sy>1.05) warnings.push('Image layer '+(o.name||'unnamed')+' is enlarged beyond source pixels; target 300 PPI may need upscaling');
+                var sourceCheck={name:o.name||'unnamed',effective_ppi:Math.round(dpi/Math.max(sx,sy)),alpha:'unverified'};
+                try {
+                    var source=o._originalElement||(o.getElement&&o.getElement()),sampler=document.createElement('canvas');sampler.width=128;sampler.height=128;var sc=sampler.getContext('2d');
+                    sc.drawImage(source,o.cropX||0,o.cropY||0,o.width,o.height,0,0,128,128);var sourcePixels=sc.getImageData(0,0,128,128).data,sourceClear=0,sourcePartial=0;
+                    for(var si=3;si<sourcePixels.length;si+=4){if(sourcePixels[si]===0)sourceClear++;else if(sourcePixels[si]<255)sourcePartial++;}
+                    sourceCheck.alpha=sourceClear?'transparent':sourcePartial?'semi-transparent':'opaque';
+                    if(el('sbs-transparent').checked&&!sourceClear)warnings.push('Image layer '+sourceCheck.name+' has no fully transparent sampled pixels; a transparent canvas does not remove an opaque image background');
+                    if(el('sbs-print-method').value==='dtf'&&sourcePartial)warnings.push('Image layer '+sourceCheck.name+' contains semi-transparent pixels; inspect DTF edges');
+                } catch(error){sourceCheck.alpha='unverified';}
+                sourceChecks.push(sourceCheck);
+
             }
             if (o.sbsType==='exact_asset' && (o.width||0)*Math.abs(o.scaleX||1)*scaleX<200) warnings.push('Logo '+(o.name||'unnamed')+' is small; inspect legibility');
         });
         if (el('sbs-print-method').value==='dtf') warnings.push('DTF: inspect isolated dots, small details, transfer edges and supplier minimum feature sizes');
         else warnings.push('DTG: inspect halftones, gradients, garment contrast and underbase requirements');
-        warnings.push('Visual defects, exact embedded PPI metadata and printer-specific compliance are not automatically verified');
-        var report={created_at:new Date().toISOString(),method:el('sbs-print-method').value,treatment:el('sbs-visual-treatment').value,output_pixels:{width:w,height:h},target_ppi:dpi,transparent_requested:el('sbs-transparent').checked,errors:issues,warnings:warnings,automatic_verdict:issues.length?'FAIL':warnings.length?'REVIEW':'PASS',manual_override:false};
+        warnings.push('Inspect slogan spelling, facial details, print edges and supplier-specific requirements; visual perfection is not automatically verified');
+        var alphaCheck={status:'unverified'},savedGuideStates=[];
+        try {
+            var guideObjects=state.canvas.getObjects().filter(function(o){return o.sbsType==='guide';});savedGuideStates=guideObjects.map(function(o){return o.visible;});guideObjects.forEach(function(o){o.visible=false;});
+            var sample=state.canvas.toCanvasElement(Math.min(1,256/Math.max(state.canvas.width,state.canvas.height)),{enableRetinaScaling:false}),pixels=sample.getContext('2d').getImageData(0,0,sample.width,sample.height).data,clear=0,partial=0;
+            for(var a=3;a<pixels.length;a+=4){if(pixels[a]===0)clear++;else if(pixels[a]<255)partial++;}
+            alphaCheck={status:'sampled',transparent_pixels:clear,semi_transparent_pixels:partial,total_sampled:pixels.length/4};
+            if(el('sbs-transparent').checked&&!clear)warnings.push('Transparent background requested but no fully transparent pixels were detected in the sample');
+            if(el('sbs-print-method').value==='dtf'&&partial)warnings.push('Semi-transparent pixels detected: inspect alpha edges and halftone dots for DTF');
+        } catch(error){warnings.push('Transparency could not be sampled; inspect the exported PNG manually');}
+        finally {if(typeof guideObjects!=='undefined')guideObjects.forEach(function(o,i){o.visible=savedGuideStates[i];});state.canvas.renderAll();}
+        var report={created_at:new Date().toISOString(),method:el('sbs-print-method').value,treatment:el('sbs-visual-treatment').value,output_pixels:{width:w,height:h},target_ppi:dpi,transparent_requested:el('sbs-transparent').checked,transparency_check:alphaCheck,source_checks:sourceChecks,errors:issues,warnings:warnings,automatic_verdict:issues.length?'FAIL':warnings.length?'REVIEW':'PASS',manual_override:false};
         sbsPreflight=report;
         el('sbs-preflight-results').textContent=report.automatic_verdict+' — '+(issues.length?issues.join('; ')+'; ':'')+warnings.join('; ');
         return report;
@@ -984,10 +1032,22 @@
         var box = el('sbs-export-downloads');
         if (box) { box.replaceChildren(); box.hidden = true; }
     }
+    async function pngWithResolution(blob, dpi) {
+        var input=new Uint8Array(await blob.arrayBuffer());
+        if(input.length<33 || input[0]!==137 || input[1]!==80 || input[2]!==78 || input[3]!==71)throw new Error('PNG output could not be verified.');
+        var ppm=Math.round(Number(dpi)/0.0254);
+        if(!Number.isFinite(ppm)||ppm<1)throw new Error('Invalid PNG print density.');
+        var chunk=new Uint8Array(21),view=new DataView(chunk.buffer);view.setUint32(0,9);chunk.set([112,72,89,115],4);view.setUint32(8,ppm);view.setUint32(12,ppm);chunk[16]=1;
+        var crc=0xffffffff;for(var i=4;i<17;i++){crc^=chunk[i];for(var b=0;b<8;b++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}view.setUint32(17,(crc^0xffffffff)>>>0);
+        var parts=[input.slice(0,8)],offset=8,inserted=false;
+        while(offset+12<=input.length){var length=new DataView(input.buffer,input.byteOffset+offset,4).getUint32(0),end=offset+12+length;if(end>input.length)throw new Error('Incomplete PNG output.');var type=String.fromCharCode.apply(null,input.slice(offset+4,offset+8));if(type!=='pHYs')parts.push(input.slice(offset,end));if(type==='IHDR'){parts.push(chunk);inserted=true;}offset=end;}
+        if(!inserted||offset!==input.length)throw new Error('Invalid PNG chunk structure.');
+        return new Blob(parts,{type:'image/png'});
+    }
     function pngBlob(canvas) {
         return new Promise(function (resolve, reject) {
             canvas.toBlob(function (blob) {
-                if (blob && blob.size) { resolve(blob); }
+                if (blob && blob.size) { pngWithResolution(blob, Number(el('sbs-print-dpi').value)).then(resolve,reject); }
                 else { reject(new Error('The browser could not create the PNG. Try a smaller print size.')); }
             }, 'image/png');
         });
@@ -1066,13 +1126,18 @@
     }
     function resizeCanvasViewport() { if (state.canvas) { state.canvas.calcOffset(); state.canvas.requestRenderAll(); } }
 
-    function activateTab(name) { var primary = document.querySelector('.sbs-primary-tabs button[data-primary-tab="characters"]'); if (primary) { primary.click(); } var button = document.querySelector('.sbs-tabs button[data-tab="' + name + '"]'); if (button) { button.click(); } }
+    function activateTab(name) { if (name === 'freestyle') { document.querySelector('[data-primary-tab="freestyle"]').click(); return; } var primary = document.querySelector('.sbs-primary-tabs button[data-primary-tab="characters"]'); if (primary) { primary.click(); } var button = document.querySelector('.sbs-tabs button[data-tab="' + name + '"]'); if (button) { button.click(); } }
     function buttonBusy(button, busy) { if (!button) { return; } if (busy) { button.dataset.label = button.textContent; button.disabled = true; button.textContent = 'Working…'; } else { button.disabled = false; button.textContent = button.dataset.label || button.textContent; } }
     function handleError(error) { showMessage(error.message || String(error), true); }
 
     document.addEventListener('DOMContentLoaded', function () {
         bindLogin(); bindPrimaryTabs(); bindTabs(); bindCharacters(); bindCreate(); bindImageModal(); bindGuide();
         installStudioHelp(); installImageSpecifications();
+        freestyle = window.SBSFreestyle.init({state:state,el:el,esc:esc,api:api,post:post,loadBootstrap:loadBootstrap,replaceProject:replaceProject,trackJobs:trackJobs,showMessage:showMessage,handleError:handleError,zoom:openImageModal,openProject:function(uuid,generationUuid){
+            if(state.canvas && !state.canvasUuid && state.canvas.getObjects().some(function(o){return o.sbsType!=='guide';}) && (!state.activeProject || state.activeProject.uuid!==uuid) && !window.confirm('Open this project and clear the current unsaved canvas? Save that canvas first if you want to keep it.'))return;
+            var project=state.projects.find(function(p){return p.uuid===uuid;});if(!project)return;
+            selectPack(project.pack_uuid);resetCanvasProject();state.activeProject=project;state.selectedGeneration=project.generations.find(function(g){return g.uuid===generationUuid;});renderProjects();renderCanvasOptions();activateTab('projects');
+        }});
         bindLogoControls();
         el('sbs-run-preflight').addEventListener('click',runPrintPreflight);
         el('sbs-print-method').addEventListener('change',function () {
@@ -1120,7 +1185,7 @@
         dialog.querySelector('#sbs-explain-close').addEventListener('click', function () { dialog.close(); });
         dialog.addEventListener('click', function (event) { if (event.target === dialog) { dialog.close(); } });
         function decorate() {
-            document.querySelectorAll('button:not(.sbs-info-button):not(.sbs-image-zoom):not(.sbs-modal-close):not(#sbs-explain-close)').forEach(function (button) {
+            document.querySelectorAll('button:not(.sbs-info-button):not(.sbs-fs-thumbnail):not(.sbs-image-zoom):not(.sbs-modal-close):not(#sbs-explain-close)').forEach(function (button) {
                 if (button.dataset.sbsInfoAttached || button.closest('.sbs-explain-dialog')) { return; }
                 button.dataset.sbsInfoAttached = '1';
                 var info = document.createElement('button');

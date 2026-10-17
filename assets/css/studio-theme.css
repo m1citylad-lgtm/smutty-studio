@@ -239,3 +239,27 @@ body#sbs-studio-page #sbs-development-root :is(.sbs-development-concept,
     aspect-ratio: auto;
     object-fit: contain;
 }
+
+/* Freestyle is a parallel A–D workflow, independent of the character tray. */
+body#sbs-studio-page .sbs-header { flex-wrap: wrap; }
+body#sbs-studio-page .sbs-primary-tabs { max-width: 100%; overflow-x: auto; }
+body#sbs-studio-page #sbs-freestyle-panel { display: none; }
+body#sbs-studio-page #sbs-freestyle-panel.active { display: grid; gap: 20px; }
+body#sbs-studio-page .sbs-fs-steps { display:flex; flex-wrap:wrap; gap:10px; margin:0; padding:0; list-style:none; }
+body#sbs-studio-page .sbs-fs-steps li { flex:1 1 220px; padding:12px; border:2px solid var(--sbs-orange); border-radius:10px; background:var(--sbs-card); }
+body#sbs-studio-page .sbs-fs-steps strong { display:block; font-size:16px; margin-top:6px; }
+body#sbs-studio-page .sbs-fs-steps .done { border-color:var(--sbs-gold); }
+body#sbs-studio-page .sbs-fs-thumbnails { display:flex; gap:12px; overflow-x:auto; padding:5px 3px 14px; }
+body#sbs-studio-page .sbs-fs-thumbnail { flex:0 0 130px; padding:6px; border:2px solid var(--sbs-orange); border-radius:8px; background:var(--sbs-field); color:var(--sbs-text); cursor:pointer; }
+body#sbs-studio-page .sbs-fs-thumbnail img { display:block; width:100%; height:100px; object-fit:contain; }
+body#sbs-studio-page .sbs-fs-thumbnail span { display:block; padding:8px 0 2px; font-size:16px; }
+body#sbs-studio-page .sbs-fs-thumbnail.selected { outline:3px solid var(--sbs-gold); outline-offset:1px; }
+body#sbs-studio-page #sbs-fs-zoom { display:block; width:100%; border:0; padding:0; background:var(--sbs-field); cursor:zoom-in; }
+body#sbs-studio-page #sbs-fs-image { display:block; width:100%; height:min(60vh,620px); object-fit:contain; }
+body#sbs-studio-page #sbs-fs-form { display:grid; gap:18px; }
+body#sbs-studio-page #sbs-fs-instruction { min-height:160px; font-size:19px; }
+body#sbs-studio-page #sbs-fs-conversation { max-height:380px; overflow:auto; margin:0 0 18px; padding-left:30px; }
+body#sbs-studio-page #sbs-fs-conversation li { padding:14px; margin-bottom:12px; border:1px solid var(--sbs-orange); border-radius:10px; background:var(--sbs-field); }
+body#sbs-studio-page #sbs-fs-conversation p { white-space:pre-wrap; margin:8px 0 0; }
+body#sbs-studio-page #sbs-freestyle-panel input, body#sbs-studio-page #sbs-freestyle-panel select { min-height:44px; }
+body#sbs-studio-page #sbs-freestyle-panel input[type="checkbox"] { min-height:24px; min-width:24px; }

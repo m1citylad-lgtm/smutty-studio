@@ -1,0 +1,35 @@
+<?php
+error_reporting(E_ALL & ~E_DEPRECATED);
+define('ABSPATH',__DIR__.'/');const ARRAY_A='ARRAY_A';
+function sanitize_key($v){return preg_replace('/[^a-z0-9_\-]/','',strtolower((string)$v));}
+function sanitize_text_field($v){return trim(strip_tags((string)$v));}function sanitize_textarea_field($v){return sanitize_text_field($v);}
+function wp_json_encode($v){return json_encode($v);}function is_wp_error($v){return $v instanceof WP_Error;}function rest_ensure_response($v){return new WP_REST_Response($v);}
+function current_time($format,$utc=false){return $format==='mysql'?'2026-10-17 12:00:00':'2026-10-17 12:00';}
+$options=[];function get_option($k,$fallback=''){global $options;return $options[$k]??$fallback;}function update_option($k,$v,$autoload=false){global $options;$options[$k]=$v;}
+class WP_Error {public $code;public function __construct($c,$m,$d=[]){$this->code=$c;}}
+class WP_REST_Response {private $data;public function __construct($d){$this->data=$d;}public function get_data(){return $this->data;}}
+class WP_REST_Request implements ArrayAccess {public $params=[];public function __construct($m){}public function set_param($k,$v){$this->params[$k]=$v;}public function get_param($k){return $this->params[$k]??null;}public function offsetExists($k):bool{return isset($this->params[$k]);}public function offsetGet($k):mixed{return $this->get_param($k);}public function offsetSet($k,$v):void{$this->set_param($k,$v);}public function offsetUnset($k):void{unset($this->params[$k]);}}
+class SBS_DB {public static $packs=['bear'=>['uuid'=>'bear','status'=>'draft']];public static function table($t){return $t;}public static function row_by_uuid($table,$uuid){return self::$packs[$uuid]??null;}}
+class SBS_REST {
+ const NS='smutty-bear/v1';public static $projects=[],$sent=[];
+ public static function create_pack($r){$uuid='neutral';SBS_DB::$packs[$uuid]=['uuid'=>$uuid,'status'=>'draft'];return rest_ensure_response(SBS_DB::$packs[$uuid]);}
+ public static function create_project($r){if(!isset(SBS_DB::$packs[$r['pack_uuid']]))return new WP_Error('missing_pack','Missing');$p=['id'=>10,'uuid'=>'experiment','pack_uuid'=>$r['pack_uuid'],'title'=>$r['title'],'concept'=>$r['concept'],'generations'=>[],'jobs'=>[]];self::$projects[$p['uuid']]=$p;return rest_ensure_response($p);}
+ public static function project($r){return isset(self::$projects[$r['uuid']])?rest_ensure_response(self::$projects[$r['uuid']]):new WP_Error('missing','Missing');}
+ public static function generate($r){self::$sent[]=$r->params;return rest_ensure_response(['jobs'=>[['uuid'=>'job','status'=>'submitted','payload'=>['project_id'=>10,'purpose'=>'freestyle']]]]);}
+}
+class FakeDB {public $updates=[];public function update($t,$data,$where){$this->updates[]=[$t,$data,$where];if($t==='packs')SBS_DB::$packs[$where['uuid']]=array_merge(SBS_DB::$packs[$where['uuid']],$data);if($t==='projects')foreach(SBS_REST::$projects as &$p){if($p['id']===$where['id']&&isset($data['concept_json']))$p['concept']=json_decode($data['concept_json'],true);}return 1;}public function prepare($q,...$args){return $q;}public function get_row($q,$format){$p=SBS_REST::$projects['experiment'];$p['concept_json']=json_encode($p['concept']);return $p;}public function get_var($q){return 'g3';}}
+$wpdb=new FakeDB();require __DIR__.'/../includes/class-sbs-freestyle.php';
+function check($v,$m){if(!$v)throw new Exception($m);}function req($params){$r=new WP_REST_Request('POST');foreach($params as $k=>$v)$r[$k]=$v;return $r;}
+check(count(SBS_Freestyle::styles())<=10,'Too many styles');$defaults=SBS_Freestyle::settings([]);check($defaults['background']==='opaque'&&$defaults['dpi']===300&&$defaults['width']===15.0&&$defaults['height']===18.0,'Print defaults incorrect');
+check(is_wp_error(SBS_Freestyle::settings(['style'=>'invented'])),'Unknown style accepted');check(is_wp_error(SBS_Freestyle::settings(['width'=>0])),'Invalid print dimensions accepted');
+$r=req(['instruction'=>'An adult new character beside a lighthouse with the slogan Smile Out Loud','pack_uuid'=>'','settings'=>[]]);
+$result=SBS_Freestyle::turn($r)->get_data();$sent=SBS_REST::$sent[0];check($sent['count']===1,'Must create only one image');check(!$sent['parent_uuid'],'New idea inherited a parent');check($result['project']['pack_uuid']==='neutral','No-character idea inherited an existing character');check(SBS_DB::$packs['neutral']['status']==='sandbox','Private sandbox must not appear as an ordinary character before promotion');
+$p=&SBS_REST::$projects['experiment'];$p['generations']=[['id'=>1,'uuid'=>'g1','asset_url'=>'/original.png'],['id'=>2,'uuid'=>'g2','parent_id'=>1,'asset_url'=>'/revision.png']];$old=serialize($p['generations']);
+$r=req(['project_uuid'=>'experiment','parent_uuid'=>'g1','pack_uuid'=>'bear','instruction'=>'Change only the hat.','settings'=>['style'=>'ink-sketch','treatment'=>'halftone']]);SBS_Freestyle::turn($r);$sent=SBS_REST::$sent[1];check($sent['parent_uuid']==='g1','Rollback branch used the latest image instead of the selected one');check($p['pack_uuid']==='neutral','Existing experiment switched character');check(serialize($p['generations'])===$old,'History was changed or deleted');
+$r['parent_uuid']='foreign';check(is_wp_error(SBS_Freestyle::turn($r)),'Foreign parent accepted');$r['parent_uuid']='';check(is_wp_error(SBS_Freestyle::turn($r)),'Existing experiment allowed a missing branch parent');
+$r['parent_uuid']='g1';$p['jobs']=[['status'=>'running']];check(is_wp_error(SBS_Freestyle::turn($r)),'Duplicate generation accepted while busy');$p['jobs']=[];
+$select=req(['project_uuid'=>'experiment','generation_uuid'=>'g1']);SBS_Freestyle::select($select);check($p['concept']['active_generation_uuid']==='g1','Selection did not persist');
+check(is_wp_error(SBS_Freestyle::promote($select)),'Unreviewed promotion accepted');$select['reviewed']=true;$select['settings']=['width'=>12,'height'=>16];SBS_Freestyle::promote($select);check($p['concept']['merch_ready']&&$p['concept']['visual_review_generation_uuid']==='g1','Promotion lost selected source');check($p['concept']['settings']['width']===12.0,'Print handoff lost dimensions');check(SBS_DB::$packs['neutral']['status']==='draft','Promoted character-free projects remain inaccessible in Creations');check(serialize($p['generations'])===$old,'Promotion changed originals');
+SBS_Freestyle::completed(10,3);check($p['concept']['active_generation_uuid']==='g3','Completed revision not persisted');
+$prompt=SBS_Freestyle::compose_prompt(['name'=>'Adult bear'],'Use slogan Smile Out Loud','edit',SBS_Freestyle::settings(['style'=>'pencil-sketch','treatment'=>'vintage']));check(strpos($prompt,'FIRST supplied image')!==false&&strpos($prompt,'Smile Out Loud')!==false&&strpos($prompt,'Pencil sketch')!==false&&strpos($prompt,'70%')!==false,'Prompt lost source, slogan, chosen style or treatment');
+echo "PASS: Freestyle settings, optional-character isolation, exact branch parent, history preservation, busy/invalid-input guards, explicit promotion, cross-device selection and generation prompt\n";

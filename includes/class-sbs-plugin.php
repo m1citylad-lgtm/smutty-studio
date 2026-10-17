@@ -41,6 +41,7 @@ final class SBS_Plugin
         add_filter('query_vars', array($this, 'query_vars'));
         add_action('template_redirect', array($this, 'template_redirect'));
         add_action('rest_api_init', array('SBS_REST', 'register_routes'));
+        add_action('rest_api_init', array('SBS_Freestyle', 'register_routes'));
         add_action('admin_menu', array('SBS_Admin', 'register_menu'));
         add_action('admin_init', array('SBS_Admin', 'register_actions'));
         add_action('admin_enqueue_scripts', array('SBS_Admin', 'enqueue'));
@@ -108,6 +109,7 @@ final class SBS_Plugin
         wp_enqueue_script('sbs-fabric', SBS_PLUGIN_URL . 'assets/vendor/fabric.min.js', array(), '5.3.0', true);
         wp_enqueue_script('sbs-studio', SBS_PLUGIN_URL . 'assets/js/studio.js', array('sbs-fabric'), SBS_VERSION, true);
 
+        wp_enqueue_script('sbs-freestyle', SBS_PLUGIN_URL . 'assets/js/freestyle.js', array('sbs-studio'), SBS_VERSION, true);
         include SBS_PLUGIN_DIR . 'templates/studio.php';
         exit;
     }
