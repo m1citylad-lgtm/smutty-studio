@@ -63,6 +63,6 @@ Images now keep their actions, actual job status and independent **Image Correct
 
 The top-level **Freestyle** tab provides optional-character generation, eight drawing styles, T-shirt treatments, conversational edits, six recent thumbnails and Undo/Redo. Designs move explicitly into the existing upscale/print workflow. Defaults are opaque backgrounds and a 15 × 18 inch / 300 PPI print target. See [Freestyle workflow](docs/FREESTYLE.md) for history preservation, quality checks, limitations and tests.
 
-### Studio Settings (v0.2.44)
+### Studio Settings (v0.2.45)
 
 The top-level **Settings** tab contains Studio access/password, OpenAI and Replicate credentials/models, update feed, workspace export/import, storage usage, diagnostics and software updates/rollback. Settings unlocks with the existing Studio sign-in. Forms check the Studio session, a session-bound anti-forgery token and a WordPress nonce; no separate administrator login is required. The existing wp-admin screen remains a recovery route. See [Settings](docs/SETTINGS.md).

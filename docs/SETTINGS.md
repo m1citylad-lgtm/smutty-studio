@@ -1,6 +1,6 @@
 # Studio Settings
 
-Version 0.2.44 moves access to the previously wp-admin-only controls into the top-level Settings tab, replacing the old Updates navigation item.
+Version 0.2.45 moves access to the previously wp-admin-only controls into the top-level Settings tab, replacing the old Updates navigation item.
 
 - **A. Studio access and providers:** URL slug, shared password, OpenAI key and text/image models, Replicate token/model and estimated cost, HTTPS update feed and bearer token.
 - **B. Workspace backups and imports:** whole workspace or selected project export, recent jobs with actual stored percentage/status and ZIP downloads, storage file count/bytes, and existing validated workspace import. Press Refresh progress to update export status. Imports preserve conflicting local records as separate versions; credentials/passwords are excluded.
@@ -20,3 +20,5 @@ The wp-admin screens remain available for recovery. Creative tabs, provider gene
 ## Checks
 
 `php tools/test-settings.php` exercises logged-out and cross-session denial, forged token and nonce rejection, dashboard capability and update isolation, invalid settings leaving options untouched, encrypted key writes, blank key preservation, and returning to the new Studio URL. Existing PHP/JavaScript regression suites also run in GitHub Actions. Live verification includes settings visibility without WordPress login.
+
+Front-end forms use a plugin-owned submit button renderer, avoiding the dashboard-only WordPress `submit_button()` dependency.

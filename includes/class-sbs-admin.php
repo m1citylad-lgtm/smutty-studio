@@ -185,7 +185,7 @@ final class SBS_Admin
         self::field('Estimated upscale cost (USD)', 'replicate_cost', get_option('sbs_replicate_cost_per_image', '0.002'), 'number', 'Used only for the local usage-derived ledger.');
         self::field('Private update-feed URL', 'update_feed_url', get_option('sbs_update_feed_url', ''), 'url', 'Optional override. Leave blank to use the GitHub release feed bundled with official builds.');
         self::field('Update-feed bearer token', 'update_feed_token', '', 'password', SBS_Crypto::setting('SBS_UPDATE_FEED_TOKEN', 'sbs_update_feed_token') ? 'Configured. Leave blank to keep it.' : 'Optional.');
-        echo '</tbody></table>'; submit_button('Save settings'); echo '</form></div>';
+        echo '</tbody></table>'; self::submit_button('Save settings'); echo '</form></div>';
     }
 
     private static function updates_tab()
@@ -193,7 +193,7 @@ final class SBS_Admin
         echo '<div class="sbs-grid"><section class="sbs-card"><h2>Install update</h2><p>Upload the release ZIP produced by the repository build tool. It is verified and backed up before WordPress replaces the plugin.</p><form method="post" enctype="multipart/form-data" action="' . esc_url(admin_url('admin-post.php')) . '">';
         wp_nonce_field('sbs_install_update');
         echo '<input type="hidden" name="action" value="sbs_install_update"><input type="file" name="release_zip" accept=".zip" required>';
-        submit_button('Verify and install', 'primary'); echo '</form></section><section class="sbs-card"><h2>Rollback</h2>';
+        self::submit_button('Verify and install', 'primary'); echo '</form></section><section class="sbs-card"><h2>Rollback</h2>';
         $backups = SBS_Updater::backups();
         if (!$backups) {
             echo '<p>No update backups are available yet.</p>';
@@ -203,7 +203,7 @@ final class SBS_Admin
             foreach ($backups as $backup) {
                 echo '<option value="' . esc_attr($backup['name']) . '">' . esc_html($backup['name'] . ' — ' . size_format($backup['bytes'])) . '</option>';
             }
-            echo '</select>'; submit_button('Restore selected backup', 'secondary'); echo '</form>';
+            echo '</select>'; self::submit_button('Restore selected backup', 'secondary'); echo '</form>';
         }
         echo '</section></div><div class="sbs-card"><h2>Release feed</h2><p>Official builds check their bundled GitHub release feed automatically. A custom HTTPS feed can override it under Settings. When a newer verified release is published, it appears on the normal WordPress Plugins screen and in the Studio Updates area.</p><p><strong>Installed version:</strong> ' . esc_html(SBS_VERSION) . '</p><p><strong>Studio update access:</strong> Re-enter the shared Studio password for a short-lived update session.</p></div>';
     }
@@ -217,9 +217,9 @@ final class SBS_Admin
         foreach ($projects as $project) {
             echo '<option value="' . esc_attr($project['uuid']) . '">' . esc_html($project['title']) . '</option>';
         }
-        echo '</select></label></p>'; submit_button('Build portable archive'); echo '</form></section>';
+        echo '</select></label></p>'; self::submit_button('Build portable archive'); echo '</form></section>';
         echo '<section class="sbs-card"><h2>Import workspace</h2><p>Validates paths and checksums, stages records, and preserves conflicting local content as separate versions.</p><form method="post" enctype="multipart/form-data" action="' . esc_url(admin_url('admin-post.php')) . '">';
-        wp_nonce_field('sbs_import'); echo '<input type="hidden" name="action" value="sbs_import"><label>Portable workspace ZIP<input type="file" name="workspace_zip" accept=".zip" required></label>'; submit_button('Validate and import'); echo '</form></section></div>';
+        wp_nonce_field('sbs_import'); echo '<input type="hidden" name="action" value="sbs_import"><label>Portable workspace ZIP<input type="file" name="workspace_zip" accept=".zip" required></label>'; self::submit_button('Validate and import'); echo '</form></section></div>';
         $jobs = $wpdb->get_results("SELECT * FROM " . SBS_DB::table('jobs') . " WHERE type = 'export' ORDER BY created_at DESC LIMIT 10", ARRAY_A);
         $storage = $wpdb->get_row('SELECT COUNT(*) AS files, COALESCE(SUM(bytes),0) AS bytes FROM ' . SBS_DB::table('assets'), ARRAY_A);
         echo '<div class="sbs-card"><h2>Recent exports</h2><p><strong>Private storage:</strong> ' . esc_html(size_format((int) $storage['bytes'])) . ' across ' . (int) $storage['files'] . ' files. Creative content is retained until explicitly removed.</p><table class="widefat striped"><thead><tr><th>Created</th><th>Status</th><th>Progress</th><th>Download</th></tr></thead><tbody>';
@@ -276,6 +276,11 @@ final class SBS_Admin
             echo '<tr><td>' . esc_html($label) . '</td><td><span class="sbs-status ' . ($ok ? 'ok' : 'bad') . '">' . ($ok ? 'Pass' : 'Needs attention') . '</span></td></tr>';
         }
         echo '</tbody></table><p><strong>Private data path:</strong> <code>' . esc_html(SBS_Storage::base_dir()) . '</code></p><p><strong>Maximum upload:</strong> ' . esc_html(size_format(wp_max_upload_size())) . '</p></div>';
+    }
+
+    private static function submit_button($label, $type = 'primary')
+    {
+        echo '<p class="submit"><button type="submit" class="button sbs-button ' . ($type === 'primary' ? 'button-primary' : 'button-secondary') . '">' . esc_html($label) . '</button></p>';
     }
 
     private static function field($label, $name, $value, $type, $description)
