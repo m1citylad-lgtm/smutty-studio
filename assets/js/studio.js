@@ -906,6 +906,101 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         bindLogin(); bindPrimaryTabs(); bindTabs(); bindCharacters(); bindCreate(); bindImageModal(); bindGuide();
+        installStudioHelp(); installImageSpecifications();
         if (boot.authenticated) { loadBootstrap(); }
     });
+
+    // Contextual help and image specifications. These enhancements never change the image files.
+    function studioButtonExplanation(button) {
+        var id = button.id || '', label = (button.getAttribute('aria-label') || button.textContent || '').replace(/\\s+/g, ' ').trim();
+        var details = {
+            'sbs-upscale-2': 'AI upscale 2× uses Replicate to enlarge the selected image to approximately twice its width and height (four times as many pixels). It may improve apparent detail but does not guarantee print quality or preserve every detail.',
+            'sbs-upscale-4': 'AI upscale 4× uses Replicate to enlarge the selected image to approximately four times its width and height (sixteen times as many pixels). It may introduce invented details; inspect the result carefully.',
+            'sbs-polish': 'High-quality polish creates a new AI-edited version aimed at improving edges, linework and texture while asking the model to retain the composition. It is not just a resolution increase; details can change.',
+            'sbs-refine': 'Refine selected creates a new image using the instruction entered above. Select a draft first and describe the specific change you want.',
+            'sbs-canvas-export': 'Export PNG renders the assembled merchandise design as a PNG using the current print settings. Inspect the exported pixel dimensions and transparency before printing.',
+            'sbs-canvas-save': 'Save design stores the editable merchandise composition so it can be reopened later.',
+            'sbs-guide-open': 'Open the illustrated guide and workflow diagrams for character development, reference assets, image creation and merchandise.'
+        };
+        if (details[id]) { return details[id]; }
+        var explicit = button.getAttribute('title');
+        if (explicit) { return explicit; }
+        var tool = button.getAttribute('data-tool');
+        var toolHelp = {text:'Add an editable text layer.',rect:'Add a rectangle shape.',circle:'Add a circle shape.',upload:'Upload an image layer.',group:'Group selected layers.',ungroup:'Separate grouped layers.',duplicate:'Duplicate the selected layer.',undo:'Undo the previous canvas action.',redo:'Redo an undone canvas action.',front:'Bring the layer to the front.',back:'Send the layer to the back.',lock:'Lock or unlock the selected layer.',hide:'Show or hide the selected layer.',delete:'Remove the selected layer.', 'crop-square':'Crop the selected artwork to a square.', 'mask-circle':'Apply a circular mask.', 'mask-rect':'Apply a rectangular mask.', 'mask-clear':'Remove the mask.'};
+        if (toolHelp[tool]) { return toolHelp[tool]; }
+        if (/delete|remove|discard/i.test(label)) { return 'Remove the indicated item. Some removals cannot be undone; check any confirmation carefully.'; }
+        if (/generate|create|suggest/i.test(label)) { return 'Start the indicated creation or suggestion process. AI generation may incur usage charges; review the output before accepting it.'; }
+        if (/accept|approve/i.test(label)) { return 'Mark this candidate as the accepted reference or result for the current step.'; }
+        if (/save|apply/i.test(label)) { return 'Save or apply the selected changes to the current item.'; }
+        if (/upload|add/i.test(label)) { return 'Add the selected file or item to the current workspace.'; }
+        if (/download|export/i.test(label)) { return 'Download or export the selected output using the available settings.'; }
+        if (/select|open|view|zoom/i.test(label)) { return 'Select or open the indicated item for inspection or further work.'; }
+        if (/cancel|close/i.test(label)) { return 'Close or cancel this operation without applying further changes.'; }
+        return label ? 'Action: ' + label + '. This control operates on the current section or selected item.' : 'Open or activate this control.';
+    }
+    function installStudioHelp() {
+        var dialog = document.createElement('dialog');
+        dialog.className = 'sbs-explain-dialog';
+        dialog.innerHTML = '<div class="sbs-explain-content"><h2 id="sbs-explain-heading">Button information</h2><p id="sbs-explain-text"></p><button type="button" class="sbs-button primary" id="sbs-explain-close">Close</button></div>';
+        dialog.setAttribute('aria-labelledby','sbs-explain-heading');
+        document.body.appendChild(dialog);
+        dialog.querySelector('#sbs-explain-close').addEventListener('click', function () { dialog.close(); });
+        dialog.addEventListener('click', function (event) { if (event.target === dialog) { dialog.close(); } });
+        function decorate() {
+            document.querySelectorAll('button:not(.sbs-info-button):not(.sbs-image-zoom):not(.sbs-modal-close):not(#sbs-explain-close)').forEach(function (button) {
+                if (button.dataset.sbsInfoAttached || button.closest('.sbs-explain-dialog')) { return; }
+                button.dataset.sbsInfoAttached = '1';
+                var info = document.createElement('button');
+                info.type = 'button'; info.className = 'sbs-info-button';
+                info.textContent = 'i';
+                var name = (button.getAttribute('aria-label') || button.textContent || 'button').trim().replace(/\\s+/g,' ');
+                info.setAttribute('aria-label', 'Information about ' + name);
+                info.setAttribute('title', 'What does this button do?');
+                info.addEventListener('click', function (event) {
+                    event.preventDefault(); event.stopPropagation();
+                    dialog.querySelector('#sbs-explain-heading').textContent = name || 'Button information';
+                    dialog.querySelector('#sbs-explain-text').textContent = studioButtonExplanation(button);
+                    if (dialog.showModal) { dialog.showModal(); } else { window.alert(studioButtonExplanation(button)); }
+                });
+                button.insertAdjacentElement('afterend', info);
+            });
+        }
+        var scheduled = false;
+        var observer = new MutationObserver(function () { if (!scheduled) { scheduled = true; window.requestAnimationFrame(function () { scheduled = false; decorate(); }); } });
+        observer.observe(document.body, {childList:true,subtree:true});
+        decorate();
+    }
+    function installImageSpecifications() {
+        function inspect(img) {
+            if (!img.naturalWidth || !img.naturalHeight || img.dataset.sbsSpecsDone) { return; }
+            if (img.closest('.sbs-guide-dialog') || img.closest('.sbs-image-modal') || img.closest('.sbs-header')) { return; }
+            if (!img.closest('.sbs-generation,.sbs-reference,.sbs-approval-card,.sbs-development-result,.sbs-development-concept,.sbs-job-result,.sbs-media-gallery,.sbs-creation-gallery')) { return; }
+            img.dataset.sbsSpecsDone = '1';
+            var w = img.naturalWidth, h = img.naturalHeight, dpi = 300;
+            var ext = (img.currentSrc || img.src || '').split('?')[0].split('.').pop().toLowerCase();
+            var format = /^(png|webp|jpe?g|gif)$/.test(ext) ? ext.toUpperCase() : 'Unknown';
+            var alpha = 'Not verified';
+            if (/^jpe?g$/.test(ext)) { alpha = 'Opaque (JPEG)'; }
+            else {
+                try {
+                    var c = document.createElement('canvas'); c.width = Math.min(w,96); c.height = Math.min(h,96);
+                    var ctx = c.getContext('2d', {willReadFrequently:true});
+                    ctx.drawImage(img,0,0,c.width,c.height);
+                    var pixels = ctx.getImageData(0,0,c.width,c.height).data, transparent = false, partial = false;
+                    for (var i=3;i<pixels.length;i+=4) { if (pixels[i]===0) { transparent=true; } else if (pixels[i]<255) { partial=true; } }
+                    alpha = transparent && partial ? 'Transparent + semi-transparent pixels' : transparent ? 'Transparent pixels detected' : partial ? 'Semi-transparent pixels detected' : 'Opaque in sampled pixels';
+                } catch (error) { alpha = 'Transparency not verifiable in browser'; }
+            }
+            var text = w+' × '+h+' px · Print at 300 PPI: '+(w/dpi).toFixed(2)+' × '+(h/dpi).toFixed(2)+' in ('+(w/dpi*2.54).toFixed(1)+' × '+(h/dpi*2.54).toFixed(1)+' cm) · PPI: 300 assumed for print · DPI: not verified (printer setting) · '+format+' · '+alpha;
+            var line = document.createElement('p'); line.className='sbs-image-specs'; line.textContent=text;
+            line.setAttribute('aria-label','Image technical information: '+text);
+            var host = img.closest('.sbs-image-zoom') || img;
+            host.insertAdjacentElement('afterend',line);
+        }
+        function scan() { document.querySelectorAll('img').forEach(function (img) { if (img.complete) { inspect(img); } }); }
+        document.addEventListener('load',function (event) { if (event.target && event.target.tagName==='IMG') { inspect(event.target); } },true);
+        var pending=false;
+        new MutationObserver(function () { if (!pending) { pending=true; window.requestAnimationFrame(function () {pending=false;scan();}); } }).observe(document.body,{childList:true,subtree:true});
+        scan();
+    }
 })();
