@@ -153,7 +153,18 @@ final class SBS_OpenAI
                 );
             }
         }
-        return array('status' => 'failed', 'error' => array('message' => 'The OpenAI response contained no generated image.'));
+        // A completed Responses request can contain a refusal or text instead of an image.
+        // Preserve that explanation rather than reporting a misleading transport failure.
+        foreach ((array) ($response['output'] ?? array()) as $item) {
+            if (($item['type'] ?? '') !== 'message') { continue; }
+            foreach ((array) ($item['content'] ?? array()) as $content) {
+                if (($content['type'] ?? '') === 'refusal' && !empty($content['refusal'])) {
+                    return array('status' => 'failed', 'error' => array('code' => 'moderation_blocked', 'message' => 'OpenAI declined this request: ' . sanitize_textarea_field($content['refusal'])));
+                }
+            }
+        }
+        $explanation = trim(self::output_text($response));
+        return array('status' => 'failed', 'error' => array('code' => 'no_generated_image', 'message' => 'OpenAI returned no image.' . ($explanation !== '' ? ' Provider explanation: ' . sanitize_textarea_field($explanation) : ' No explanation was supplied. Your previous image is unchanged.')));
     }
 
     public static function estimate_cost($usage)

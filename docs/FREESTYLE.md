@@ -67,3 +67,7 @@ Explicit handoff placed the selected candidate in Creations under Freestyle comp
 The existing Replicate service rejected the 4× upscale with **insufficient credit**. The source and all versions remained available. Adding credit to that account is required before a full-resolution upscale can be verified; no billing change was made. v0.2.33 also refreshes the local failed job after such a rejected submission so the reason remains visible beside the design/instructions.
 
 PHP syntax/handler tests and JavaScript/history/export/density tests passed on the validation branch before live publication. Physical Android/Brave/dictation testing remains outside the available cloud environment.
+
+## v0.2.34 — provider failure explanations
+
+Completed OpenAI responses can contain a refusal or explanatory text instead of an image. Studio now displays that explanation and keeps the unapplied instruction visible. Existing failed jobs offer **Show provider failure details**, which retrieves the original response without submitting another generation or changing the selected image. If the provider no longer retains the response, inspection can fail; no reason is guessed and no automatic retry is made.

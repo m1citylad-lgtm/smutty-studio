@@ -17,6 +17,7 @@ jobs:
           find . -name '*.php' -not -path './build/*' -print0 | xargs -0 -n1 php -l
           php tools/test-development.php
           php tools/test-freestyle.php
+          php tools/test-openai-response.php
       - name: JavaScript and image export checks
         run: |
           node --check assets/js/studio.js

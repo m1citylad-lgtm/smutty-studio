@@ -1083,6 +1083,18 @@ final class SBS_REST
         }
         if (!in_array($job['status'], array('completed', 'failed', 'blocked', 'cancelled'), true)) {
             $job = self::poll_job($job);
+        } elseif ($request->get_param('explain') === '1' && $job['provider'] === 'openai' && $job['status'] === 'failed' && !empty($job['external_id'])) {
+            // Retrieve the existing provider response only. Never submit/retry generation here.
+            $response = SBS_OpenAI::poll($job['external_id']);
+            if (is_wp_error($response)) { return $response; }
+            $parsed = SBS_OpenAI::parse_image_response($response);
+            if ($parsed['status'] === 'failed') {
+                global $wpdb;
+                $error = $parsed['error'];
+                $error['details_checked'] = true;
+                $wpdb->update(SBS_DB::table('jobs'), array('error_json' => wp_json_encode($error)), array('id' => (int) $job['id']));
+                $job = self::job_by_id((int) $job['id']);
+            }
         }
         return is_wp_error($job) ? $job : rest_ensure_response(self::present_job($job));
     }
