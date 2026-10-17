@@ -891,7 +891,47 @@
         if (!state.activeProject || !state.canvas) { return; }
         api('canvases?project_uuid=' + encodeURIComponent(state.activeProject.uuid)).then(function (rows) { if (!rows.length) { return; } var canvas = rows[0]; state.canvasUuid = canvas.uuid; state.historyLock = true; state.canvas.loadFromJSON(canvas.document.fabric, function () { state.historyLock = false; state.canvas.renderAll(); state.history = [JSON.stringify(canvas.document.fabric)]; renderLayers(); }); if (canvas.document.print) { el('sbs-print-method').value = canvas.document.print.method || 'dtg'; el('sbs-visual-treatment').value = canvas.document.print.visual_treatment || 'vintage-70-20-10'; el('sbs-print-width').value = canvas.document.print.width_inches; el('sbs-print-height').value = canvas.document.print.height_inches; el('sbs-print-dpi').value = canvas.document.print.dpi; updatePrintReadout(); } }).catch(handleError);
     }
+    var sbsPreflight = null;
+    function runPrintPreflight() {
+        ensureCanvas();
+        var w=Math.round(Number(el('sbs-print-width').value)*Number(el('sbs-print-dpi').value));
+        var h=Math.round(Number(el('sbs-print-height').value)*Number(el('sbs-print-dpi').value));
+        var dpi=Number(el('sbs-print-dpi').value);
+        var issues=[],warnings=[],objects=state.canvas.getObjects().filter(function(o){return o.sbsType!=='guide' && o.visible!==false;});
+        var scaleX=w/state.canvas.width,scaleY=h/state.canvas.height;
+        if (!Number.isFinite(w)||!Number.isFinite(h)||w<1||h<1) issues.push('Invalid print dimensions');
+        if (Math.abs(scaleX-scaleY)>0.001) issues.push('Print aspect ratio differs from artboard');
+        if (dpi<300) warnings.push('Target print density is below 300 PPI');
+        if (w<4500||h<5400) warnings.push('Below SmuttyBear default 4500 x 5400 pixel master target; supplier specifications may differ');
+        if (!el('sbs-transparent').checked) warnings.push('Background is opaque; transparency is usually required for cutout T-shirt designs');
+        if (!objects.length) issues.push('Canvas has no visible artwork');
+        if (w*h>60000000) warnings.push('Large export may exhaust browser memory');
+        objects.forEach(function(o) {
+            if (o.type==='image' && o.width && o.height) {
+                var sx=Math.abs(o.scaleX||1)*scaleX,sy=Math.abs(o.scaleY||1)*scaleY;
+                if (sx>1.5||sy>1.5) warnings.push('Image layer '+(o.name||'unnamed')+' is enlarged beyond source pixels; may print soft');
+            }
+            if (o.sbsType==='exact_asset' && (o.width||0)*Math.abs(o.scaleX||1)*scaleX<200) warnings.push('Logo '+(o.name||'unnamed')+' is small; inspect legibility');
+        });
+        if (el('sbs-print-method').value==='dtf') warnings.push('DTF: inspect isolated dots, small details, transfer edges and supplier minimum feature sizes');
+        else warnings.push('DTG: inspect halftones, gradients, garment contrast and underbase requirements');
+        warnings.push('Visual defects, exact embedded PPI metadata and printer-specific compliance are not automatically verified');
+        var report={created_at:new Date().toISOString(),method:el('sbs-print-method').value,treatment:el('sbs-visual-treatment').value,output_pixels:{width:w,height:h},target_ppi:dpi,transparent_requested:el('sbs-transparent').checked,errors:issues,warnings:warnings,automatic_verdict:issues.length?'FAIL':warnings.length?'REVIEW':'PASS',manual_override:false};
+        sbsPreflight=report;
+        el('sbs-preflight-results').textContent=report.automatic_verdict+' — '+(issues.length?issues.join('; ')+'; ':'')+warnings.join('; ');
+        return report;
+    }
+    function downloadPreflightReport(name,report) {
+        var data=JSON.stringify(report,null,2),blob=new Blob([data],{type:'application/json'});
+        var url=URL.createObjectURL(blob),link=document.createElement('a');
+        link.href=url;link.download=name+'-print-preflight.json';link.click();
+        setTimeout(function(){URL.revokeObjectURL(url);},1000);
+    }
     function exportCanvas() {
+        var report=runPrintPreflight(),override=el('sbs-manual-override').checked;
+        if (report.errors.length) { showMessage('Print export blocked: '+report.errors.join('; '),true); return; }
+        if (report.warnings.length && !override) { showMessage('Print export blocked pending review. Check the manual override box to acknowledge unresolved warnings.',true); return; }
+        report.manual_override=override;
         ensureCanvas();
         var targetW = Math.round(Number(el('sbs-print-width').value) * Number(el('sbs-print-dpi').value));
         var targetH = Math.round(Number(el('sbs-print-height').value) * Number(el('sbs-print-dpi').value));
@@ -916,7 +956,8 @@
                 logos.forEach(function (obj) { obj.visible = false; });
                 try { download('logo-free'); } finally { logos.forEach(function (obj,i) { obj.visible = states[i]; }); }
             }
-            showMessage('PNG export started. These files are not yet certified print-ready; inspect them before production.');
+            downloadPreflightReport(basename,report);
+            showMessage('PNG and print preflight report export started. Manual approval does not certify printer readiness.');
         } catch (error) { showMessage('Export failed. Check browser memory and image access.', true); }
         finally { guides.forEach(function (obj,i) { obj.visible = hidden[i]; }); state.canvas.renderAll(); }
     }
@@ -944,6 +985,7 @@
         bindLogin(); bindPrimaryTabs(); bindTabs(); bindCharacters(); bindCreate(); bindImageModal(); bindGuide();
         installStudioHelp(); installImageSpecifications();
         bindLogoControls();
+        el('sbs-run-preflight').addEventListener('click',runPrintPreflight);
         el('sbs-print-method').addEventListener('change',function () {
             var dtf = this.value === 'dtf';
             el('sbs-method-advice').textContent = dtf ? 'DTF: inspect stray pixels, cutout edges, fine halftone dots and small isolated details; confirm minimum line and gap widths with your transfer printer.' : 'DTG: check gradients, transparency, garment colour and fine detail; confirm ink and underbase requirements with your garment printer.';
