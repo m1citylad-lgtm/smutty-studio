@@ -54,3 +54,7 @@ tools/build-release.sh https://updates.example.com/smutty-studio
 Artifacts are written to `build/release/`. The script refuses malformed
 versions, mismatched plugin version declarations, and a dirty working tree (set
 `SBS_ALLOW_DIRTY=1` only for local testing).
+
+### Visual Development corrections (v0.2.30)
+
+Images now keep their actions, actual job status and independent **Image Correction Instructions** together. Corrections create review candidates using the original image and preserve accepted references. Drafts persist in the same browser until cleared. See [Visual Development workflow](docs/VISUAL_DEVELOPMENT.md) for usage, progress limitations, tests and deployment verification.

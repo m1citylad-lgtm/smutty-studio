@@ -268,7 +268,7 @@
         (project && project.jobs || []).forEach(function (job) { jobs[job.uuid] = job; });
         Object.keys(state.developmentJobs).forEach(function (uuid) {
             var job = state.developmentJobs[uuid];
-            if (!project || !job.payload || Number(job.payload.project_id) === Number(project.id)) { jobs[uuid] = job; }
+            if (project && job.payload && Number(job.payload.project_id) === Number(project.id)) { jobs[uuid] = job; }
         });
         return Object.keys(jobs).map(function (uuid) { return jobs[uuid]; });
     }
@@ -295,11 +295,6 @@
         var groundingUpdatedAt = identity.grounding_updated_at || identity.approval_invalidated_at || '';
         var allApprovalJobs = approvalJobRows();
         var approvalBusy = allApprovalJobs.some(function (job) { return ['completed', 'failed', 'blocked', 'cancelled'].indexOf(job.status) < 0; });
-        var approvalJobs = allApprovalJobs.filter(function (job) { return job.status !== 'completed'; });
-        var approvalJobsMarkup = approvalJobs.map(function (job) {
-            var failed = job.status === 'failed' || job.status === 'blocked' || job.status === 'cancelled';
-            return '<article class="sbs-development-job ' + (failed ? 'failed' : '') + '" data-development-job="' + esc(job.uuid) + '"><strong>Approval sheet</strong><span>' + esc(job.status) + '</span>' + (failed ? '<p>' + esc(job.error && job.error.message || 'This approval job did not complete.') + '</p>' : '<div class="sbs-progress"><span style="width:' + Number(job.progress || 5) + '%"></span></div><button class="sbs-button" data-cancel-job="' + esc(job.uuid) + '">Cancel</button>') + '</article>';
-        }).join('');
         var cards = entries.map(function (entry, index) {
             var generation = entry.generation;
             var stale = !!(groundingUpdatedAt && utcTimestamp(generation.created_at) < utcTimestamp(groundingUpdatedAt));
@@ -307,12 +302,77 @@
             var current = !!(identity.tests_approved && identity.approved_test_generation_uuid === generation.uuid && acceptedAsset);
             var status = current ? '&#10003; Accepted approval sheet' : stale ? 'Needs regeneration' : 'Ready for review';
             var note = current ? 'This is the single current approval checkpoint.' : stale ? 'The Description or References changed after this sheet was made.' : 'Inspect every view, then accept this sheet if the identity is consistent.';
-            return '<article class="sbs-approval-card ' + (current ? 'accepted' : '') + '"><button type="button" class="sbs-image-zoom" data-zoom-image="' + esc(generation.asset_url) + '" data-zoom-caption="Character approval sheet ' + (entries.length - index) + '"><img src="' + esc(generation.asset_url) + '" alt="Character approval sheet"></button><div class="sbs-approval-card-body"><strong>' + status + '</strong><p>' + note + '</p><div class="sbs-creation-actions"><button type="button" class="sbs-button accent" data-accept-approval="' + esc(generation.uuid) + '" ' + (current || stale || approvalBusy ? 'disabled' : '') + '>' + (current ? '&#10003; Accepted' : 'Accept this sheet') + '</button><button type="button" class="sbs-remove-creation" data-delete-approval-project="' + esc(entry.project.uuid) + '" data-approval-generation="' + esc(generation.uuid) + '" data-accepted-asset="' + esc(acceptedAsset ? acceptedAsset.uuid : '') + '" data-approval-current="' + (current ? '1' : '0') + '" title="Delete this approval sheet"><span aria-hidden="true">&#128465;</span> Delete</button></div></div></article>';
+            return '<article class="sbs-approval-card ' + (current ? 'accepted' : '') + '"><button type="button" class="sbs-image-zoom" data-zoom-image="' + esc(generation.asset_url) + '" data-zoom-caption="Character approval sheet ' + (entries.length - index) + '"><img src="' + esc(generation.asset_url) + '" alt="Character approval sheet"></button><div class="sbs-approval-card-body"><strong>' + status + '</strong><p>' + note + '</p><div class="sbs-creation-actions"><button type="button" class="sbs-button accent" data-accept-approval="' + esc(generation.uuid) + '" ' + (current || stale || approvalBusy ? 'disabled' : '') + '>' + (current ? '&#10003; Accepted' : 'Accept this sheet') + '</button><button type="button" class="sbs-remove-creation" data-delete-approval-project="' + esc(entry.project.uuid) + '" data-approval-generation="' + esc(generation.uuid) + '" data-accepted-asset="' + esc(acceptedAsset ? acceptedAsset.uuid : '') + '" data-approval-current="' + (current ? '1' : '0') + '" title="Delete this approval sheet"><span aria-hidden="true">&#128465;</span> Delete</button></div>' + imageCorrectionMarkup(generation, 'Approval sheet ' + (entries.length - index), allApprovalJobs) + '</div></article>';
         }).join('');
         var gallery = cards ? '<div class="sbs-approval-gallery">' + cards + '</div>' : '<p class="sbs-muted">No approval sheets have been generated for this character version yet.</p>';
-        return '<section class="sbs-development-section sbs-approval-section"><div class="sbs-inline-heading"><div><h2 class="sbs-stage-heading"><span class="sbs-stage-number">2.3</span> Approve the character</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Inspect all views in a consistency sheet; accept it only when the identity is correct.</p></div><button id="sbs-generate-approval" class="sbs-button primary" ' + (visualReady && !approvalBusy ? '' : 'disabled title="' + (approvalBusy ? 'An approval sheet is already being generated' : 'Accept or upload a Master, Face or Full-body reference first') + '"') + '>' + (approvalBusy ? 'Generating approval sheet…' : entries.length ? 'Generate another sheet' : 'Generate approval sheet') + '</button></div><p class="sbs-context-note">Generate and retain multiple review candidates. Accept one as the current checkpoint; accepting another replaces only the approved-sheet reference, not the candidate history or uploaded references.</p><div class="sbs-approval-content">' + gallery + (approvalJobsMarkup ? '<div class="sbs-development-jobs"><div>' + approvalJobsMarkup + '</div></div>' : '') + '</div></section>';
+        return '<section class="sbs-development-section sbs-approval-section"><div class="sbs-inline-heading"><div><h2 class="sbs-stage-heading"><span class="sbs-stage-number">2.3</span> Approve the character</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Inspect all views in a consistency sheet; accept it only when the identity is correct.</p></div></div><p class="sbs-context-note">Generate and retain multiple review candidates. Accept one as the current checkpoint; accepting another replaces only the approved-sheet reference, not the candidate history or uploaded references.</p><div class="sbs-approval-content">' + gallery + '<div class="sbs-section-actions"><button id="sbs-generate-approval" class="sbs-button primary" ' + (visualReady && !approvalBusy ? '' : 'disabled title="' + (approvalBusy ? 'An approval sheet is already being generated' : 'Accept or upload a Master, Face or Full-body reference first') + '"') + '>' + (approvalBusy ? 'Generating approval sheet…' : entries.length ? 'Generate another sheet' : 'Generate approval sheet') + '</button></div>' + developmentProgressMarkup(allApprovalJobs.filter(function (job) { return !job.payload.parent_id; }), 'Approval sheet', 'approval') + '</div></section>';
+    }
+    // Drafts belong to a particular character version and source image.
+    var developmentDrafts = {}, developmentSubmitting = {}, developmentRenderPending = false;
+    function correctionKey(generationUuid) {
+        return 'sbs-image-correction:' + state.selectedPack.uuid + ':v' + state.selectedPack.current_version + ':' + generationUuid;
+    }
+    function correctionDraft(key) {
+        if (Object.prototype.hasOwnProperty.call(developmentDrafts, key)) { return developmentDrafts[key]; }
+        try { return window.localStorage.getItem(key) || ''; } catch (error) { return ''; }
+    }
+    function saveCorrectionDraft(key, value) {
+        developmentDrafts[key] = value;
+        try { if (value) { window.localStorage.setItem(key, value); } else { window.localStorage.removeItem(key); } } catch (error) { /* Keep the in-session draft if storage is unavailable. */ }
+    }
+    function developmentScope(scope) { return state.selectedPack.uuid + ':v' + state.selectedPack.current_version + ':' + state.developmentProjectUuid + ':' + scope; }
+    function isDevelopmentSubmitting(scope) { return !!developmentSubmitting[developmentScope(scope)]; }
+    function developmentJobActive(job) { return ['completed', 'failed', 'blocked', 'cancelled'].indexOf(job.status) < 0; }
+    function imageCorrectionJobs(jobs, generation) {
+        return jobs.filter(function (job) { return job.payload && Number(job.payload.parent_id) === Number(generation.id) && developmentPurpose(job) === (generation.purpose === 'development_concept' ? 'development_concept_refinement' : generation.purpose); });
+    }
+    function developmentProgressMarkup(jobs, label, scope) {
+        var rows = jobs.slice().sort(function (a,b) { return Number(a.id) - Number(b.id); }).slice(-4);
+        var submitting = isDevelopmentSubmitting(scope) ? '<p role="status">Submitting ' + esc(label) + '…</p><progress max="100" aria-label="Submitting ' + esc(label) + '"></progress>' : '';
+        return '<div class="sbs-section-progress" aria-label="' + esc(label) + ' generation status" aria-live="polite">' + submitting + rows.map(function (job) {
+            var active = developmentJobActive(job), completed = job.status === 'completed';
+            var status = completed ? 'Completed — 100%' : job.status === 'running' ? 'Generating — percentage not supplied by provider' : job.status === 'submitted' || job.status === 'queued' ? 'Queued — waiting for provider' : job.status;
+            return '<div class="sbs-local-job" data-development-job="' + esc(job.uuid) + '"><p role="status">' + esc(status) + '</p>' + (active || completed ? '<progress max="100"' + (completed ? ' value="100"' : '') + ' aria-label="' + esc(label + ': ' + status) + '"></progress>' : '') + (job.poll_error ? '<p>Connection interrupted; retrying status check. ' + esc(job.poll_error) + '</p>' : '') + (job.error && job.error.message ? '<p>' + esc(job.error.message) + '</p>' : '') + (active ? '<button type="button" class="sbs-button" data-cancel-job="' + esc(job.uuid) + '">Cancel generation</button>' : '') + '</div>';
+        }).join('') + (!rows.length && !submitting ? '<p role="status">No generation running for this image.</p>' : '') + '</div>';
+    }
+    function imageCorrectionMarkup(generation, label, jobs) {
+        var key = correctionKey(generation.uuid), id = 'sbs-correction-' + generation.uuid;
+        var active = isDevelopmentSubmitting(generation.uuid) || imageCorrectionJobs(jobs, generation).some(developmentJobActive);
+        return developmentProgressMarkup(imageCorrectionJobs(jobs, generation), label, generation.uuid) + '<div class="sbs-image-corrections"><label for="' + esc(id) + '">Image Correction Instructions<span class="sbs-correction-context">' + esc(label) + '</span></label><textarea id="' + esc(id) + '" data-correction-key="' + esc(key) + '" rows="4" maxlength="12000" spellcheck="true" autocapitalize="sentences" aria-describedby="' + esc(id) + '-hint" placeholder="Describe only what should change. Say which details must stay the same.">' + esc(correctionDraft(key)) + '</textarea><p id="' + esc(id) + '-hint" class="sbs-muted">Applies only to this image. The original and accepted references remain until you explicitly choose a new result. Instructions are kept in this browser until cleared.</p><div class="sbs-correction-actions"><button type="button" class="sbs-button primary" data-correct-development="' + esc(generation.uuid) + '"' + (active ? ' disabled' : '') + '>Regenerate with Corrections</button><button type="button" class="sbs-button" data-clear-correction="' + esc(id) + '">Clear instructions</button></div></div>';
+    }
+    function submitDevelopment(scope, path, payload, onSuccess) {
+        var scopeKey = developmentScope(scope);
+        if (developmentSubmitting[scopeKey]) { return Promise.resolve(); }
+        developmentSubmitting[scopeKey] = true; renderDevelopment();
+        return post(path, payload).then(function (data) { if (onSuccess) { onSuccess(data); } trackJobs(data.jobs || []); }).catch(handleError).finally(function () { delete developmentSubmitting[scopeKey]; renderDevelopment(); });
+    }
+    function correctDevelopmentImage(generationUuid) {
+        var input = el('sbs-correction-' + generationUuid), instruction = input ? input.value.trim() : '';
+        if (instruction.length < 3) { showMessage('Enter Image Correction Instructions for this image first.', true); if (input) { input.focus(); } return Promise.resolve(); }
+        saveCorrectionDraft(input.getAttribute('data-correction-key'), input.value);
+        return submitDevelopment(generationUuid, 'generations/' + generationUuid + '/development/correct', { instruction: instruction }, function () { showMessage('Correction started for this image. The original remains available.'); });
     }
     function renderDevelopment() {
+        var box = el('sbs-development-root'), focus = document.activeElement;
+        var saved = box && focus && box.contains(focus) && focus.matches('textarea[data-correction-key]') ? {id:focus.id, start:focus.selectionStart, end:focus.selectionEnd, scroll:focus.scrollTop} : null;
+        if (saved) {
+            developmentRenderPending = true;
+            box.querySelectorAll('[data-development-job]').forEach(function (node) {
+                var uuid = node.getAttribute('data-development-job');
+                var job = state.developmentJobs[uuid];
+                if (!job) { return; }
+                var holder = document.createElement('div');
+                holder.innerHTML = developmentProgressMarkup([job], 'This image', 'status-only');
+                var update = holder.querySelector('[data-development-job]');
+                if (update) { node.innerHTML = update.innerHTML; }
+                node.querySelectorAll('[data-cancel-job]').forEach(function (button) { button.addEventListener('click', function () { api('jobs/' + uuid, { method:'DELETE' }).then(function (updated) { state.developmentJobs[uuid]=updated; renderDevelopment(); }).catch(handleError); }); });
+            });
+            return;
+        }
+        developmentRenderPending = false;
+        renderDevelopmentContents();
+    }
+    function renderDevelopmentContents() {
         var box = el('sbs-development-root');
         if (!box) { return; }
         var pack = state.selectedPack;
@@ -330,36 +390,31 @@
             { number: '2.3', label: 'Approval sheet accepted', done: approvalReady }
         ].map(function (step, index) { return '<li class="' + (step.done ? 'done' : '') + '"><span>' + esc(step.number) + '</span>' + esc(step.label) + '</li>'; }).join('');
         var sessionOptions = projects.map(function (item, index) { return '<option value="' + esc(item.uuid) + '" ' + (project && item.uuid === project.uuid ? 'selected' : '') + '>' + esc(item.title) + ' · run ' + (projects.length - index) + '</option>'; }).join('');
-        var toolbar = '<div class="sbs-development-toolbar"><div><p class="sbs-kicker">CHARACTER-BUILDING PROGRESS</p><ol class="sbs-development-progress">' + progress + '</ol></div><div class="sbs-development-session">' + (projects.length ? '<label>Development history<select id="sbs-development-session">' + sessionOptions + '</select></label>' : '') + '<button id="sbs-start-development" class="sbs-button primary" ' + (briefReady ? '' : 'disabled title="Complete the Description first"') + '>' + (projects.length ? 'Start new concept round' : 'Generate four concepts') + '</button></div></div>';
+        var toolbar = '<div class="sbs-development-toolbar"><div><p class="sbs-kicker">CHARACTER-BUILDING PROGRESS</p><ol class="sbs-development-progress">' + progress + '</ol></div><div class="sbs-development-session">' + (projects.length ? '<label>Development history<select id="sbs-development-session">' + sessionOptions + '</select></label>' : '') + '</div></div>';
+        var startButton = '<button id="sbs-start-development" class="sbs-button primary" ' + (briefReady ? '' : 'disabled title="Complete the Description first"') + '>' + (projects.length ? 'Start new concept round' : 'Generate four concepts') + '</button>';
         if (!project) {
-            box.innerHTML = toolbar + '<article class="sbs-card sbs-development-empty"><span aria-hidden="true">&#127912;</span><h2 class="sbs-stage-heading"><span class="sbs-stage-number">2.1</span> Generate and choose a look</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Generate concepts from the saved brief, then select and accept a visual seed.</p><p>Save a useful Description, then generate four deliberately separate concept directions. Nothing becomes an official reference until you select, review and accept it.</p></article><section class="sbs-development-section"><h2 class="sbs-stage-heading"><span class="sbs-stage-number">2.2</span> Build the reference set</h2><p class="sbs-stage-decision"><strong>Decision:</strong> After choosing a visual seed, generate and accept the reference views that define the character.</p><p class="sbs-muted">Reference generation controls appear here after the first concept round. Existing authorised references can also be uploaded in 3. Reference.</p></section>' + approvalSectionMarkup(identity, visualReady);
+            box.innerHTML = toolbar + '<article class="sbs-card sbs-development-empty"><span aria-hidden="true">&#127912;</span><h2 class="sbs-stage-heading"><span class="sbs-stage-number">2.1</span> Generate and choose a look</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Generate concepts from the saved brief, then select and accept a visual seed.</p><p>Save a useful Description, then generate four deliberately separate concept directions. Nothing becomes an official reference until you select, review and accept it.</p><div class="sbs-section-actions">' + startButton + '</div>' + developmentProgressMarkup([], 'Concepts', 'concepts') + '</article><section class="sbs-development-section"><h2 class="sbs-stage-heading"><span class="sbs-stage-number">2.2</span> Build the reference set</h2><p class="sbs-stage-decision"><strong>Decision:</strong> After choosing a visual seed, generate and accept the reference views that define the character.</p><p class="sbs-muted">Reference generation controls appear here after the first concept round. Existing authorised references can also be uploaded in 3. Reference.</p></section>' + approvalSectionMarkup(identity, visualReady);
             bindDevelopmentActions(null);
             return;
         }
         var conceptGenerations = (project.generations || []).filter(function (generation) { return generation.purpose === 'development_concept' || generation.purpose === 'development_concept_refinement'; });
         var conceptCards = conceptGenerations.map(function (generation) {
             var selected = generation.uuid === seedUuid, acceptedMaster = acceptedDevelopmentAsset('master_reference', generation.uuid);
-            return '<article class="sbs-development-concept ' + (selected ? 'selected' : '') + '"><button type="button" class="sbs-image-zoom" data-zoom-image="' + esc(generation.asset_url) + '" data-zoom-caption="Visual development concept"><img src="' + esc(generation.asset_url) + '" alt="Character concept"></button><footer><span>' + (generation.purpose === 'development_concept_refinement' ? 'Refined concept' : 'Initial concept') + '</span><div class="sbs-creation-actions"><button type="button" class="sbs-select-creation sbs-select-seed ' + (selected ? 'is-selected' : '') + '" data-select-seed="' + esc(generation.uuid) + '" ' + (selected ? 'disabled' : '') + '>' + (selected ? '&#10003; Visual seed' : 'Select visual seed') + '</button><button type="button" class="sbs-remove-creation" data-delete-generation="' + esc(generation.uuid) + '" ' + (acceptedMaster ? 'disabled title="Remove the accepted Master reference first"' : '') + '><span aria-hidden="true">&#128465;</span> Remove</button></div></footer></article>';
+            return '<article class="sbs-development-concept ' + (selected ? 'selected' : '') + '"><button type="button" class="sbs-image-zoom" data-zoom-image="' + esc(generation.asset_url) + '" data-zoom-caption="Visual development concept"><img src="' + esc(generation.asset_url) + '" alt="Character concept"></button><footer><span>' + (generation.purpose === 'development_concept_refinement' ? 'Refined concept' : 'Initial concept') + '</span><div class="sbs-creation-actions"><button type="button" class="sbs-select-creation sbs-select-seed ' + (selected ? 'is-selected' : '') + '" data-select-seed="' + esc(generation.uuid) + '" ' + (selected ? 'disabled' : '') + '>' + (selected ? '&#10003; Visual seed' : 'Select visual seed') + '</button><button type="button" class="sbs-remove-creation" data-delete-generation="' + esc(generation.uuid) + '" ' + (acceptedMaster ? 'disabled title="Remove the accepted Master reference first"' : '') + '><span aria-hidden="true">&#128465;</span> Remove</button>' + (selected ? '<button id="sbs-accept-master" class="sbs-button accent"' + (acceptedMaster ? ' disabled' : '') + '>' + (acceptedMaster ? 'Accepted Master reference' : 'Accept seed as Master reference') + '</button>' : '') + '</div>' + imageCorrectionMarkup(generation, 'Concept candidate', developmentJobRows(project)) + '</footer></article>';
         }).join('');
-        var masterAccepted = seed ? acceptedDevelopmentAsset('master_reference', seed.uuid) : null;
-        var conceptSection = '<section class="sbs-development-section"><div class="sbs-inline-heading"><div><h2>Concept candidates</h2><h3 class="sbs-stage-heading"><span class="sbs-stage-number">2.1</span> Choose the look</h3><p class="sbs-stage-decision"><strong>Decision:</strong> Select a visual seed, refine if needed, then accept the Master reference.</p></div><span>Selecting a seed does not yet add it to References.</span></div><div class="sbs-development-concepts">' + (conceptCards || '<p class="sbs-muted">The concept jobs are being prepared. Progress appears below.</p>') + '</div><div class="sbs-card sbs-development-refine"><label>Refine the selected visual seed<textarea id="sbs-development-refinement" rows="3" placeholder="Keep the face and proportions, but make the outfit more distinctly retro..."></textarea></label><div class="sbs-row wrap"><button id="sbs-refine-development" class="sbs-button" ' + (seed ? '' : 'disabled') + '>Generate refined concept</button><button id="sbs-accept-master" class="sbs-button accent" ' + (seed && !masterAccepted ? '' : 'disabled') + '>' + (masterAccepted ? 'Seed accepted as Master reference' : 'Accept seed as Master reference') + '</button></div></div></section>';
+        var conceptSection = '<section class="sbs-development-section"><h2 class="sbs-stage-heading"><span class="sbs-stage-number">2.1</span> Choose the look</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Select a visual seed, correct if needed, then explicitly accept the Master reference.</p><div class="sbs-development-concepts">' + (conceptCards || '<p class="sbs-muted">Concepts will appear here.</p>') + '</div><div class="sbs-section-actions">' + startButton + '</div>' + developmentProgressMarkup(developmentJobRows(project).filter(function (job) { return developmentPurpose(job) === 'development_concept' && !job.payload.parent_id; }), 'Concepts', 'concepts') + '</section>';
         var slotSections = developmentRoles.map(function (slot) {
             var results = (project.generations || []).filter(function (generation) { return generation.purpose === slot.purpose; });
             var resultCards = results.map(function (generation) {
                 var accepted = acceptedDevelopmentAsset(slot.role, generation.uuid);
-                return '<article class="sbs-development-result ' + (accepted ? 'accepted' : '') + '"><button type="button" class="sbs-image-zoom" data-zoom-image="' + esc(generation.asset_url) + '" data-zoom-caption="' + esc(slot.title) + '"><img src="' + esc(generation.asset_url) + '" alt="' + esc(slot.title) + '"></button><div><button type="button" class="sbs-button sbs-accept-development" data-accept-development="' + esc(generation.uuid) + '" data-reference-role="' + esc(slot.role) + '" ' + (accepted ? 'disabled' : '') + '>' + (accepted ? '&#10003; Accepted' : 'Accept this result') + '</button><button type="button" class="sbs-remove-creation" data-delete-generation="' + esc(generation.uuid) + '" ' + (accepted ? 'disabled title="Remove the accepted Reference asset first"' : 'title="Remove this development result"') + '><span aria-hidden="true">&#128465;</span></button></div></article>';
+                return '<article class="sbs-development-result ' + (accepted ? 'accepted' : '') + '"><button type="button" class="sbs-image-zoom" data-zoom-image="' + esc(generation.asset_url) + '" data-zoom-caption="' + esc(slot.title) + '"><img src="' + esc(generation.asset_url) + '" alt="' + esc(slot.title) + '"></button><div><button type="button" class="sbs-button sbs-accept-development" data-accept-development="' + esc(generation.uuid) + '" data-reference-role="' + esc(slot.role) + '" ' + (accepted ? 'disabled' : '') + '>' + (accepted ? '&#10003; Accepted' : 'Accept this result') + '</button><button type="button" class="sbs-remove-creation" data-delete-generation="' + esc(generation.uuid) + '" ' + (accepted ? 'disabled title="Remove the accepted Reference asset first"' : 'title="Remove this development result"') + '><span aria-hidden="true">&#128465;</span></button></div>' + imageCorrectionMarkup(generation, slot.title, developmentJobRows(project)) + '</article>';
             }).join('');
-            return '<article class="sbs-development-slot"><header><span class="sbs-development-slot-icon" aria-hidden="true">' + slot.icon + '</span><div><h3>' + esc(slot.title) + '</h3><p>' + esc(slot.description) + '</p></div><button type="button" class="sbs-button" data-generate-development-role="' + esc(slot.role) + '" ' + (seed ? '' : 'disabled') + '>' + (results.length ? 'Regenerate' : 'Generate') + '</button></header><div class="sbs-development-results">' + (resultCards || '<p class="sbs-muted">No result generated yet.</p>') + '</div></article>';
+            return '<article class="sbs-development-slot"><header><span class="sbs-development-slot-icon" aria-hidden="true">' + slot.icon + '</span><div><h3>' + esc(slot.title) + '</h3><p>' + esc(slot.description) + '</p></div></header><div class="sbs-development-results">' + (resultCards || '<p class="sbs-muted">No result generated yet.</p>') + '</div><div class="sbs-section-actions"><button type="button" class="sbs-button" data-generate-development-role="' + esc(slot.role) + '" ' + (seed ? '' : 'disabled') + '>' + (results.length ? 'Regenerate' : 'Generate') + '</button></div>' + developmentProgressMarkup(developmentJobRows(project).filter(function (job) { return developmentPurpose(job) === slot.purpose && Number(job.payload.parent_id) === Number(seed && seed.id); }), slot.title, slot.role) + '</article>';
         }).join('');
         var missingRoles = developmentRoles.filter(function (slot) { return !(project.generations || []).some(function (generation) { return generation.purpose === slot.purpose; }); }).map(function (slot) { return slot.role; });
-        var referencesSection = '<section class="sbs-development-section"><div class="sbs-inline-heading"><div><h2 class="sbs-stage-heading"><span class="sbs-stage-number">2.2</span> Build the reference set</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Generate missing views, inspect each result and accept the suitable references.</p></div><button id="sbs-generate-missing-references" class="sbs-button primary" data-missing-roles="' + esc(missingRoles.join(',')) + '" ' + (seed && missingRoles.length ? '' : 'disabled') + '>Generate all missing</button></div><div class="sbs-development-slots">' + slotSections + '</div></section>';
+        var referencesSection = '<section class="sbs-development-section"><div class="sbs-inline-heading"><div><h2 class="sbs-stage-heading"><span class="sbs-stage-number">2.2</span> Build the reference set</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Generate missing views, inspect each result and accept the suitable references.</p></div></div><div class="sbs-development-slots">' + slotSections + '</div><div class="sbs-section-actions"><button id="sbs-generate-missing-references" class="sbs-button primary" data-missing-roles="' + esc(missingRoles.join(',')) + '" ' + (seed && missingRoles.length ? '' : 'disabled') + '>Generate all missing</button></div>' + developmentProgressMarkup([], 'Reference set submission', 'references') + '</section>';
         var approvalSection = approvalSectionMarkup(identity, visualReady);
-        var jobRows = developmentJobRows(project).filter(function (job) { return isDevelopmentPurpose(developmentPurpose(job)) && job.status !== 'completed'; });
-        var jobsMarkup = jobRows.map(function (job) {
-            var failed = job.status === 'failed' || job.status === 'blocked' || job.status === 'cancelled';
-            return '<article class="sbs-development-job ' + (failed ? 'failed' : '') + '" data-development-job="' + esc(job.uuid) + '"><strong>' + esc(roleLabel(developmentPurpose(job))) + '</strong><span>' + esc(job.status) + '</span>' + (failed ? '<p>' + esc(job.error && job.error.message || 'This job did not complete.') + '</p>' : '<div class="sbs-progress"><span style="width:' + Number(job.progress || 5) + '%"></span></div><button class="sbs-button" data-cancel-job="' + esc(job.uuid) + '">Cancel</button>') + '</article>';
-        }).join('');
-        box.innerHTML = toolbar + conceptSection + referencesSection + approvalSection + (jobsMarkup ? '<section class="sbs-development-jobs"><h2>Development jobs</h2><div>' + jobsMarkup + '</div></section>' : '');
+        box.innerHTML = toolbar + conceptSection + referencesSection + approvalSection;
         bindDevelopmentActions(project);
     }
     function bindDevelopmentActions(project) {
@@ -377,14 +432,14 @@
         box.querySelectorAll('[data-accept-approval]').forEach(function (button) { button.addEventListener('click', function () { acceptApprovalSheet(button.getAttribute('data-accept-approval'), button); }); });
         box.querySelectorAll('[data-delete-approval-project]').forEach(function (button) { button.addEventListener('click', function () { deleteApprovalSheet(button.getAttribute('data-delete-approval-project'), button.getAttribute('data-approval-generation'), button.getAttribute('data-accepted-asset'), button.getAttribute('data-approval-current') === '1', button); }); });
         box.querySelectorAll('[data-cancel-job]').forEach(function (button) { button.addEventListener('click', function () { api('jobs/' + button.getAttribute('data-cancel-job'), { method: 'DELETE' }).then(function (job) { state.developmentJobs[job.uuid] = job; renderDevelopment(); }).catch(handleError); }); });
+        box.querySelectorAll('[data-correction-key]').forEach(function (input) { input.addEventListener('input', function () { saveCorrectionDraft(input.getAttribute('data-correction-key'), input.value); }); input.addEventListener('blur', function () { setTimeout(function () { if (developmentRenderPending) { renderDevelopment(); } }, 0); }); });
+        box.querySelectorAll('[data-correct-development]').forEach(function (button) { button.addEventListener('click', function () { correctDevelopmentImage(button.getAttribute('data-correct-development')); }); });
+        box.querySelectorAll('[data-clear-correction]').forEach(function (button) { button.addEventListener('click', function () { var input=el(button.getAttribute('data-clear-correction')); saveCorrectionDraft(input.getAttribute('data-correction-key'), ''); input.value=''; input.focus(); }); });
         bindCreationActions(box);
     }
     function startDevelopment() {
         if (!state.selectedPack) { return; }
-        var button = el('sbs-start-development'); buttonBusy(button, true);
-        post('packs/' + state.selectedPack.uuid + '/development').then(function (data) {
-            replaceProject(data.project); state.developmentProjectUuid = data.project.uuid; renderDevelopment(); trackJobs(data.jobs || []); showMessage('Four visual concepts are being generated.');
-        }).catch(handleError).finally(function () { buttonBusy(button, false); });
+        submitDevelopment('concepts', 'packs/' + state.selectedPack.uuid + '/development', {}, function (data) { replaceProject(data.project); state.developmentProjectUuid = data.project.uuid; showMessage('Four visual concepts are being generated.'); });
     }
     function selectDevelopmentSeed(project, uuid, button) {
         buttonBusy(button, true);
@@ -397,9 +452,9 @@
         post('projects/' + project.uuid + '/development/refine', { generation_uuid: project.concept.selected_seed_uuid, instruction: instruction }).then(function (data) { trackJobs(data.jobs || []); showMessage('The refined concept is being generated.'); }).catch(handleError).finally(function () { buttonBusy(button, false); });
     }
     function generateDevelopmentReferences(project, roles, button) {
-        if (!roles.length) { return; }
-        buttonBusy(button, true);
-        post('projects/' + project.uuid + '/development/references', { roles: roles }).then(function (data) { trackJobs(data.jobs || []); if (data.errors && Object.keys(data.errors).length) { showMessage('Some reference jobs could not be started.', true); } else { showMessage('Reference generation started.'); } }).catch(handleError).finally(function () { buttonBusy(button, false); });
+        if (!roles.length || !project) { return; }
+        var scope = roles.length === 1 ? roles[0] : 'references';
+        submitDevelopment(scope, 'projects/' + project.uuid + '/development/references', { roles: roles }, function (data) { showMessage(data.errors && Object.keys(data.errors).length ? 'Some reference jobs could not be started.' : 'Reference generation started.', !!(data.errors && Object.keys(data.errors).length)); });
     }
     function acceptDevelopment(generationUuid, role, button) {
         if (!state.selectedPack) { return; }
@@ -408,8 +463,7 @@
     }
     function generateApprovalSheet(button) {
         if (!state.selectedPack) { return; }
-        buttonBusy(button, true);
-        post('packs/' + state.selectedPack.uuid + '/test').then(function (data) { trackJobs(data.jobs || []); showMessage('The approval sheet is being generated here in Visual Development.'); }).catch(handleError).finally(function () { buttonBusy(button, false); });
+        submitDevelopment('approval', 'packs/' + state.selectedPack.uuid + '/test', {}, function () { showMessage('The approval sheet is being generated in this section.'); });
     }
     function acceptApprovalSheet(generationUuid, button) {
         if (!state.selectedPack) { return; }
@@ -513,7 +567,7 @@
             state.polling[job.uuid] = true;
             (function tick(current) {
                 setTimeout(function () {
-                    api('jobs/' + current.uuid).catch(function (error) { return { uuid: current.uuid, status: 'failed', error: { message: error.message } }; }).then(function (updated) {
+                    api('jobs/' + current.uuid).catch(function (error) { return isDevelopmentPurpose(developmentPurpose(current)) ? Object.assign({}, current, { poll_error: error.message }) : { uuid: current.uuid, status: 'failed', error: { message: error.message } }; }).then(function (updated) {
                         if (isDevelopmentPurpose(developmentPurpose(updated))) { state.developmentJobs[updated.uuid] = updated; renderDevelopment(); } else { renderLiveJobs([updated]); }
                         if (['completed', 'failed', 'blocked', 'cancelled'].includes(updated.status)) { delete state.polling[updated.uuid]; refreshProjects(); } else { tick(updated); }
                     });

@@ -20,6 +20,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate source and regression checks
+        run: |
+          find . -name '*.php' -not -path './build/*' -print0 | xargs -0 -n1 php -l
+          node --check assets/js/studio.js
+          node tools/test-export.cjs
+          node tools/test-development.cjs
+          php tools/test-development.php
+
       - name: Build release
         run: |
           set -euo pipefail

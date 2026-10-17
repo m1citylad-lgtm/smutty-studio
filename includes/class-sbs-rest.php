@@ -51,6 +51,8 @@ final class SBS_REST
         register_rest_route(self::NS, '/projects/(?P<uuid>[a-f0-9\-]+)/development/references', array('methods' => 'POST', 'callback' => array(__CLASS__, 'generate_development_references'), 'permission_callback' => array(__CLASS__, 'permission')));
         register_rest_route(self::NS, '/generations/(?P<uuid>[a-f0-9\-]+)', array('methods' => 'DELETE', 'callback' => array(__CLASS__, 'delete_generation'), 'permission_callback' => array(__CLASS__, 'permission')));
 
+        register_rest_route(self::NS, '/generations/(?P<uuid>[a-f0-9\-]+)/development/correct', array('methods' => 'POST', 'callback' => array(__CLASS__, 'correct_development_image'), 'permission_callback' => array(__CLASS__, 'permission')));
+
         register_rest_route(self::NS, '/jobs/generate', array('methods' => 'POST', 'callback' => array(__CLASS__, 'generate'), 'permission_callback' => array(__CLASS__, 'permission')));
         register_rest_route(self::NS, '/jobs/upscale', array('methods' => 'POST', 'callback' => array(__CLASS__, 'upscale'), 'permission_callback' => array(__CLASS__, 'permission')));
         register_rest_route(self::NS, '/jobs/(?P<uuid>[a-f0-9\-]+)', array('methods' => 'GET', 'callback' => array(__CLASS__, 'job'), 'permission_callback' => array(__CLASS__, 'permission')));
@@ -495,6 +497,43 @@ final class SBS_REST
         $internal->set_param('size', '1024x1024');
         $internal->set_param('background', 'opaque');
         $internal->set_param('purpose', 'development_concept_refinement');
+        return self::generate($internal);
+    }
+
+    public static function correct_development_image($request)
+    {
+        global $wpdb;
+        $generation = SBS_DB::row_by_uuid('generations', sanitize_text_field($request['uuid']));
+        if (!$generation || empty($generation['output_asset_id'])) {
+            return new WP_Error('missing_correction_image', 'Choose a completed image to correct.', array('status' => 404));
+        }
+        $project = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . SBS_DB::table('projects') . ' WHERE id = %d', (int) $generation['project_id']), ARRAY_A);
+        $concept = $project ? json_decode($project['concept_json'], true) : array();
+        $purpose = self::generation_purpose($generation);
+        $allowed = array('development_concept', 'development_concept_refinement', 'character_approval');
+        foreach (self::development_reference_config() as $config) {
+            $allowed[] = $config['purpose'];
+        }
+        $expected_type = $purpose === 'character_approval' ? 'character_pack_test' : 'character_visual_development';
+        if (!$project || !is_array($concept) || ($concept['type'] ?? '') !== $expected_type || !in_array($purpose, $allowed, true)) {
+            return new WP_Error('invalid_correction_source', 'Only an image from this Visual Development section can be corrected here.', array('status' => 400));
+        }
+        $instruction = sanitize_textarea_field($request->get_param('instruction'));
+        if (strlen(trim($instruction)) < 3 || strlen($instruction) > 12000) {
+            return new WP_Error('invalid_correction_instruction', 'Enter correction instructions between 3 and 12000 characters.', array('status' => 400));
+        }
+        $source_payload = json_decode($wpdb->get_var($wpdb->prepare('SELECT payload_json FROM ' . SBS_DB::table('jobs') . ' WHERE id = %d', (int) $generation['job_id'])), true);
+        $internal = new WP_REST_Request('POST');
+        $internal->set_param('project_uuid', $project['uuid']);
+        $internal->set_param('parent_uuid', $generation['uuid']);
+        $internal->set_param('prompt', "Edit the FIRST supplied image, which is the exact source image for this correction. Apply only these corrections:\n" . $instruction . "\nPreserve all unmentioned details, identity, pose, layout, panel arrangement, clothing, palette, illustration style and background. Other supplied references are supporting identity guidance. Keep this as the same kind of image; do not turn a reference sheet into a scene or add words or logos. Return one corrected candidate for human review. Do not redesign the character.");
+        $internal->set_param('count', 1);
+        $internal->set_param('quality', $source_payload['quality'] ?? 'medium');
+        $internal->set_param('size', $source_payload['size'] ?? ($purpose === 'character_approval' ? '1536x1024' : '1024x1024'));
+        $internal->set_param('background', $source_payload['background'] ?? 'opaque');
+        $internal->set_param('purpose', $purpose === 'development_concept' ? 'development_concept_refinement' : $purpose);
+        // generate() uses the parent output as the first reference and appends
+        // a new generation. No reference is accepted, replaced or deleted here.
         return self::generate($internal);
     }
 
