@@ -153,6 +153,16 @@ final class SBS_OpenAI
                 );
             }
         }
+        // Tool-level errors may sit inside a completed parent response.
+        foreach ((array) ($response['output'] ?? array()) as $item) {
+            if (($item['type'] ?? '') === 'image_generation_call' && !empty($item['error']) && is_array($item['error'])) {
+                $error = $item['error'];
+                $error['message'] = !empty($error['message']) ? $error['message'] : 'OpenAI could not complete the image request.';
+                $error['response_id'] = $response['id'] ?? '';
+                $error['image_call_id'] = $item['id'] ?? '';
+                return array('status' => 'failed', 'error' => $error);
+            }
+        }
         // A completed Responses request can contain a refusal or text instead of an image.
         // Preserve that explanation rather than reporting a misleading transport failure.
         foreach ((array) ($response['output'] ?? array()) as $item) {

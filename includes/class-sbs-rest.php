@@ -1092,7 +1092,8 @@ final class SBS_REST
                 global $wpdb;
                 $error = $parsed['error'];
                 $error['details_checked'] = true;
-                $wpdb->update(SBS_DB::table('jobs'), array('error_json' => wp_json_encode($error)), array('id' => (int) $job['id']));
+                $error['diagnostics_version'] = 2;
+                $wpdb->update(SBS_DB::table('jobs'), array('status' => ($error['code'] ?? '') === 'moderation_blocked' ? 'blocked' : 'failed', 'error_json' => wp_json_encode($error)), array('id' => (int) $job['id']));
                 $job = self::job_by_id((int) $job['id']);
             }
         }

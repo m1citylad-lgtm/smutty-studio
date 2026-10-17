@@ -71,3 +71,7 @@ PHP syntax/handler tests and JavaScript/history/export/density tests passed on t
 ## v0.2.34 — provider failure explanations
 
 Completed OpenAI responses can contain a refusal or explanatory text instead of an image. Studio now displays that explanation and keeps the unapplied instruction visible. Existing failed jobs offer **Show provider failure details**, which retrieves the original response without submitting another generation or changing the selected image. If the provider no longer retains the response, inspection can fail; no reason is guessed and no automatic retry is made.
+
+## v0.2.35 — structured safety diagnostics
+
+Studio also reads errors nested inside the image-generation tool output, preserving optional input/output stage, public categories and support identifiers. Older generic failures can be inspected again once with this extractor, without resubmission. See [Image safety investigation and recovery](IMAGE_SAFETY_TROUBLESHOOTING.md) for the police-officer incident, evidence limits and proposed improvements.
