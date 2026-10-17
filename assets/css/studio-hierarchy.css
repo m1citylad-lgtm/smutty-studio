@@ -1475,3 +1475,18 @@ select:disabled {
         padding: 18px 56px 18px 14px;
     }
 }
+
+
+/* Accessible contextual help, image specifications, and workflow maps */
+.sbs-info-button{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;flex:0 0 auto;width:30px;height:30px;margin:3px 6px;border:2px solid #e46645;border-radius:50%;background:#1c243e;color:#ffbd56;font:700 16px/1 system-ui,sans-serif;cursor:pointer}
+.sbs-info-button:focus-visible{outline:3px solid #ffbd56;outline-offset:2px}
+.sbs-explain-dialog{max-width:min(550px,calc(100vw - 28px));border:3px solid #e46645;border-radius:14px;background:#1c243e;color:#fff3d4;padding:24px;font:17px/1.5 system-ui,sans-serif}
+.sbs-explain-dialog::backdrop{background:rgba(0,0,0,.7)}
+.sbs-explain-dialog h2{color:#f6a12a;margin-top:0}
+.sbs-image-specs{font:12px/1.5 system-ui,sans-serif;color:#65462e;background:#fff5dd;padding:8px 10px;margin:6px 0 10px;overflow-wrap:anywhere;border-left:3px solid #e46645}
+.sbs-workflow-map{margin:22px 0;padding:18px;border:2px solid #e46645;border-radius:12px;background:#1c243e;color:#fff3d4}
+.sbs-workflow-map h3{color:#f6a12a;margin:0 0 12px}
+.sbs-workflow-steps{display:flex;align-items:stretch;flex-wrap:wrap;gap:8px}
+.sbs-workflow-steps span{display:flex;align-items:center;padding:10px;border:1px solid #e46645;border-radius:8px;background:#273650;max-width:100%}
+.sbs-workflow-steps span:not(:last-child)::after{content:" →";color:#ffbd56;padding-left:10px}
+.sbs-workflow-map p{font-size:14px;margin:12px 0 0}
