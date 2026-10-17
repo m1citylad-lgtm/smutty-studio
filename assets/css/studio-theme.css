@@ -231,3 +231,11 @@ body#sbs-studio-page .sbs-section-progress progress {
 }
 body#sbs-studio-page .sbs-image-corrections textarea { min-height: 130px; }
 body#sbs-studio-page .sbs-image-corrections .sbs-muted { font-size: 15px; }
+body#sbs-studio-page #sbs-development-root :is(.sbs-development-concept,
+    .sbs-development-result, .sbs-approval-card) img {
+    width: 100%;
+    height: min(55vh, 520px);
+    max-height: 520px;
+    aspect-ratio: auto;
+    object-fit: contain;
+}

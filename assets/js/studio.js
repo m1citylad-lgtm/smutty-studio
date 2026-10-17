@@ -327,7 +327,9 @@
         return jobs.filter(function (job) { return job.payload && Number(job.payload.parent_id) === Number(generation.id) && developmentPurpose(job) === (generation.purpose === 'development_concept' ? 'development_concept_refinement' : generation.purpose); });
     }
     function developmentProgressMarkup(jobs, label, scope) {
-        var rows = jobs.slice().sort(function (a,b) { return Number(a.id) - Number(b.id); }).slice(-4);
+        var ordered = jobs.slice().sort(function (a,b) { return Number(a.id) - Number(b.id); });
+        var active = ordered.filter(developmentJobActive);
+        var rows = active.length ? active : ordered.slice(-1);
         var submitting = isDevelopmentSubmitting(scope) ? '<p role="status">Submitting ' + esc(label) + '…</p><progress max="100" aria-label="Submitting ' + esc(label) + '"></progress>' : '';
         return '<div class="sbs-section-progress" aria-label="' + esc(label) + ' generation status" aria-live="polite">' + submitting + rows.map(function (job) {
             var active = developmentJobActive(job), completed = job.status === 'completed';

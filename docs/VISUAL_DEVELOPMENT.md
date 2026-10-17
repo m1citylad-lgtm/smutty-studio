@@ -1,4 +1,4 @@
-# Visual Development workflow — v0.2.30
+# Visual Development workflow — v0.2.31
 
 Updated 17 October 2026.
 
@@ -32,3 +32,9 @@ The release workflow runs PHP syntax checks plus these regressions before buildi
 ## Publishing
 
 A push to GitHub `main` triggers `.github/workflows/publish-release.yml`, which validates source, builds the versioned WordPress plugin ZIP/feed and creates a GitHub release. This workflow does not itself contain a WordPress deployment step. Earlier releases have reached growinsane.com through an existing external deployment mechanism. Verify the live header, matching stylesheet/script versions, authenticated UI and correction response after publishing; a successful GitHub release alone is not proof of live installation. If automatic synchronization does not occur, use the established authenticated Updates installation flow. Never change its security settings just to deploy.
+
+## Live verification record — 17 October 2026
+
+The v0.2.30 functional update was verified in the authenticated growinsane.com application. The selected character had 14 existing development images. Empty correction instructions were rejected; independent Face/Outfit drafts survived tab changes and a page reload, and Clear instructions removed only its target draft. One Face correction went through submission, running (indeterminate bar), then completed. It added one unaccepted Face candidate: 15 images total, all 14 original URLs still present, and the accepted-reference image unchanged. The source correction draft survived completion. No new candidate was accepted and no artwork was deleted. GitHub release validation, including PHP lint and correction-handler tests, passed.
+
+v0.2.31 caps preview height at 55vh (up to 520px), preserving full image proportions through containment, and displays only the latest terminal status once no jobs are active. All active jobs remain visible. These refinements keep the nearby actions/status easier to reach without changing image files or correction behavior.
