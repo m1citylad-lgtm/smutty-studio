@@ -52,7 +52,9 @@
         function jobRows() { var p=project(),all={};(p&&p.jobs||[]).forEach(function(j){all[j.uuid]=j;});Object.keys(jobs).forEach(function(k){var j=jobs[k];if(p&&j.payload&&Number(j.payload.project_id)===p.id)all[k]=j;});return Object.keys(all).map(function(k){return all[k];}); }
         function busy() {return pending || jobRows().some(function(j){return !['completed','failed','blocked','cancelled'].includes(j.status);});}
         function settings() {return {style:el('sbs-fs-style').value,treatment:el('sbs-fs-treatment').value,background:el('sbs-fs-background').value,size:el('sbs-fs-size').value,width:Number(el('sbs-fs-width').value),height:Number(el('sbs-fs-height').value),dpi:300};}
-        function applySettings(s) {s=s||{};['style','treatment','background','size','width','height'].forEach(function(k){if(s[k]!=null)el('sbs-fs-'+k).value=s[k];});}
+        var styleChoices=JSON.parse(el('sbs-fs-style').getAttribute('data-styles')||'{}'),legacyStyles=JSON.parse(el('sbs-fs-style').getAttribute('data-legacy-styles')||'{}');
+        function rememberedStyle(){var value=read('last-style','house');return Object.keys(styleChoices).length&&!Object.prototype.hasOwnProperty.call(styleChoices,value)?'house':value;}
+        function applySettings(s) {s=s||{};if(s.style!=null&&Object.keys(styleChoices).length){var value=s.style;el('sbs-fs-style').innerHTML=Object.keys(styleChoices).map(function(key){return '<option value="'+esc(key)+'">'+esc(styleChoices[key])+'</option>';}).join('')+(!styleChoices[value]&&legacyStyles[value]?'<option value="'+esc(value)+'">Saved style: '+esc(legacyStyles[value])+'</option>':'');}['style','treatment','background','size','width','height'].forEach(function(k){if(s[k]!=null)el('sbs-fs-'+k).value=s[k];});}
         function currentDraftKey() {return 'draft:'+(active||'new');}
         function briefKey() {var g=selected();return (active||'new')+':'+(g?g.uuid:'initial');}
         function storeBrief() {var key=briefKey(),value=el('sbs-fs-brief').value;if(value===designBrief(project(),selected())){delete briefDrafts[key];save('brief:'+key,'null');}else{briefDrafts[key]=value;save('brief:'+key,JSON.stringify(value));}}
@@ -90,7 +92,7 @@
             if(pending)return;
             preserveInputs();active='';choice=pack||'';save('new-character',choice);loaded='';save('session','');
             el('sbs-fs-title').value='';el('sbs-fs-instruction').value=read('draft:new','');el('sbs-fs-reviewed').checked=false;
-            applySettings({style:read('last-style','cartoon'),treatment:'vintage',background:'opaque',size:'1024x1536',width:15,height:18});render();
+            applySettings({style:rememberedStyle(),treatment:'vintage',background:'opaque',size:'1024x1536',width:15,height:18});render();
         }
         function stage(letter,done,text) {var node=el('sbs-fs-step-'+letter);node.classList.toggle('done',done);node.querySelector('strong').textContent=(done?'✓ ':'○ ')+text;}
         function render() {
@@ -103,7 +105,7 @@
             if(loaded!==(p?active:'new')) {
                 loaded=p?active:'new';el('sbs-fs-title').value=read('title:'+(active||'new'),p?p.title:'');
                 el('sbs-fs-instruction').value=read(currentDraftKey(),'');
-                applySettings(p?p.concept.settings:{style:read('last-style','cartoon'),treatment:'vintage',background:'opaque',size:'1024x1536',width:15,height:18});
+                applySettings(p?p.concept.settings:{style:rememberedStyle(),treatment:'vintage',background:'opaque',size:'1024x1536',width:15,height:18});
                 el('sbs-fs-reviewed').checked=!!g&&read('review:'+g.uuid,'')==='yes';
             }
             var nextBriefKey=briefKey();if(briefLoaded!==nextBriefKey){briefLoaded=nextBriefKey;el('sbs-fs-brief').value=loadBrief(nextBriefKey,designBrief(p,g));el('sbs-fs-brief-status').textContent='This brief belongs to the selected image branch.';}

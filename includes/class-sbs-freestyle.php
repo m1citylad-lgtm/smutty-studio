@@ -13,6 +13,19 @@ final class SBS_Freestyle
 
     public static function styles()
     {
+        return array(
+            'house' => 'SmuttyBear house style', 'cartoon' => 'Classic cartoon',
+            'caricature' => 'Caricature', 'mascot' => 'Bold vector mascot',
+            'comic' => 'Comic book', 'pop-art' => 'Pop art', 'storybook' => 'Storybook illustration',
+            'pin-up' => 'Vintage pin-up', 'beefcake' => 'Vintage beefcake',
+            'retro-advertising' => 'Retro advertising', 'pulp' => 'Pulp magazine',
+            'psychedelic' => '1960s psychedelic', 'disco' => '1970s disco',
+            'tattoo-flash' => 'Traditional tattoo flash',
+        );
+    }
+
+    public static function legacy_styles()
+    {
         return array('cartoon' => 'Cartoon', 'illustration' => 'Clean illustration', 'ink-sketch' => 'Ink sketch', 'pencil-sketch' => 'Pencil sketch', 'comic' => 'Comic book', 'pop-art' => 'Pop art', 'watercolour' => 'Watercolour', 'linocut' => 'Woodcut / linocut');
     }
 
@@ -27,7 +40,8 @@ final class SBS_Freestyle
         $style = sanitize_key($input['style'] ?? 'cartoon');
         $treatment = sanitize_key($input['treatment'] ?? 'vintage');
         $size = sanitize_text_field($input['size'] ?? '1024x1536');
-        if (!isset(self::styles()[$style]) || !isset(self::treatments()[$treatment]) || !in_array($size, array('1024x1536', '1024x1024', '1536x1024'), true)) {
+        $all_styles = self::styles() + self::legacy_styles();
+        if (!isset($all_styles[$style]) || !isset(self::treatments()[$treatment]) || !in_array($size, array('1024x1536', '1024x1024', '1536x1024'), true)) {
             return new WP_Error('invalid_freestyle_settings', 'Choose one of the available styles, treatments and image formats.', array('status' => 400));
         }
         $width = (float) ($input['width'] ?? 15);
@@ -222,13 +236,30 @@ final class SBS_Freestyle
 
     public static function compose_prompt($identity, $instruction, $action, $settings, $brief = '')
     {
-        $styles = self::styles();
+        $styles = self::styles() + self::legacy_styles();
+        $directions = array(
+            'house' => 'Follow supplied approved character/style references where available. Warm, cheeky retro illustrated comedy with expressive adult characters, crisp faces and readable shapes. Without references use this broad visual direction; do not claim an exact reference match or introduce an unselected existing character.',
+            'cartoon' => 'Expressive rounded characters, confident outlines and readable comic gestures.',
+            'caricature' => 'Deliberately exaggerated facial features and proportions, with a coherent recognisable character.',
+            'mascot' => 'Clean vector-like shapes, bold outlines, simplified shading and a strong silhouette. Output remains PNG, not a vector file.',
+            'comic' => 'Dramatic illustrated characters, bold ink contours and controlled graphic shading.',
+            'pop-art' => 'Bold graphic shapes, flat colour blocks and strong contrast.',
+            'storybook' => 'Expressive narrative illustration with readable character acting and a cohesive scene.',
+            'pin-up' => 'Playful vintage poster glamour, confident poses and polished retro illustration; clearly adult and non-explicit.',
+            'beefcake' => 'Vintage muscular adult fitness-poster illustration with confident poses and sculptural anatomy; non-explicit.',
+            'retro-advertising' => 'Classic illustrated advertising with a clear focal subject and an economical poster composition.',
+            'pulp' => 'Dramatic vintage magazine-cover illustration with strong lighting, rich colours and energetic composition.',
+            'psychedelic' => '1960s-inspired swirling shapes, flowing contours and vivid colour relationships. Stylise only explicitly requested lettering.',
+            'disco' => 'Colourful 1970s nightclub-poster styling with energetic movement and rhythmic graphic shapes.',
+            'tattoo-flash' => 'Traditional tattoo-flash illustration with strong outlines, limited colours and bold readable forms.',
+        );
         $treatment = array('vintage'=>'70% clean retro illustration, 20% selective halftone shading, 10% restrained distressing. This is an artistic direction, not a measured pixel ratio. Keep faces and lettering crisp.', 'clean'=>'Clean opaque print colours and crisp edges with no added distress.', 'halftone'=>'Controlled halftone shading with bold readable shapes; avoid tiny isolated dots.', 'distressed'=>'Light selective print distress, preserving faces, lettering and important outlines.');
         return ($action === 'edit' ? 'Edit the FIRST supplied image. Make only the requested changes and preserve every unmentioned detail. An older selected image may be the branch source; do not use an unrelated newer image.' : 'Create one new illustration following the complete user brief.')
             . "\nCHARACTER GUIDANCE (only supplied character references apply):\n" . wp_json_encode($identity)
             . "\nUSER-EDITABLE DESIGN BRIEF FOR THIS SELECTED IMAGE (continuing composition and clothing requirements; the latest explicit change below takes priority):\n" . $brief
             . "\nLATEST USER REQUEST — takes priority for scene, slogan and intentional style changes:\n" . $instruction
             . "\nCHOSEN DRAWING STYLE: " . $styles[$settings['style']]
+            . (isset($directions[$settings['style']]) ? "\nSTYLE DIRECTION: " . $directions[$settings['style']] : '')
             . "\nT-SHIRT TREATMENT: " . $treatment[$settings['treatment']]
             . "\nBACKGROUND: " . ($settings['background'] === 'transparent' ? 'True transparent alpha outside the subject. No checkerboard illustration or background colour.' : 'Opaque solid or scenic background as requested.')
             . "\nInclude exactly the slogan or lettering explicitly requested; do not invent extra text, signatures or logos. Keep lettering legible and important content inside a 6% safe margin. Clearly adult characters; non-explicit illustration. Produce one image, not a collage of unrelated options. Preserve the chosen drawing style rather than forcing a house vintage style. Print target is " . ($settings['width']*300) . ' × ' . ($settings['height']*300) . ' pixels at 300 PPI; native generation may need later upscaling and inspection.';
