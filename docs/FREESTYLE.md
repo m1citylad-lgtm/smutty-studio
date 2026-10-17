@@ -87,3 +87,9 @@ Live reinspection of the police-officer edit returned the provider's structured 
 - **Prepare support review details** produces a readonly, copyable report for the selected failed job with its exact recorded prompt, instruction, brief, identifiers and optional moderation stage/category. No keys, session data or unrelated job payload fields are included. Users review and send it themselves; the application does not contact support.
 
 Brief save uses the existing authenticated/same-origin permission check. Briefs are stored in project concept metadata and immutable job snapshots; no database migration is required. Legacy jobs without a recorded brief remain labelled as such in support reports. These controls improve context, recovery and diagnosis; they do not guarantee that a blocked image edit will be accepted.
+
+### Live verification and v0.2.37 status wording
+
+On the live site, recovery refused to overwrite an unsent verification draft, then restored the exact recorded failed instruction into an empty box without resubmitting. Preparing and copying the support report succeeded; it included the recorded output/sexual classification and exact effective prompt. The temporary instruction text was cleared afterwards. The original police-officer image remained the only successful version.
+
+Saving a brief on version 3 of the private teapot verification experiment left all three images intact. Undo restored version 1's original brief; Redo returned to version 3's saved brief. v0.2.37 distinguishes **Saving design brief** from generation activity while that save is in flight. No additional image generation, upscale or support message was submitted during these checks.
