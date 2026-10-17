@@ -6,7 +6,7 @@ final class SBS_Freestyle
 {
     public static function register_routes()
     {
-        foreach (array('' => 'turn', '/select' => 'select', '/promote' => 'promote') as $suffix => $callback) {
+        foreach (array('' => 'turn', '/select' => 'select', '/promote' => 'promote', '/brief' => 'save_brief') as $suffix => $callback) {
             register_rest_route(SBS_REST::NS, '/freestyle' . $suffix, array('methods' => 'POST', 'callback' => array(__CLASS__, $callback), 'permission_callback' => array('SBS_REST', 'permission')));
         }
     }
@@ -67,6 +67,52 @@ final class SBS_Freestyle
         return $created['uuid'];
     }
 
+    public static function validate_brief($value)
+    {
+        if (!is_string($value) || strlen($value) > 24000 || preg_match_all('/./us', $value) > 12000) {
+            return new WP_Error('invalid_freestyle_brief', 'Keep the design brief within 12000 characters (24000 UTF-8 bytes).', array('status'=>400));
+        }
+        return sanitize_textarea_field($value);
+    }
+
+    public static function brief_for($project, $generation_uuid = '')
+    {
+        $key = $generation_uuid ?: 'initial';
+        $saved = $project['concept']['design_briefs'] ?? array();
+        if (array_key_exists($key, $saved)) { return $saved[$key]; }
+        $by_id = array();
+        $current = null;
+        foreach ($project['generations'] as $generation) {
+            $by_id[$generation['id']] = $generation;
+            if ($generation['uuid'] === $generation_uuid) { $current = $generation; }
+        }
+        $visited = array();
+        while ($current && empty($visited[$current['id']])) {
+            $visited[$current['id']] = true;
+            // An explicitly empty brief is meaningful; do not resurrect old instructions.
+            if (isset($current['freestyle_brief'])) { return $current['freestyle_brief']; }
+            $current = $by_id[$current['parent_id'] ?? 0] ?? null;
+        }
+        return $project['concept']['original_brief'] ?? '';
+    }
+
+    public static function save_brief($request)
+    {
+        global $wpdb;
+        $project = self::project(sanitize_text_field($request->get_param('project_uuid')));
+        if (is_wp_error($project)) { return $project; }
+        $uuid = sanitize_text_field($request->get_param('generation_uuid'));
+        if (($uuid && !array_filter($project['generations'], function ($g) use ($uuid) { return $g['uuid'] === $uuid && !empty($g['asset_url']); })) || (!$uuid && !empty($project['generations']))) {
+            return new WP_Error('invalid_freestyle_parent', 'Choose a completed image from this experiment.', array('status'=>400));
+        }
+        $brief = self::validate_brief($request->get_param('design_brief'));
+        if (is_wp_error($brief)) { return $brief; }
+        $concept = $project['concept'];
+        $concept['design_briefs'][$uuid ?: 'initial'] = $brief;
+        $wpdb->update(SBS_DB::table('projects'), array('concept_json'=>wp_json_encode($concept), 'updated_at'=>current_time('mysql',true)), array('id'=>$project['id']));
+        return rest_ensure_response(self::project($project['uuid']));
+    }
+
     public static function turn($request)
     {
         global $wpdb;
@@ -76,6 +122,11 @@ final class SBS_Freestyle
         }
         $settings = self::settings($request->get_param('settings'));
         if (is_wp_error($settings)) { return $settings; }
+        $brief_input = $request->get_param('design_brief');
+        if ($brief_input !== null) {
+            $brief_input = self::validate_brief($brief_input);
+            if (is_wp_error($brief_input)) { return $brief_input; }
+        }
         $uuid = sanitize_text_field($request->get_param('project_uuid'));
         $parent_uuid = sanitize_text_field($request->get_param('parent_uuid'));
         if ($uuid) {
@@ -106,12 +157,15 @@ final class SBS_Freestyle
         }
         $concept = $project['concept'];
         $concept['settings'] = $settings;
+        $brief = $brief_input !== null ? $brief_input : self::brief_for($project, $parent_uuid);
+        $concept['design_briefs'][$parent_uuid ?: 'initial'] = $brief;
         $wpdb->update(SBS_DB::table('projects'), array('title'=>sanitize_text_field($request->get_param('title')) ?: $project['title'], 'concept_json'=>wp_json_encode($concept), 'updated_at'=>current_time('mysql',true)), array('id'=>$project['id']));
         $generation = new WP_REST_Request('POST');
         $generation->set_param('project_uuid', $project['uuid']);
         $generation->set_param('parent_uuid', $parent_uuid);
         $generation->set_param('prompt', $instruction);
         $generation->set_param('freestyle_settings', $settings);
+        $generation->set_param('freestyle_brief', $brief);
         $generation->set_param('purpose', 'freestyle');
         $generation->set_param('count', 1);
         $generation->set_param('quality', 'high');
@@ -166,12 +220,13 @@ final class SBS_Freestyle
         if($uuid){$concept['active_generation_uuid']=$uuid;$wpdb->update(SBS_DB::table('projects'),array('concept_json'=>wp_json_encode($concept)),array('id'=>(int)$project_id));}
     }
 
-    public static function compose_prompt($identity, $instruction, $action, $settings)
+    public static function compose_prompt($identity, $instruction, $action, $settings, $brief = '')
     {
         $styles = self::styles();
         $treatment = array('vintage'=>'70% clean retro illustration, 20% selective halftone shading, 10% restrained distressing. This is an artistic direction, not a measured pixel ratio. Keep faces and lettering crisp.', 'clean'=>'Clean opaque print colours and crisp edges with no added distress.', 'halftone'=>'Controlled halftone shading with bold readable shapes; avoid tiny isolated dots.', 'distressed'=>'Light selective print distress, preserving faces, lettering and important outlines.');
         return ($action === 'edit' ? 'Edit the FIRST supplied image. Make only the requested changes and preserve every unmentioned detail. An older selected image may be the branch source; do not use an unrelated newer image.' : 'Create one new illustration following the complete user brief.')
             . "\nCHARACTER GUIDANCE (only supplied character references apply):\n" . wp_json_encode($identity)
+            . "\nUSER-EDITABLE DESIGN BRIEF FOR THIS SELECTED IMAGE (continuing composition and clothing requirements; the latest explicit change below takes priority):\n" . $brief
             . "\nLATEST USER REQUEST — takes priority for scene, slogan and intentional style changes:\n" . $instruction
             . "\nCHOSEN DRAWING STYLE: " . $styles[$settings['style']]
             . "\nT-SHIRT TREATMENT: " . $treatment[$settings['treatment']]

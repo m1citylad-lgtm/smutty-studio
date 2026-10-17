@@ -987,7 +987,9 @@ final class SBS_REST
         $freestyle_concept = $freestyle ? json_decode($project['concept_json'], true) : array();
         $freestyle_unbound = $freestyle && empty($freestyle_concept['character_uuid']);
         if ($freestyle_unbound) { $identity = array('adult'=>true, 'summary'=>'No existing character selected. Invent an independent composition from the user brief.'); }
-        $prompt = $freestyle ? SBS_Freestyle::compose_prompt($identity, $scene, $action, $freestyle_settings) : self::compose_prompt($identity, $scene, $action);
+        $freestyle_brief = $freestyle ? SBS_Freestyle::validate_brief($request->get_param('freestyle_brief') ?? '') : '';
+        if (is_wp_error($freestyle_brief)) { return $freestyle_brief; }
+        $prompt = $freestyle ? SBS_Freestyle::compose_prompt($identity, $scene, $action, $freestyle_settings, $freestyle_brief) : self::compose_prompt($identity, $scene, $action);
         $asset_ids = array();
         if ($parent && $parent['output_asset_id']) {
             $asset_ids[] = (int) $parent['output_asset_id'];
@@ -1021,6 +1023,7 @@ final class SBS_REST
                 'purpose' => $purpose,
                 'freestyle_instruction' => $freestyle ? $scene : '',
                 'freestyle_settings' => $freestyle_settings,
+                'freestyle_brief' => $freestyle ? $freestyle_brief : null,
             ));
             if (is_wp_error($job)) {
                 return $job;
@@ -1051,11 +1054,14 @@ final class SBS_REST
             return new WP_Error('missing_generation', 'Choose a completed generation to upscale.', array('status' => 404));
         }
         $scale = in_array((int) $request->get_param('scale'), array(2, 4), true) ? (int) $request->get_param('scale') : 2;
+        $source_project = self::project_by_uuid($wpdb->get_var($wpdb->prepare('SELECT uuid FROM ' . SBS_DB::table('projects') . ' WHERE id = %d', (int) $generation['project_id'])));
+        $source_brief = $source_project && ($source_project['concept']['type'] ?? '') === 'freestyle' ? SBS_Freestyle::brief_for($source_project, $generation['uuid']) : null;
         $job = self::create_provider_job('upscale', 'replicate', array(
             'generation_id' => (int) $generation['id'],
             'project_id' => (int) $generation['project_id'],
             'asset_id' => (int) $generation['output_asset_id'],
             'scale' => $scale,
+            'freestyle_brief' => $source_brief,
         ));
         if (is_wp_error($job)) {
             return $job;
@@ -1495,6 +1501,7 @@ final class SBS_REST
             $generation['purpose'] = is_array($job_payload) && !empty($job_payload['purpose']) ? sanitize_key($job_payload['purpose']) : 'scene';
             $generation['freestyle_instruction'] = $job_payload['freestyle_instruction'] ?? '';
             $generation['freestyle_settings'] = $job_payload['freestyle_settings'] ?? null;
+            $generation['freestyle_brief'] = $job_payload['freestyle_brief'] ?? null;
             unset($generation['usage_json'], $generation['job_payload_json']);
         }
         unset($generation);
