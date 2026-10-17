@@ -74,8 +74,8 @@ check($art['project']['concept']['local_versions'][$art['generation_uuid']]['set
 $up['mode']='background_removed';$up['parent_uuid']=$art['generation_uuid'];$copy=SBS_Freestyle::upload($up)->get_data();$versions=SBS_REST::$projects['experiment']['generations'];check(count($versions)===2 && $versions[0]===$original_generation && $versions[1]['parent_id']===$original_generation['id'],'Background copy replaced original or lost Undo parent');
 check(count(SBS_REST::$sent)===$before_calls,'Local background copy called a provider');
 $up['parent_uuid']='foreign';check(is_wp_error(SBS_Freestyle::upload($up)),'Foreign background source accepted');
-$up['mode']='reference';$up['parent_uuid']='';$up['_files']['file']['size']=21*1024*1024;check(is_wp_error(SBS_Freestyle::upload($up)),'Oversized file accepted');
-$up['_files']['file']=$file;$up['_files']['file']['error']=1;check(is_wp_error(SBS_Freestyle::upload($up)),'Failed PHP upload accepted');
+$up['mode']='reference';$up['parent_uuid']='';$up->params['_files']['file']['size']=21*1024*1024;check(is_wp_error(SBS_Freestyle::upload($up)),'Oversized file accepted');
+$up->params['_files']['file']=$file;$up->params['_files']['file']['error']=1;check(is_wp_error(SBS_Freestyle::upload($up)),'Failed PHP upload accepted');
 $up['_files']=[];check(is_wp_error(SBS_Freestyle::upload($up)),'Missing file accepted');unlink($temp);
 echo "PASS: reference isolation, file validation, unchanged upload, zero-provider import, local-copy lineage and original preservation\n";
 // Exercise real generation assembly: edit source remains first, references are scoped and snapshotted.
