@@ -912,7 +912,7 @@
 
     // Contextual help and image specifications. These enhancements never change the image files.
     function studioButtonExplanation(button) {
-        var id = button.id || '', label = (button.getAttribute('aria-label') || button.textContent || '').replace(/\\s+/g, ' ').trim();
+        var id = button.id || '', label = (button.getAttribute('aria-label') || button.textContent || '').replace(/\s+/g, ' ').trim();
         var details = {
             'sbs-upscale-2': 'AI upscale 2× uses Replicate to enlarge the selected image to approximately twice its width and height (four times as many pixels). It may improve apparent detail but does not guarantee print quality or preserve every detail.',
             'sbs-upscale-4': 'AI upscale 4× uses Replicate to enlarge the selected image to approximately four times its width and height (sixteen times as many pixels). It may introduce invented details; inspect the result carefully.',
@@ -953,7 +953,7 @@
                 var info = document.createElement('button');
                 info.type = 'button'; info.className = 'sbs-info-button';
                 info.textContent = 'i';
-                var name = (button.getAttribute('aria-label') || button.textContent || 'button').trim().replace(/\\s+/g,' ');
+                var name = (button.getAttribute('aria-label') || button.textContent || 'button').trim().replace(/\s+/g,' ');
                 info.setAttribute('aria-label', 'Information about ' + name);
                 info.setAttribute('title', 'What does this button do?');
                 info.addEventListener('click', function (event) {
