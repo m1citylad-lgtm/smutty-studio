@@ -156,3 +156,40 @@ body#sbs-studio-page .sbs-guide-hero img { display: none; }
 body#sbs-studio-page .sbs-guide-hero { grid-template-columns: 1fr; }
 body#sbs-studio-page :is(label, legend, .sbs-tab-help, .sbs-image-specs,
     .sbs-guide-steps p, .sbs-context-note) { font-size: 16px; line-height: 1.5; }
+
+/* Workflow numbers are stable references across tabs, boxes and decisions. */
+body#sbs-studio-page .sbs-stage-number,
+body#sbs-studio-page .sbs-stage-heading .sbs-stage-number {
+    display: inline-block;
+    color: var(--sbs-gold);
+    font: bold italic 1.2em/1.2 Georgia, "Times New Roman", serif;
+    margin-right: .2em;
+}
+body#sbs-studio-page .sbs-tabs .sbs-stage-number { font-size: 1.4em; }
+body#sbs-studio-page .sbs-stage-heading {
+    margin: 0 0 10px;
+    font-size: 23px;
+    line-height: 1.35;
+}
+body#sbs-studio-page .sbs-stage-decision {
+    margin: 0 0 18px;
+    padding: 10px 12px;
+    border-left: 3px solid var(--sbs-orange);
+    background: var(--sbs-field);
+    font: 16px/1.5 Arial, Helvetica, sans-serif;
+}
+body#sbs-studio-page .sbs-workflow-part {
+    display: grid;
+    gap: 12px;
+    padding: 18px;
+    border: 2px solid var(--sbs-orange);
+    border-radius: 10px;
+    min-width: 0;
+}
+body#sbs-studio-page .sbs-workflow-finish { margin-top: 22px; }
+body#sbs-studio-page .sbs-development-progress li span {
+    width: 38px;
+    height: 32px;
+    color: var(--sbs-gold);
+    font: bold italic 18px/1 Georgia, serif;
+}
