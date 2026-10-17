@@ -61,20 +61,20 @@
 }
 
 .sbs-primary-tabs button {
-    border: 1px solid #a65d35;
+    border: 1px solid #e46645;
     border-bottom: 0;
     border-radius: 9px 9px 0 0;
     padding: 12px 24px 11px;
-    background: #5b2d1c;
-    color: #f7dab1;
+    background: #273650;
+    color: #f6a12a;
     font: 800 14px/1 system-ui, sans-serif;
     cursor: pointer;
 }
 
 .sbs-primary-tabs button.active {
-    background: #f0c77e;
-    color: #2b160f;
-    border-color: #dc8b30;
+    background: #f6a12a;
+    color: #1c243e;
+    border-color: #e46645;
 }
 
 .sbs-character-tray {
