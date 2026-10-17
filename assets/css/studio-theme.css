@@ -1,0 +1,158 @@
+/* SmuttyBear colour system for the entire workspace. Keep artwork and the
+   canvas transparency checkerboard independent of the interface theme. */
+:root {
+    color-scheme: dark;
+    --sbs-midnight: #101827;
+    --sbs-panel: #1b203b;
+    --sbs-card: #253452;
+    --sbs-field: #0b1120;
+    --sbs-text: #f7e5c4;
+    --sbs-gold: #f39a17;
+    --sbs-orange: #d94b1d;
+    --ink: var(--sbs-text);
+    --paper: var(--sbs-panel);
+    --cream: var(--sbs-text);
+    --orange: var(--sbs-orange);
+    --red: var(--sbs-gold);
+    --gold: var(--sbs-gold);
+    --brown: var(--sbs-card);
+    --muted: var(--sbs-text);
+    --line: var(--sbs-orange);
+}
+body#sbs-studio-page {
+    background: var(--sbs-midnight);
+    color: var(--sbs-text);
+    font: 18px/1.5 Arial, Helvetica, sans-serif;
+}
+body#sbs-studio-page .sbs-shell { background: var(--sbs-midnight); }
+body#sbs-studio-page :is(.sbs-header, .sbs-character-tray, .sbs-tabs, .sbs-panel,
+    .sbs-image-modal, .sbs-guide-dialog, .sbs-explain-dialog, .sbs-canvas-scroll) {
+    background: var(--sbs-panel);
+    color: var(--sbs-text);
+    border-color: var(--sbs-orange);
+    box-shadow: none;
+}
+body#sbs-studio-page :is(.sbs-card, .sbs-login-card, .sbs-concept, .sbs-pack-card,
+    .sbs-project-card, .sbs-reference, .sbs-generation, .sbs-job,
+    .sbs-metric, .sbs-analysis-suggestion, .sbs-development-toolbar,
+    .sbs-development-section, .sbs-development-concept, .sbs-development-result,
+    .sbs-development-slot, .sbs-development-job, .sbs-approval-section,
+    .sbs-approval-card, .sbs-release-summary, .sbs-media-gallery,
+    .sbs-media-item, .sbs-workflow-map, .sbs-export-downloads,
+    .sbs-suggestion-field, .sbs-guide-steps li, .sbs-pill) {
+    background: var(--sbs-card);
+    color: var(--sbs-text);
+    border-color: var(--sbs-orange);
+    box-shadow: none;
+}
+body#sbs-studio-page .sbs-login-card { transform: none; }
+body#sbs-studio-page :is(.sbs-tab-help, .sbs-suggestion-choice,
+    .sbs-suggestion-comparison > div + div, .sbs-development-slot > header,
+    .sbs-update-toolbar, .sbs-update-health, .sbs-update-error,
+    .sbs-image-specs, .sbs-guide-tip, .sbs-guide-hero, .sbs-workflow-steps span,
+    .sbs-reference-role-bubble, .sbs-development-progress li,
+    .sbs-analysis-suggestion > .sbs-inline-heading > span) {
+    background: var(--sbs-card);
+    color: var(--sbs-text);
+    border-color: var(--sbs-orange);
+    box-shadow: none;
+}
+body#sbs-studio-page :is(label, legend, p, small, strong, figcaption,
+    .sbs-context-note, .sbs-muted, .sbs-footer, .sbs-inline-heading span,
+    .sbs-canvas-status span, .sbs-development-job > span) {
+    color: var(--sbs-text);
+}
+body#sbs-studio-page :is(h1, h2, h3, h4, .sbs-wordmark span, .sbs-kicker,
+    .sbs-form-message) { color: var(--sbs-gold); text-shadow: none; }
+body#sbs-studio-page :is(input, select, textarea),
+body#sbs-studio-page .sbs-context-select select {
+    background: var(--sbs-field);
+    color: var(--sbs-text);
+    border: 2px solid var(--sbs-orange);
+    font: 17px/1.5 Arial, Helvetica, sans-serif;
+    accent-color: var(--sbs-gold);
+}
+body#sbs-studio-page input[type="color"] { padding: 3px; }
+body#sbs-studio-page ::placeholder { color: #d3c6b0; opacity: 1; }
+body#sbs-studio-page :is(.sbs-button, .sbs-tool-grid button, .sbs-canvas-status button,
+    .sbs-tabs button, .sbs-guide-open, .sbs-guide-open span,
+    .sbs-info-button, .sbs-project-delete, .sbs-reference-bin,
+    .sbs-select-creation, .sbs-remove-creation, .sbs-modal-close, .sbs-help) {
+    background: var(--sbs-field);
+    color: var(--sbs-text);
+    border-color: var(--sbs-orange);
+    box-shadow: none;
+    line-height: 1.4;
+}
+body#sbs-studio-page :is(.sbs-button, .sbs-tool-grid button, .sbs-canvas-status button,
+    .sbs-tabs button, .sbs-select-creation, .sbs-remove-creation) {
+    min-height: 44px;
+    font-size: 16px;
+}
+body#sbs-studio-page :is(.sbs-info-button, .sbs-guide-open, .sbs-modal-close) {
+    min-width: 44px;
+    min-height: 44px;
+}
+body#sbs-studio-page :is(.sbs-button.primary, .sbs-button.accent,
+    .sbs-tabs button.active, .sbs-pack-card.active, .sbs-project-card.active,
+    .sbs-layer.active, .sbs-media-item.selected, .sbs-select-creation.is-selected,
+    .sbs-update-status, .sbs-development-progress li.done) {
+    background: var(--sbs-card);
+    color: var(--sbs-text);
+    border-color: var(--sbs-gold);
+    box-shadow: inset 0 -3px 0 var(--sbs-gold);
+}
+body#sbs-studio-page :is(.sbs-media-item.selected, .sbs-development-concept.selected,
+    .sbs-development-result.accepted, .sbs-approval-card.accepted) {
+    border-color: var(--sbs-gold);
+    outline-color: var(--sbs-gold);
+}
+body#sbs-studio-page :is(button, .sbs-button):hover:not(:disabled) {
+    background: var(--sbs-card);
+    color: var(--sbs-text);
+    border-color: var(--sbs-gold);
+}
+body#sbs-studio-page :is(button, input, select, textarea):disabled {
+    opacity: 1;
+    filter: none;
+    color: #c4c9d2;
+    background: #30394c;
+    border-color: #7f899b;
+    box-shadow: none;
+}
+body#sbs-studio-page :is(.sbs-danger-tool) {
+    background: var(--sbs-field) !important;
+    color: var(--sbs-text) !important;
+    border-color: var(--sbs-orange);
+}
+body#sbs-studio-page :is(.sbs-role-icon, .sbs-tab-help > span,
+    .sbs-development-slot-icon, .sbs-development-progress li span,
+    .sbs-update-lock-icon, .sbs-media-badge, .sbs-reference-role-bubble small,
+    .sbs-guide-illustration, .sbs-guide-illustration b, .sbs-saved-design::after,
+    .sbs-update-status.success, .sbs-update-status.failed) {
+    background: var(--sbs-field);
+    color: var(--sbs-text);
+    box-shadow: none;
+}
+body#sbs-studio-page :is(.sbs-media-item img, .sbs-image-zoom, pre,
+    .sbs-help::after, .sbs-global-message) {
+    background: var(--sbs-field);
+    color: var(--sbs-text);
+}
+body#sbs-studio-page :is(.sbs-global-message, .sbs-help::after) {
+    border: 2px solid var(--sbs-orange);
+}
+body#sbs-studio-page .sbs-global-message.is-error { border-color: var(--sbs-gold); }
+body#sbs-studio-page :is(.sbs-table th, .sbs-table td, .sbs-layer,
+    .sbs-layer-reference, .sbs-print-settings, .sbs-canvas-tools hr,
+    .sbs-suggestion-comparison > div + div) { border-color: var(--sbs-orange); }
+body#sbs-studio-page .sbs-progress { background: var(--sbs-field); }
+body#sbs-studio-page .sbs-progress span { background: var(--sbs-gold); }
+body#sbs-studio-page a { color: var(--sbs-gold); }
+body#sbs-studio-page :focus-visible { outline: 3px solid var(--sbs-gold); outline-offset: 3px; }
+body#sbs-studio-page .sbs-version { opacity: 1; }
+/* The guide's illustration is decorative; keep the instructions themselves. */
+body#sbs-studio-page .sbs-guide-hero img { display: none; }
+body#sbs-studio-page .sbs-guide-hero { grid-template-columns: 1fr; }
+body#sbs-studio-page :is(label, legend, .sbs-tab-help, .sbs-image-specs,
+    .sbs-guide-steps p, .sbs-context-note) { font-size: 16px; line-height: 1.5; }

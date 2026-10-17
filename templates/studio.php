@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow,noarchive">
     <title>Smutty Studio</title>
-    <?php wp_print_styles(array('sbs-studio', 'sbs-studio-hierarchy')); ?>
+    <?php wp_print_styles(array('sbs-studio', 'sbs-studio-hierarchy', 'sbs-studio-theme')); ?>
 </head>
-<body class="sbs-body">
+<body id="sbs-studio-page" class="sbs-body">
 <div id="sbs-app" class="sbs-shell" data-rest="<?php echo esc_url(rest_url('smutty-bear/v1/')); ?>" data-authenticated="<?php echo SBS_Auth::is_authenticated() ? '1' : '0'; ?>" data-slug="<?php echo esc_attr(SBS_Plugin::studio_slug()); ?>" data-version="<?php echo esc_attr(SBS_VERSION); ?>">
     <header class="sbs-header">
         <nav id="sbs-primary-nav" class="sbs-primary-tabs" aria-label="Main studio areas" <?php echo SBS_Auth::is_authenticated() ? '' : 'hidden'; ?>>

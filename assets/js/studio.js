@@ -16,7 +16,7 @@
         var box = el('sbs-global-message');
         if (!box) { return; }
         box.textContent = message;
-        box.style.background = error ? '#8c1f16' : '#35170d';
+        box.classList.toggle('is-error', !!error);
         box.hidden = false;
         clearTimeout(box._timer);
         box._timer = setTimeout(function () { box.hidden = true; }, 7000);

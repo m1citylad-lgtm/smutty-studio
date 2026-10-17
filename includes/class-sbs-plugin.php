@@ -104,6 +104,7 @@ final class SBS_Plugin
 
         wp_enqueue_style('sbs-studio', SBS_PLUGIN_URL . 'assets/css/studio.css', array(), SBS_VERSION);
         wp_enqueue_style('sbs-studio-hierarchy', SBS_PLUGIN_URL . 'assets/css/studio-hierarchy.css', array('sbs-studio'), SBS_VERSION);
+        wp_enqueue_style('sbs-studio-theme', SBS_PLUGIN_URL . 'assets/css/studio-theme.css', array('sbs-studio-hierarchy'), SBS_VERSION);
         wp_enqueue_script('sbs-fabric', SBS_PLUGIN_URL . 'assets/vendor/fabric.min.js', array(), '5.3.0', true);
         wp_enqueue_script('sbs-studio', SBS_PLUGIN_URL . 'assets/js/studio.js', array('sbs-fabric'), SBS_VERSION, true);
 
