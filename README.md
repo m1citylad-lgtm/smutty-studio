@@ -59,6 +59,6 @@ versions, mismatched plugin version declarations, and a dirty working tree (set
 
 Images now keep their actions, actual job status and independent **Image Correction Instructions** together. Corrections create review candidates using the original image and preserve accepted references. Drafts persist in the same browser until cleared. See [Visual Development workflow](docs/VISUAL_DEVELOPMENT.md) for usage, progress limitations, tests and deployment verification.
 
-### Freestyle sandbox (v0.2.32)
+### Freestyle sandbox (v0.2.33)
 
 The top-level **Freestyle** tab provides optional-character generation, eight drawing styles, T-shirt treatments, conversational edits, six recent thumbnails and Undo/Redo. Designs move explicitly into the existing upscale/print workflow. Defaults are opaque backgrounds and a 15 × 18 inch / 300 PPI print target. See [Freestyle workflow](docs/FREESTYLE.md) for history preservation, quality checks, limitations and tests.

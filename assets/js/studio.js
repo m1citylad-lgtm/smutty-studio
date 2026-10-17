@@ -82,6 +82,7 @@
                 document.querySelectorAll('.sbs-tabs button').forEach(function (item) { item.classList.toggle('active', item === button); });
                 document.querySelectorAll('.sbs-panel').forEach(function (panel) { panel.classList.toggle('active', panel.getAttribute('data-panel') === button.getAttribute('data-tab')); });
                 if (button.getAttribute('data-tab') === 'development') { renderDevelopment(); }
+                if (button.getAttribute('data-tab') === 'projects') { renderProjects(); }
                 if (button.getAttribute('data-tab') === 'canvas') { ensureCanvas(); renderCanvasOptions(); if(state.freestyleNewCanvas){state.freestyleNewCanvas=false;}else{loadLatestCanvas();} resizeCanvasViewport(); }
                 if (button.getAttribute('data-tab') === 'usage') { loadUsage(); }
             });
@@ -568,9 +569,14 @@
         box.querySelectorAll('[data-cancel-job]').forEach(function (button) { button.addEventListener('click', function () { api('jobs/' + button.getAttribute('data-cancel-job'), { method: 'DELETE' }).then(function (job) { renderLiveJobs([job]); }).catch(handleError); }); });
         bindCreationActions(box);
     }
+    function refreshFreestyleProject(job) {
+        var p=state.projects.find(function(p){return job.payload&&p.id===Number(job.payload.project_id);});
+        if(!p)return Promise.resolve();
+        return api('projects/'+p.uuid).then(function(updated){replaceProject(updated);if(state.activeProject&&state.activeProject.uuid===updated.uuid)state.activeProject=updated;if(freestyle)freestyle.render();}).catch(handleError);
+    }
     function pollJobs(jobs) {
         var pending = jobs.filter(function (job) { return !['completed', 'failed', 'blocked', 'cancelled'].includes(job.status); });
-        if (!pending.length) { refreshProjects(); return; }
+        if (!pending.length) { if(freestyle&&jobs.some(function(job){return freestyle.isJob(job);})){jobs.filter(function(job){return freestyle.isJob(job);}).forEach(refreshFreestyleProject);}else{refreshProjects();} return; }
         pending.forEach(function (job) {
             if (state.polling[job.uuid]) { return; }
             state.polling[job.uuid] = true;
@@ -578,7 +584,7 @@
                 setTimeout(function () {
                     api('jobs/' + current.uuid).catch(function (error) { return (isDevelopmentPurpose(developmentPurpose(current)) || (freestyle && freestyle.isJob(current))) ? Object.assign({}, current, { poll_error: error.message }) : { uuid: current.uuid, status: 'failed', error: { message: error.message } }; }).then(function (updated) {
                         if (freestyle && freestyle.isJob(updated)) { freestyle.onJob(updated); freestyle.render(); } else if (isDevelopmentPurpose(developmentPurpose(updated))) { state.developmentJobs[updated.uuid] = updated; renderDevelopment(); } else { renderLiveJobs([updated]); }
-                        if (['completed', 'failed', 'blocked', 'cancelled'].includes(updated.status)) { delete state.polling[updated.uuid]; refreshProjects(); } else { tick(updated); }
+                        if (['completed', 'failed', 'blocked', 'cancelled'].includes(updated.status)) { delete state.polling[updated.uuid]; if(freestyle&&freestyle.isJob(updated)){refreshFreestyleProject(updated);}else{refreshProjects();} } else { tick(updated); }
                     });
                 }, 2500);
             })(job);
@@ -706,7 +712,7 @@
     function upscaleSelected(scale) {
         if (!state.selectedGeneration) { showMessage('Select an image first.', true); return; }
         if (!state.providers.replicate) { showMessage('Replicate is not configured for upscaling.', true); return; }
-        post('jobs/upscale', { generation_uuid: state.selectedGeneration.uuid, scale: scale }).then(function (job) { activateTab('create'); trackJobs([job]); }).catch(handleError);
+        post('jobs/upscale', { generation_uuid: state.selectedGeneration.uuid, scale: scale }).then(function (job) { var p=state.projects.find(function(p){return job.payload&&p.id===Number(job.payload.project_id);});if(p&&p.concept&&p.concept.type==='freestyle'){freestyle.open(p.uuid);activateTab('freestyle');}else{activateTab('create');} trackJobs([job]); }).catch(handleError);
     }
     function refreshProjects() { var activeUuid = state.activeProject ? state.activeProject.uuid : '', selectedUuid = state.selectedGeneration ? state.selectedGeneration.uuid : ''; return loadBootstrap().then(function () { state.activeProject = activeUuid ? state.projects.find(function (p) { return p.uuid === activeUuid; }) || null : state.activeProject; state.selectedGeneration = state.activeProject && selectedUuid ? (state.activeProject.generations || []).find(function (generation) { return generation.uuid === selectedUuid; }) || null : null; renderProjects(); renderCanvasOptions(); }); }
 
@@ -951,7 +957,7 @@
         var validity = { text: hasProject, rect: hasProject, circle: hasProject, upload: hasProject, group: isMulti, ungroup: isGroup, 'crop-square': isImage, 'mask-circle': isImage, 'mask-rect': isImage, 'mask-clear': isImage && !!active.clipPath, duplicate: hasObject, delete: hasObject, front: hasObject, back: hasObject, lock: hasObject, hide: hasObject, undo: !!canvas && state.history.length > 1, redo: !!canvas && state.redo.length > 0 };
         document.querySelectorAll('[data-tool]').forEach(function (button) { var tool = button.getAttribute('data-tool'); if (Object.prototype.hasOwnProperty.call(validity, tool)) { button.disabled = !validity[tool]; } });
     }
-    function updatePrintReadout() { var width = Number(el('sbs-print-width').value || 0), height = Number(el('sbs-print-height').value || 0), dpi = Number(el('sbs-print-dpi').value || 0); el('sbs-print-readout').textContent = Math.round(width * dpi) + ' × ' + Math.round(height * dpi) + ' px target'; }
+    function updatePrintReadout() { var width = Number(el('sbs-print-width').value || 0), height = Number(el('sbs-print-height').value || 0), dpi = Number(el('sbs-print-dpi').value || 0); el('sbs-print-readout').textContent = Math.round(width * dpi) + ' × ' + Math.round(height * dpi) + ' px target'; var review=el('sbs-treatment-review-message');if(review){var treatment=el('sbs-visual-treatment').value;review.textContent='REVIEW REQUIRED — '+(treatment==='vintage-70-20-10'?'70/20/10 vintage treatment':treatment==='clean'?'Clean illustration':'Custom or already-treated artwork')+' is selected. Inspect lettering, facial features, fine edges, halftone dots and distress before print approval. This setting records intent and does not automatically alter the image.';} }
     function canvasDocument() { return { schema_version: 1, character: state.selectedPack ? { uuid: state.selectedPack.uuid, name: state.selectedPack.name, version: state.selectedPack.current_version } : null, project_uuid: state.activeProject ? state.activeProject.uuid : '', artboard: { width: state.canvas.width, height: state.canvas.height, transparent: el('sbs-transparent').checked }, print: { width_inches: Number(el('sbs-print-width').value), height_inches: Number(el('sbs-print-height').value), dpi: Number(el('sbs-print-dpi').value), method: el('sbs-print-method').value, visual_treatment: el('sbs-visual-treatment').value, brand_mark: el('sbs-brand-family').value }, fabric: state.canvas.toJSON(['name', 'sbsType', 'excludeFromExport']) }; }
     function saveCanvas() {
         if (!state.activeProject) { showMessage('Choose a project first.', true); return; }
@@ -1140,6 +1146,7 @@
         }});
         bindLogoControls();
         el('sbs-run-preflight').addEventListener('click',runPrintPreflight);
+        el('sbs-visual-treatment').addEventListener('change',updatePrintReadout);
         el('sbs-print-method').addEventListener('change',function () {
             var dtf = this.value === 'dtf';
             el('sbs-method-advice').textContent = dtf ? 'DTF: inspect stray pixels, cutout edges, fine halftone dots and small isolated details; confirm minimum line and gap widths with your transfer printer.' : 'DTG: check gradients, transparency, garment colour and fine detail; confirm ink and underbase requirements with your garment printer.';

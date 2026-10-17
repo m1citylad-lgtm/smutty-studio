@@ -3,7 +3,7 @@
 ## Default rules
 - Vintage treatment: 70% clean retro illustration, 20% selective halftone, 10% restrained distress. These are creative guidelines, not literal measured pixel proportions.
 - Print method: DTG by default; DTF optional. Supplier choices: Redbubble and Gelato. Do not assume either supports a particular DTF workflow without a product-specific specification.
-- Print target: 4500 × 5400 pixels, 300 PPI at 15 × 18 inches, transparent PNG where appropriate. A 300-PPI target field is not proof of embedded PPI metadata or of actual sharpness.
+- Print target: 4500 × 5400 pixels, 300 PPI at 15 × 18 inches, transparent PNG where appropriate. Since v0.2.32, final PNG export writes a valid pHYs density chunk at the chosen DPI (300 by default). This label does not add source detail or prove actual sharpness.
 - Manual override is allowed for preflight warnings. Hard structural errors still block export. Every export carries a JSON report.
 - Preserve original generated image and editable canvas. Export separate branded and logo-free PNGs.
 
@@ -13,7 +13,7 @@
 3. Refine/polish as needed; inspect changes to face, lettering, edges and intended composition. AI upscaling may hallucinate details.
 4. Choose garment, product, provider, and DTG/DTF process. Obtain the actual product's artwork specifications from Redbubble or Gelato.
 5. Import the approved Exact logo reference. Place, scale and rotate on the canvas; save the editable version. Contour-warping is not yet implemented.
-6. Run preflight. It checks output dimensions, aspect ratio, blank canvas, image-layer enlargement, transparency selection, and some logo sizing risks. It does not scan pixel halos, embedded resolution metadata, legibility, actual sharpness, gamut, printer underbase, or provider compliance.
+6. Run preflight. It checks output dimensions, aspect ratio, blank canvas, effective source PPI/enlargement, sampled canvas and image-layer alpha, transparency selection, and some logo sizing risks. It warns about opaque image layers on a transparent canvas and semi-transparent DTF pixels. It does not certify all pixel halos, legibility, actual sharpness, gamut, printer underbase, or provider compliance.
 7. Review artwork on black, white, red and blue backgrounds at 100% and target print size. This is a required manual stage until a four-background proof is implemented.
 8. For warnings, either correct and recheck or use the explicit manual override; override is recorded in JSON and never relabels warnings as passed.
 9. Export PNG variants and report. Inspect actual exported files for dimensions, alpha transparency, softness, halo pixels, colour and lettering.
