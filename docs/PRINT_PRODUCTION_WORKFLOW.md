@@ -24,7 +24,7 @@
 - Provider-specific export profiles need verified per-product specifications, including any colour/profile and transparency requirements.
 - Advanced curved/contour-following logo treatment, separate logo library, 4-background proof generator and automatic vintage treatment recommendations are not implemented.
 - In-browser preflight does not certify the actual exported PNG. Production sign-off requires checking the downloaded file and a physical print sample.
-- Browser multi-download permissions may prevent one or more PNG/report downloads. Verify files individually.
+- Export creates separate download links for the branded PNG, optional logo-free PNG and JSON report. Download each file individually and verify it before printing. No automatic multi-download permission is required.
 
 ## Approved SmuttyBear signature and logo assets (verified 17 October)
 - 12 transparent signature PNG masters (Plain / Contour / Pill × Black / Copper / Cream / White): Drive ID 1xZ8c-qYT78MWG0bV1K9M5mPNULyUPqlB, ZIP SmuttyBear_Design_Signature_PRINT_Masters.zip. ZIP contents inspected and all 12 names present.
@@ -34,3 +34,11 @@
 - Default signature per Global T-shirt Production Guide (updated Oct 14): plain condensed sans-serif smuttybear.com in copper, centred beneath artwork, proportional sizing, no pill. Approved variants can be selected according to contrast and composition. Exact font family, numeric weight, tracking and point size are not documented and must not be invented.
 - The current Studio includes a branding-family choice saved in the canvas document, but it DOES NOT automatically load or substitute the approved PNG master. User must upload the actual master as an Exact logo reference before placement. Do not silently typeset a substitute font or substitute a different asset.
 - The approved logo-free master must be preserved independently; branded output is a derivative. Approved logos should not be generatively warped.
+
+## Release 0.2.26 — 17 October 2026
+- Packages all production controls added after the original 0.2.25 release.
+- Uses approved #0B1B35 navy for the top header and primary navigation, including the active tab. The gold character tray remains unchanged.
+- Renders PNG files as browser Blob downloads with persistent individual links instead of large data-URL auto-downloads.
+- Restores artwork, logo and guide visibility even if PNG encoding fails; no source artwork is saved or replaced by exporting.
+- Export regression checks: run `node tools/test-export.cjs` from the repository root.
+- Publishing requires a new version in both declarations in smutty-bear-studio.php; publishing to GitHub is followed by a verified install through Studio Updates and a live check.

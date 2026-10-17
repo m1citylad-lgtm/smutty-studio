@@ -106,6 +106,7 @@
 
             <section class="sbs-panel" data-panel="canvas">
                 <div class="sbs-panel-heading"><div><p class="sbs-kicker">MERCHANDISE COMPOSER</p><h1>Compose artwork for <span id="sbs-canvas-character-name"></span></h1></div><div class="sbs-row"><button id="sbs-canvas-save" class="sbs-button primary">Save design</button><button id="sbs-canvas-export" class="sbs-button accent">Export PNG</button></div></div>
+                <section id="sbs-export-downloads" class="sbs-export-downloads" aria-labelledby="sbs-export-downloads-title" aria-live="polite" hidden></section>
                 <aside class="sbs-tab-help"><span aria-hidden="true">&#128085;</span><div><strong>Use Merch Canvas to assemble production artwork.</strong> Add creations or references, arrange layers, add text and shapes, set the physical print size and DPI, then save the editable design back to its project or export a transparent PNG.</div></aside>
                 <div class="sbs-canvas-layout">
                     <aside class="sbs-canvas-tools sbs-card">

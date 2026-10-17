@@ -11,9 +11,14 @@ This repository includes a tag-driven release pipeline in
 the normal release process is:
 
 1. Change the plugin and update both version declarations in
-   `smutty-bear-studio.php`.
-2. Commit and push the change.
-3. Push the commit to the repository's main branch.
+   `smutty-bear-studio.php` to a version that has not already been released.
+   An existing release is never overwritten by this workflow.
+2. Validate JavaScript (`node --check assets/js/studio.js`) and run the export
+   regression checks (`node tools/test-export.cjs`).
+3. Commit and push the complete change to the repository's main branch.
+4. Confirm the GitHub release succeeded, install it through Studio → Updates
+   (or the WordPress updater), and verify the installed version and live result.
+   A commit or GitHub release alone does not update an existing installation.
 
 The workflow creates the matching tag, builds the exact plugin ZIP and release
 feed, and attaches both to a GitHub Release in this repository. The release ZIP

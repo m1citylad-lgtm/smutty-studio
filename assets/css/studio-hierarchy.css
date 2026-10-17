@@ -65,16 +65,17 @@
     border-bottom: 0;
     border-radius: 9px 9px 0 0;
     padding: 12px 24px 11px;
-    background: #273650;
+    background: #0b1b35;
     color: #f6a12a;
     font: 800 14px/1 system-ui, sans-serif;
     cursor: pointer;
 }
 
 .sbs-primary-tabs button.active {
-    background: #f6a12a;
-    color: #1c243e;
-    border-color: #e46645;
+    background: #0b1b35;
+    color: #f6a12a;
+    border-color: #f6a12a;
+    box-shadow: inset 0 -3px 0 #f6a12a;
 }
 
 .sbs-character-tray {
@@ -1490,3 +1491,10 @@ select:disabled {
 .sbs-workflow-steps span{display:flex;align-items:center;padding:10px;border:1px solid #e46645;border-radius:8px;background:#273650;max-width:100%}
 .sbs-workflow-steps span:not(:last-child)::after{content:" →";color:#ffbd56;padding-left:10px}
 .sbs-workflow-map p{font-size:14px;margin:12px 0 0}
+
+/* Keep the approved navy on top-level navigation in every interaction state. */
+.sbs-header button, .sbs-primary-tabs button, .sbs-primary-tabs button.active,
+.sbs-primary-tabs button.active:hover { background: #0b1b35; color: #f6a12a; }
+.sbs-export-downloads { margin: 0 0 20px; padding: 18px; border: 2px solid #c37538; border-radius: 10px; background: #fff3d4; color: #2b160f; }
+.sbs-export-downloads h2 { margin: 0 0 8px; }
+.sbs-export-downloads a { min-height: 44px; margin: 6px 8px 0 0; }

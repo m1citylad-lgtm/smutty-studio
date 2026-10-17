@@ -921,13 +921,39 @@
         el('sbs-preflight-results').textContent=report.automatic_verdict+' — '+(issues.length?issues.join('; ')+'; ':'')+warnings.join('; ');
         return report;
     }
-    function downloadPreflightReport(name,report) {
-        var data=JSON.stringify(report,null,2),blob=new Blob([data],{type:'application/json'});
-        var url=URL.createObjectURL(blob),link=document.createElement('a');
-        link.href=url;link.download=name+'-print-preflight.json';link.click();
-        setTimeout(function(){URL.revokeObjectURL(url);},1000);
+    var exportDownloadUrls = [];
+    function clearExportDownloads() {
+        exportDownloadUrls.forEach(function (url) { URL.revokeObjectURL(url); });
+        exportDownloadUrls = [];
+        var box = el('sbs-export-downloads');
+        if (box) { box.replaceChildren(); box.hidden = true; }
     }
-    function exportCanvas() {
+    function pngBlob(canvas) {
+        return new Promise(function (resolve, reject) {
+            canvas.toBlob(function (blob) {
+                if (blob && blob.size) { resolve(blob); }
+                else { reject(new Error('The browser could not create the PNG. Try a smaller print size.')); }
+            }, 'image/png');
+        });
+    }
+    function showExportDownloads(files) {
+        var box = el('sbs-export-downloads');
+        var heading = document.createElement('h2');
+        heading.id = 'sbs-export-downloads-title'; heading.textContent = 'Your downloads are ready';
+        var note = document.createElement('p');
+        note.textContent = 'Download each file below. These are copies; the original artwork is unchanged. Check the PNGs before printing. Preparing another export replaces these links.';
+        box.append(heading, note);
+        files.forEach(function (file) {
+            var url = URL.createObjectURL(file.blob), link = document.createElement('a');
+            exportDownloadUrls.push(url);
+            link.href = url; link.download = file.name; link.textContent = file.label; link.className = 'sbs-button';
+            box.appendChild(link);
+        });
+        box.hidden = false;
+        box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    async function exportCanvas() {
+        clearExportDownloads();
         var report=runPrintPreflight(),override=el('sbs-manual-override').checked;
         if (report.errors.length) { showMessage('Print export blocked: '+report.errors.join('; '),true); return; }
         if (report.warnings.length && !override) { showMessage('Print export blocked pending review. Check the manual override box to acknowledge unresolved warnings.',true); return; }
@@ -942,24 +968,31 @@
         var guides = state.canvas.getObjects().filter(function (obj) { return obj.sbsType === 'guide'; });
         var logos = state.canvas.getObjects().filter(function (obj) { return obj.sbsType === 'exact_asset'; });
         var hidden = guides.map(function (obj) { return obj.visible; });
+        var logoStates = logos.map(function (obj) { return obj.visible; });
+        var button = el('sbs-canvas-export');
+        var both = el('sbs-export-both').checked;
         guides.forEach(function (obj) { obj.visible = false; });
         var basename = ((state.activeProject && state.activeProject.title) || 'smutty-bear-artwork').replace(/[^A-Za-z0-9_-]+/g, '-');
-        function download(suffix) {
+        function snapshot() {
             state.canvas.renderAll();
-            var url = state.canvas.toDataURL({ format: 'png', multiplier: ratioW, enableRetinaScaling: false });
-            var link = document.createElement('a'); link.download = basename + '-' + suffix + '.png'; link.href = url; link.click();
+            return state.canvas.toCanvasElement(ratioW, { enableRetinaScaling: false });
         }
+        buttonBusy(button, true);
         try {
-            download('branded');
-            if (el('sbs-export-both').checked) {
-                var states = logos.map(function (obj) { return obj.visible; });
+            var files = [{ name: basename + '-branded.png', label: 'Download branded PNG', blob: await pngBlob(snapshot()) }];
+            if (both) {
                 logos.forEach(function (obj) { obj.visible = false; });
-                try { download('logo-free'); } finally { logos.forEach(function (obj,i) { obj.visible = states[i]; }); }
+                files.push({ name: basename + '-logo-free.png', label: 'Download logo-free PNG', blob: await pngBlob(snapshot()) });
             }
-            downloadPreflightReport(basename,report);
-            showMessage('PNG and print preflight report export started. Manual approval does not certify printer readiness.');
-        } catch (error) { showMessage('Export failed. Check browser memory and image access.', true); }
-        finally { guides.forEach(function (obj,i) { obj.visible = hidden[i]; }); state.canvas.renderAll(); }
+            files.push({ name: basename + '-print-preflight.json', label: 'Download print check report', blob: new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }) });
+            showExportDownloads(files);
+            showMessage('Downloads ready. Select each file to save it. Print warnings remain in the report.');
+        } catch (error) { clearExportDownloads(); showMessage('Export failed. ' + (error.message || 'Check browser memory and image access.'), true); }
+        finally {
+            logos.forEach(function (obj,i) { obj.visible = logoStates[i]; });
+            guides.forEach(function (obj,i) { obj.visible = hidden[i]; });
+            state.canvas.renderAll(); buttonBusy(button, false); updateCanvasControls();
+        }
     }
     function bindLogoControls() {
         function selectedLogo() {
