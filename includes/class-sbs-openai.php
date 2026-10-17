@@ -90,6 +90,7 @@ final class SBS_OpenAI
         $tool = array(
             'type' => 'image_generation',
             'model' => self::image_model(),
+            'moderation' => 'low',
             'action' => isset($options['action']) && $options['action'] === 'edit' ? 'edit' : 'generate',
             'quality' => self::quality(isset($options['quality']) ? $options['quality'] : 'medium'),
             'size' => self::size(isset($options['size']) ? $options['size'] : '1024x1024'),

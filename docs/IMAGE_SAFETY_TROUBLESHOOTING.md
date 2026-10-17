@@ -72,3 +72,9 @@ Parser regression coverage includes successful image bytes, pending responses, t
 - [OpenAI moderation guide — classification signals and limitations](https://developers.openai.com/api/docs/guides/moderation)
 
 The API reference search exposed the nested tool error fields; the full reference page exceeded the retrieval service's size limit. The image-generation guide was opened and checked directly. Broad public error labels do not expose exact internal classifier triggers.
+
+## v0.2.38 — lowest supported image moderation
+
+At the user's explicit request, all image generation/edit calls through `SBS_OpenAI::submit_image` now set `tools[0].moderation` to `low`, OpenAI's least restrictive supported image setting. This includes Freestyle and Visual Development. The previous value was implicit `auto`. There is no off/disabled setting. This changes new requests only, does not resubmit recorded failed requests, and preserves provider content rules, application non-explicit/adult constraints, source images, quality, size and transparency. Replicate upscaling and credit are unaffected. The live footer reports the active setting. A request-builder regression test checks both generate and edit payloads with a local HTTP stub.
+
+Official API schema: https://developers.openai.com/api/reference/resources/responses/methods/create (image-generation tool moderation: auto or low).

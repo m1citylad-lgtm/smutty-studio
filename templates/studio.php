@@ -174,7 +174,7 @@
         </ol>
         <div class="sbs-guide-tip"><strong>Safe working rule:</strong> changing the saved character identity invalidates the previous approval. Generate and review a fresh approval sheet before relying on it for future work.</div>
     </dialog>
-    <footer class="sbs-footer">Private creative workspace · Generated imagery remains subject to provider policies</footer>
+    <footer class="sbs-footer">Private creative workspace · Image filtering: Less restrictive (OpenAI low) · Provider content rules still apply</footer>
 </div>
 <?php wp_print_scripts(array('sbs-fabric', 'sbs-studio', 'sbs-freestyle')); ?>
 </body>
