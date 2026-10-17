@@ -67,11 +67,11 @@
                 document.querySelectorAll('.sbs-primary-tabs button').forEach(function (item) { item.classList.toggle('active', item === button); });
                 el('sbs-character-area').hidden = target !== 'characters';
                 document.querySelector('[data-panel="usage"]').classList.toggle('active', target === 'usage');
-                document.querySelector('[data-panel="updates"]').classList.toggle('active', target === 'updates');
+                document.querySelector('[data-panel="settings"]').classList.toggle('active', target === 'settings');
                 document.querySelector('[data-panel="freestyle"]').classList.toggle('active', target === 'freestyle');
                 if (target === 'freestyle' && freestyle) { freestyle.render(); }
                 if (target === 'usage') { loadUsage(); }
-                if (target === 'updates') { loadUpdates(); }
+                if (target === 'settings') { loadUpdates(); }
             });
         });
     }
@@ -102,7 +102,7 @@
             renderPackOptions(); renderPacks(); renderPackEditor(); renderDevelopment(); renderProjects(); renderUsage(state.usage); renderCanvasOptions(); renderCharacterContext();
             if (freestyle) { freestyle.render(); }
             if (data.active_jobs && data.active_jobs.length) { trackJobs(data.active_jobs); }
-            if (!state.providers.openai) { showMessage('OpenAI is not configured yet. An administrator can add the API key in WordPress.', true); }
+            if (!state.providers.openai) { showMessage('OpenAI is not configured yet. An administrator can add the API key in the Settings tab.', true); }
         }).catch(function (error) {
             if (/authentication/i.test(error.message)) { window.location.reload(); } else { showMessage(error.message, true); }
         });
@@ -1153,6 +1153,9 @@
         });
 
         if (boot.authenticated) { loadBootstrap(); }
+        if (root && root.getAttribute('data-open-settings') === '1') {
+            document.querySelector('[data-primary-tab="settings"]').click();
+        }
     });
 
     // Contextual help and image specifications. These enhancements never change the image files.

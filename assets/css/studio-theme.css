@@ -303,3 +303,18 @@ body#sbs-studio-page #sbs-fs-original { display:inline-block; margin:12px 0; tex
 body#sbs-studio-page .sbs-fs-reference input[type="checkbox"] { flex:0 0 26px; width:26px; max-width:26px; height:26px; margin:0; }
 body#sbs-studio-page .sbs-fs-reference img { flex:0 0 70px; }
 body#sbs-studio-page .sbs-fs-reference span { min-width:0; }
+
+/* Administrator forms inside Studio use the same accessible controls. */
+body#sbs-studio-page .sbs-settings-admin { overflow-wrap: anywhere; }
+body#sbs-studio-page .sbs-settings-admin .form-table { width:100%; border-collapse:collapse; }
+body#sbs-studio-page .sbs-settings-admin .form-table :is(th,td) { display:block; text-align:left; padding:8px 0; }
+body#sbs-studio-page .sbs-settings-admin .form-table th { padding-top:20px; }
+body#sbs-studio-page .sbs-settings-admin :is(input,select) { max-width:100%; width:100%; min-height:48px; box-sizing:border-box; }
+body#sbs-studio-page .sbs-settings-admin :is(input[type=submit],.sbs-button) { width:auto; min-height:48px; border:2px solid var(--sbs-orange); border-radius:999px; padding:12px 22px; background:var(--sbs-field); color:#ffc45e; font:700 18px/1.4 Arial,sans-serif; cursor:pointer; display:inline-block; }
+body#sbs-studio-page .sbs-settings-admin :is(.description,code) { color:var(--sbs-text); }
+body#sbs-studio-page .sbs-settings-admin :is(.widefat,.notice) { width:100%; background:var(--sbs-field); color:var(--sbs-text); border:1px solid var(--sbs-orange); padding:12px; }
+body#sbs-studio-page .sbs-settings-admin .widefat :is(th,td) { text-align:left; padding:10px; }
+body#sbs-studio-page .sbs-settings-admin .bad { color:#ffc45e; font-weight:bold; }
+@media(max-width:700px) {
+ body#sbs-studio-page .sbs-settings-admin .widefat { display:block; overflow-x:auto; }
+}

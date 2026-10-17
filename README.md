@@ -62,3 +62,7 @@ Images now keep their actions, actual job status and independent **Image Correct
 ### Freestyle sandbox (v0.2.33)
 
 The top-level **Freestyle** tab provides optional-character generation, eight drawing styles, T-shirt treatments, conversational edits, six recent thumbnails and Undo/Redo. Designs move explicitly into the existing upscale/print workflow. Defaults are opaque backgrounds and a 15 × 18 inch / 300 PPI print target. See [Freestyle workflow](docs/FREESTYLE.md) for history preservation, quality checks, limitations and tests.
+
+### Studio Settings (v0.2.43)
+
+The top-level **Settings** tab contains Studio access/password, OpenAI and Replicate credentials/models, update feed, workspace export/import, storage usage, diagnostics and software updates/rollback. Administrator controls retain WordPress `manage_options` and nonce checks. Sign in through the Settings link; WordPress returns you to Studio. No dashboard navigation is needed. The existing wp-admin screen remains a recovery route. See [Settings](docs/SETTINGS.md).

@@ -53,32 +53,67 @@ final class SBS_Admin
         echo '</div>';
     }
 
+    /** The same administrator controls, rendered inside the private Studio shell. */
+    public static function render_studio_settings()
+    {
+        $url = add_query_arg('settings', '1', home_url('/' . SBS_Plugin::studio_slug() . '/'));
+        if (!SBS_Auth::is_authenticated()) {
+            return;
+        }
+        if (!current_user_can('manage_options')) {
+            echo '<article class="sbs-card"><h2><span class="sbs-stage-number">A.</span> Administrator access</h2><p>Sign in with your WordPress administrator account to manage API keys, models, Studio access, workspace archives and diagnostics. Your shared Studio password still opens the creative workspace.</p><p><a class="sbs-button" href="' . esc_url(wp_login_url($url)) . '">Sign in as administrator</a></p><p>After signing in, you return here. You do not need to use the WordPress dashboard.</p></article>';
+            return;
+        }
+        ob_start();
+        self::notice();
+        echo '<h2 class="sbs-stage-heading"><span class="sbs-stage-number">A.</span> Studio access and providers</h2><p>Blank password and token fields keep their existing values. Changing the shared password signs everyone out. Changing the URL moves the Studio to the new address. Server-defined credentials take precedence over saved keys.</p>';
+        self::settings_tab();
+        echo '<h2 class="sbs-stage-heading"><span class="sbs-stage-number">B.</span> Workspace backups and imports</h2>';
+        self::portability_tab();
+        echo '<h2 class="sbs-stage-heading"><span class="sbs-stage-number">C.</span> Diagnostics</h2>';
+        if (isset($_GET['diagnostics']) && $_GET['diagnostics'] === '1') {
+            self::diagnostics_tab();
+        }
+        echo '<p><a class="sbs-button" href="' . esc_url(add_query_arg('diagnostics', '1', $url)) . '#sbs-settings-admin">Run / refresh diagnostics</a></p>';
+        $html = ob_get_clean();
+        // Use the original nonce-protected handlers and return here after every action.
+        $html = str_replace('</form>', '<input type="hidden" name="sbs_return_studio" value="1"></form>', $html);
+        $html = str_replace(esc_url(admin_url('admin.php?page=smutty-bear-studio&tab=portability')), esc_url($url), $html);
+        $html = str_replace('class="button', 'class="sbs-button', $html);
+        echo $html; // All values are escaped by the existing renderers above.
+    }
+
     public static function save_settings()
     {
         self::guard('sbs_save_settings');
+        $feed_url = esc_url_raw(wp_unslash($_POST['update_feed_url'] ?? ''));
+        if ($feed_url && strtolower((string) wp_parse_url($feed_url, PHP_URL_SCHEME)) !== 'https') {
+            self::redirect('settings', 'error', 'The private update feed must use HTTPS. No settings were changed.');
+        }
+        $password = (string) wp_unslash($_POST['studio_password'] ?? '');
+        if ($password !== '' && strlen($password) < 8) {
+            self::redirect('settings', 'error', 'The Studio password must be at least eight characters. No settings were changed.');
+        }
+        $credentials = array();
+        foreach (array('openai_api_key' => 'sbs_openai_api_key', 'replicate_api_token' => 'sbs_replicate_api_token', 'update_feed_token' => 'sbs_update_feed_token') as $field => $option) {
+            $value = trim((string) wp_unslash($_POST[$field] ?? ''));
+            if ($value !== '') {
+                $credentials[$option] = SBS_Crypto::encrypt($value);
+                if (!$credentials[$option]) {
+                    self::redirect('settings', 'error', 'OpenSSL AES-GCM is required before API credentials can be stored. No settings were changed.');
+                }
+            }
+        }
         $old_slug = SBS_Plugin::studio_slug();
         update_option('sbs_studio_slug', SBS_Plugin::sanitize_studio_slug(wp_unslash($_POST['studio_slug'] ?? 'smutty-studio')), false);
         update_option('sbs_text_model', sanitize_text_field(wp_unslash($_POST['text_model'] ?? 'gpt-6-astra')), false);
         update_option('sbs_image_model', sanitize_text_field(wp_unslash($_POST['image_model'] ?? 'gpt-image-2.5-sunburst')), false);
         update_option('sbs_replicate_model_version', sanitize_text_field(wp_unslash($_POST['replicate_model_version'] ?? SBS_Replicate::DEFAULT_VERSION)), false);
         update_option('sbs_replicate_cost_per_image', (string) max(0, (float) ($_POST['replicate_cost'] ?? 0.002)), false);
-        $feed_url = esc_url_raw(wp_unslash($_POST['update_feed_url'] ?? ''));
-        if ($feed_url && strtolower((string) wp_parse_url($feed_url, PHP_URL_SCHEME)) !== 'https') {
-            self::redirect('settings', 'error', 'The private update feed must use HTTPS.');
-        }
         update_option('sbs_update_feed_url', $feed_url, false);
-        foreach (array('openai_api_key' => 'sbs_openai_api_key', 'replicate_api_token' => 'sbs_replicate_api_token', 'update_feed_token' => 'sbs_update_feed_token') as $field => $option) {
-            $value = trim((string) wp_unslash($_POST[$field] ?? ''));
-            if ($value !== '') {
-                $encrypted = SBS_Crypto::encrypt($value);
-                if ($encrypted) {
-                    update_option($option, $encrypted, false);
-                } else {
-                    self::redirect('settings', 'error', 'OpenSSL AES-GCM is required before API credentials can be stored.');
-                }
-            }
+        foreach ($credentials as $option => $encrypted) {
+            update_option($option, $encrypted, false);
         }
-        $password = (string) wp_unslash($_POST['studio_password'] ?? '');
         if ($password !== '') {
             $result = SBS_Auth::set_password($password);
             if (is_wp_error($result)) {
@@ -121,7 +156,7 @@ final class SBS_Admin
         if (is_wp_error($job)) {
             self::redirect('portability', 'error', $job->get_error_message());
         }
-        self::redirect('portability', 'success', 'The export was queued. Its progress and download will appear below.');
+        self::redirect('portability', 'success', 'The export was queued. Use Refresh progress in Settings to see its progress and download.');
     }
 
     public static function import_workspace()
@@ -184,7 +219,7 @@ final class SBS_Admin
         }
         echo '</select></label></p>'; submit_button('Build portable archive'); echo '</form></section>';
         echo '<section class="sbs-card"><h2>Import workspace</h2><p>Validates paths and checksums, stages records, and preserves conflicting local content as separate versions.</p><form method="post" enctype="multipart/form-data" action="' . esc_url(admin_url('admin-post.php')) . '">';
-        wp_nonce_field('sbs_import'); echo '<input type="hidden" name="action" value="sbs_import"><input type="file" name="workspace_zip" accept=".zip" required>'; submit_button('Validate and import'); echo '</form></section></div>';
+        wp_nonce_field('sbs_import'); echo '<input type="hidden" name="action" value="sbs_import"><label>Portable workspace ZIP<input type="file" name="workspace_zip" accept=".zip" required></label>'; submit_button('Validate and import'); echo '</form></section></div>';
         $jobs = $wpdb->get_results("SELECT * FROM " . SBS_DB::table('jobs') . " WHERE type = 'export' ORDER BY created_at DESC LIMIT 10", ARRAY_A);
         $storage = $wpdb->get_row('SELECT COUNT(*) AS files, COALESCE(SUM(bytes),0) AS bytes FROM ' . SBS_DB::table('assets'), ARRAY_A);
         echo '<div class="sbs-card"><h2>Recent exports</h2><p><strong>Private storage:</strong> ' . esc_html(size_format((int) $storage['bytes'])) . ' across ' . (int) $storage['files'] . ' files. Creative content is retained until explicitly removed.</p><table class="widefat striped"><thead><tr><th>Created</th><th>Status</th><th>Progress</th><th>Download</th></tr></thead><tbody>';
@@ -273,6 +308,11 @@ final class SBS_Admin
 
     private static function redirect($tab, $type, $message)
     {
+        if (!empty($_POST['sbs_return_studio'])) {
+            $url = add_query_arg(array('settings' => '1', 'sbs_type' => $type, 'sbs_notice' => $message), home_url('/' . SBS_Plugin::studio_slug() . '/'));
+            wp_safe_redirect($url);
+            exit;
+        }
         wp_safe_redirect(add_query_arg(array('page' => 'smutty-bear-studio', 'tab' => $tab, 'sbs_type' => $type, 'sbs_notice' => rawurlencode($message)), admin_url('admin.php')));
         exit;
     }

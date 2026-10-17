@@ -8,13 +8,13 @@
     <?php wp_print_styles(array('sbs-studio', 'sbs-studio-hierarchy', 'sbs-studio-theme')); ?>
 </head>
 <body id="sbs-studio-page" class="sbs-body">
-<div id="sbs-app" class="sbs-shell" data-rest="<?php echo esc_url(rest_url('smutty-bear/v1/')); ?>" data-authenticated="<?php echo SBS_Auth::is_authenticated() ? '1' : '0'; ?>" data-slug="<?php echo esc_attr(SBS_Plugin::studio_slug()); ?>" data-version="<?php echo esc_attr(SBS_VERSION); ?>">
+<div id="sbs-app" class="sbs-shell" data-rest="<?php echo esc_url(rest_url('smutty-bear/v1/')); ?>" data-authenticated="<?php echo SBS_Auth::is_authenticated() ? '1' : '0'; ?>" data-slug="<?php echo esc_attr(SBS_Plugin::studio_slug()); ?>" data-version="<?php echo esc_attr(SBS_VERSION); ?>" data-open-settings="<?php echo isset($_GET['settings']) ? '1' : '0'; ?>">
     <header class="sbs-header">
         <nav id="sbs-primary-nav" class="sbs-primary-tabs" aria-label="Main studio areas" <?php echo SBS_Auth::is_authenticated() ? '' : 'hidden'; ?>>
             <button data-primary-tab="characters" class="active">Characters</button>
             <button data-primary-tab="freestyle">Freestyle</button>
             <button data-primary-tab="usage">Usage</button>
-            <button data-primary-tab="updates">Updates</button>
+            <button data-primary-tab="settings">Settings</button>
         </nav>
         <div class="sbs-header-right"><div class="sbs-header-brand"><div class="sbs-wordmark"><span>Smutty Studio</span></div><span class="sbs-version">v<?php echo esc_html(SBS_VERSION); ?></span></div><button id="sbs-guide-open" class="sbs-guide-open" type="button" <?php echo SBS_Auth::is_authenticated() ? '' : 'hidden'; ?>><span aria-hidden="true">?</span> Guide</button></div>
     </header>
@@ -143,8 +143,10 @@
                 <div id="sbs-usage-summary" class="sbs-metric-grid"></div><div class="sbs-card"><table class="sbs-table"><thead><tr><th>Date</th><th>Character</th><th>Provider</th><th>Operation</th><th>Estimated USD</th></tr></thead><tbody id="sbs-usage-rows"></tbody></table></div>
             </section>
 
-            <section class="sbs-panel" data-panel="updates">
-                <div class="sbs-panel-heading"><div><p class="sbs-kicker">SIGNED RELEASES</p><h1>Updates</h1></div><span class="sbs-pill">Password reconfirmation required</span></div>
+            <section class="sbs-panel" data-panel="settings">
+                <div class="sbs-panel-heading"><div><p class="sbs-kicker">STUDIO MANAGEMENT</p><h1>Settings</h1></div><span class="sbs-pill">Administrator controls</span></div>
+                <div id="sbs-settings-admin" class="sbs-settings-admin"><?php SBS_Admin::render_studio_settings(); ?></div>
+                <h2 class="sbs-stage-heading"><span class="sbs-stage-number">D.</span> Software updates and rollback</h2>
                 <aside class="sbs-tab-help"><span aria-hidden="true">&#128274;</span><div><strong>Update the Studio without WordPress or FTP access.</strong> Re-enter the shared Studio password to start a short update session. Release files and checksums are verified before installation.</div></aside>
                 <div id="sbs-update-root" class="sbs-update-root"><article class="sbs-card"><p class="sbs-muted">Open this tab to check update access.</p></article></div>
             </section>
@@ -170,7 +172,7 @@
             <li><div class="sbs-guide-illustration"><span aria-hidden="true">&#9989;</span><b>5</b></div><div><h3>Test consistency</h3><p>At the bottom of Visual Development, generate as many approval-sheet candidates as needed, enlarge and inspect every view, then accept one genuinely on-model sheet. It is stored under Reference automatically; accepting another makes that one current.</p></div></li>
             <li><div class="sbs-guide-illustration"><span aria-hidden="true">&#128161;</span><b>6</b></div><div><h3>Create and refine</h3><p>Develop a joke in Idea Room, generate drafts, then use Creations to select, refine, polish or upscale the strongest result.</p></div></li>
             <li><div class="sbs-guide-illustration"><span aria-hidden="true">&#128085;</span><b>7</b></div><div><h3>Compose merchandise</h3><p>Combine artwork, references, typography and shapes in Merch Canvas. Save the editable design to its project and export at the required print dimensions.</p></div></li>
-            <li><div class="sbs-guide-illustration"><span aria-hidden="true">&#128274;</span><b>8</b></div><div><h3>Install updates</h3><p>Open the top-level Updates tab, reconfirm the shared Studio password, then install a release ZIP or a newer release from the private feed. Corrupted, incompatible or incorrectly structured packages are rejected automatically.</p></div></li>
+            <li><div class="sbs-guide-illustration"><span aria-hidden="true">&#128274;</span><b>8</b></div><div><h3>Install updates</h3><p>Open the top-level Settings tab, reconfirm the shared Studio password, then install a release ZIP or a newer release from the private feed. Corrupted, incompatible or incorrectly structured packages are rejected automatically.</p></div></li>
         </ol>
         <div class="sbs-guide-tip"><strong>Safe working rule:</strong> changing the saved character identity invalidates the previous approval. Generate and review a fresh approval sheet before relying on it for future work.</div>
     </dialog>

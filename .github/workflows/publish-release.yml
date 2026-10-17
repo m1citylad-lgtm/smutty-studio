@@ -31,6 +31,7 @@ jobs:
           node tools/test-freestyle.cjs
           php tools/test-freestyle.php
           php tools/test-openai-response.php
+          php tools/test-settings.php
           node tools/test-png-resolution.cjs
 
       - name: Build release

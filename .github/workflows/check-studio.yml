@@ -18,6 +18,7 @@ jobs:
           php tools/test-development.php
           php tools/test-freestyle.php
           php tools/test-openai-response.php
+          php tools/test-settings.php
       - name: JavaScript and image export checks
         run: |
           node --check assets/js/studio.js
