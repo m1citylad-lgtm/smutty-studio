@@ -37,11 +37,17 @@ final class SBS_Freestyle
     public static function settings($input)
     {
         $input = is_array($input) ? $input : array();
-        $style = sanitize_key($input['style'] ?? 'cartoon');
+        $raw_styles = $input['styles'] ?? array($input['style'] ?? 'house');
+        if (!is_array($raw_styles) || !$raw_styles || count($raw_styles) > 22) {
+            return new WP_Error('invalid_freestyle_styles', 'Select at least one available drawing style.', array('status' => 400));
+        }
+        foreach ($raw_styles as $value) { if (!is_string($value)) { return new WP_Error('invalid_freestyle_styles', 'Invalid drawing style.', array('status'=>400)); } }
+        $selected_styles = array_values(array_unique(array_map('sanitize_key', $raw_styles)));
+        $style = $selected_styles[0];
         $treatment = sanitize_key($input['treatment'] ?? 'vintage');
         $size = sanitize_text_field($input['size'] ?? '1024x1536');
         $all_styles = self::styles() + self::legacy_styles();
-        if (!isset($all_styles[$style]) || !isset(self::treatments()[$treatment]) || !in_array($size, array('1024x1536', '1024x1024', '1536x1024'), true)) {
+        if (array_diff($selected_styles, array_keys($all_styles)) || !isset(self::treatments()[$treatment]) || !in_array($size, array('1024x1536', '1024x1024', '1536x1024'), true)) {
             return new WP_Error('invalid_freestyle_settings', 'Choose one of the available styles, treatments and image formats.', array('status' => 400));
         }
         $width = (float) ($input['width'] ?? 15);
@@ -49,7 +55,12 @@ final class SBS_Freestyle
         if (!is_finite($width) || !is_finite($height) || $width < 1 || $height < 1 || $width > 30 || $height > 30) {
             return new WP_Error('invalid_freestyle_print_size', 'Print width and height must be between 1 and 30 inches.', array('status' => 400));
         }
-        return array('style' => $style, 'treatment' => $treatment, 'size' => $size, 'background' => ($input['background'] ?? '') === 'transparent' ? 'transparent' : 'opaque', 'width' => $width, 'height' => $height, 'dpi' => 300);
+        $background = $input['background'] ?? 'transparent';
+        $transparency = $input['transparency'] ?? 'standard';
+        if (!in_array($background, array('transparent', 'opaque'), true) || !in_array($transparency, array('standard', 'print', 'soft'), true)) {
+            return new WP_Error('invalid_freestyle_background', 'Choose an available background and transparency treatment.', array('status'=>400));
+        }
+        return array('styles' => $selected_styles, 'transparency' => $transparency, 'style' => $style, 'treatment' => $treatment, 'size' => $size, 'background' => $background, 'width' => $width, 'height' => $height, 'dpi' => 300);
     }
 
     private static function data($response)
@@ -254,14 +265,22 @@ final class SBS_Freestyle
             'tattoo-flash' => 'Traditional tattoo-flash illustration with strong outlines, limited colours and bold readable forms.',
         );
         $treatment = array('vintage'=>'70% clean retro illustration, 20% selective halftone shading, 10% restrained distressing. This is an artistic direction, not a measured pixel ratio. Keep faces and lettering crisp.', 'clean'=>'Clean opaque print colours and crisp edges with no added distress.', 'halftone'=>'Controlled halftone shading with bold readable shapes; avoid tiny isolated dots.', 'distressed'=>'Light selective print distress, preserving faces, lettering and important outlines.');
+        $selected_styles = $settings['styles'] ?? array($settings['style']);
+        $style_labels = array(); $style_directions = array();
+        foreach ($selected_styles as $key) {
+            $style_labels[] = $styles[$key];
+            if (isset($directions[$key])) { $style_directions[] = $styles[$key] . ': ' . $directions[$key]; }
+        }
+        $transparency_directions = array('standard'=>'Keep natural subject edges against true transparent alpha.', 'print'=>'Use solid opaque print colours inside the artwork, crisp edges and fully transparent empty areas. Avoid translucent shadows, glows and faded edge pixels.', 'soft'=>'Allow soft feathered edges and translucent shadows or effects where requested, with true transparent alpha outside the artwork. This requires print preflight and is not guaranteed print-ready.');
         return ($action === 'edit' ? 'Edit the FIRST supplied image. Make only the requested changes and preserve every unmentioned detail. An older selected image may be the branch source; do not use an unrelated newer image.' : 'Create one new illustration following the complete user brief.')
             . "\nCHARACTER GUIDANCE (only supplied character references apply):\n" . wp_json_encode($identity)
             . "\nUSER-EDITABLE DESIGN BRIEF FOR THIS SELECTED IMAGE (continuing composition and clothing requirements; the latest explicit change below takes priority):\n" . $brief
             . "\nLATEST USER REQUEST — takes priority for scene, slogan and intentional style changes:\n" . $instruction
-            . "\nCHOSEN DRAWING STYLE: " . $styles[$settings['style']]
-            . (isset($directions[$settings['style']]) ? "\nSTYLE DIRECTION: " . $directions[$settings['style']] : '')
+            . "\nCHOSEN DRAWING STYLES: " . implode(" + ", $style_labels)
+            . "\nSTYLE DIRECTIONS:\n" . implode("\n", $style_directions)
+            . (count($selected_styles)>1 ? "\nBlend all selected styles into one coherent image, not separate panels. Use the latest instruction to resolve conflicts and emphasise the requested features." : "")
             . "\nT-SHIRT TREATMENT: " . $treatment[$settings['treatment']]
-            . "\nBACKGROUND: " . ($settings['background'] === 'transparent' ? 'True transparent alpha outside the subject. No checkerboard illustration or background colour.' : 'Opaque solid or scenic background as requested.')
+            . "\nBACKGROUND: " . ($settings['background'] === 'transparent' ? 'True transparent alpha outside the subject. No checkerboard illustration or background colour. ' . $transparency_directions[$settings['transparency'] ?? 'standard'] : 'Opaque solid or scenic background as requested.')
             . "\nInclude exactly the slogan or lettering explicitly requested; do not invent extra text, signatures or logos. Keep lettering legible and important content inside a 6% safe margin. Clearly adult characters; non-explicit illustration. Produce one image, not a collage of unrelated options. Preserve the chosen drawing style rather than forcing a house vintage style. Print target is " . ($settings['width']*300) . ' × ' . ($settings['height']*300) . ' pixels at 300 PPI; native generation may need later upscaling and inspection.';
     }
 }

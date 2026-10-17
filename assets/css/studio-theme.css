@@ -272,3 +272,10 @@ body#sbs-studio-page #sbs-freestyle-panel details p { padding:0 10px; }
 body#sbs-studio-page #sbs-fs-support { margin-top:20px; padding:14px; border:2px solid var(--sbs-orange); border-radius:10px; }
 body#sbs-studio-page #sbs-fs-support[hidden] { display:none; }
 body#sbs-studio-page #sbs-freestyle-panel .sbs-section-progress > button { margin:8px 10px 8px 0; }
+
+/* Freestyle applied multi-style chooser: native disclosure, large touch labels. */
+body#sbs-studio-page #sbs-fs-style-choices { display:grid; gap:8px; }
+body#sbs-studio-page #sbs-fs-style-choices .sbs-fs-style-choice { display:flex; align-items:center; gap:12px; min-height:48px; padding:8px; margin:0; border:1px solid var(--sbs-orange); border-radius:6px; cursor:pointer; color:var(--sbs-text); }
+body#sbs-studio-page #sbs-fs-style-choices input[type="checkbox"] { flex:0 0 26px; width:26px; height:26px; accent-color:var(--sbs-gold); }
+body#sbs-studio-page .sbs-fs-style-picker fieldset { min-width:0; margin:8px 0 14px; border:1px solid var(--sbs-orange); }
+body#sbs-studio-page #sbs-fs-styles-applied { overflow-wrap:anywhere; color:var(--sbs-text); }
