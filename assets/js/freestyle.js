@@ -39,8 +39,19 @@
             '\nThis report does not submit or retry a generation. Existing artwork is retained.'
         ].join('\n');
     }
+    // Only erase matching background connected to an image edge. RGB and all other alpha stay unchanged.
+    async function eraseConnectedBackground(data,width,height,rgb,tolerance,onProgress) {
+        var total=width*height;if(!width||!height||total>32000000||data.length!==total*4)throw new Error('Background removal supports images up to 32 million pixels.');
+        var seen=new Uint8Array(total),queue=new Uint32Array(total),head=0,tail=0,removed=0;
+        function add(i){if(seen[i])return;seen[i]=1;var p=i*4;if(data[p+3]===0 || (Math.abs(data[p]-rgb[0])<=tolerance&&Math.abs(data[p+1]-rgb[1])<=tolerance&&Math.abs(data[p+2]-rgb[2])<=tolerance))queue[tail++]=i;}
+        for(var x=0;x<width;x++){add(x);add((height-1)*width+x);}for(var y=0;y<height;y++){add(y*width);add(y*width+width-1);}
+        while(head<tail){var stop=Math.min(head+65536,tail);while(head<stop){var i=queue[head++],p=i*4;if(data[p+3]){data[p+3]=0;removed++;}var x=i%width;if(x)add(i-1);if(x<width-1)add(i+1);if(i>=width)add(i-width);if(i<total-width)add(i+width);}
+            if(onProgress){onProgress(head,total);await new Promise(function(resolve){setTimeout(resolve,0);});}
+        }
+        return removed;
+    }
     function init(ctx) {
-        var el=ctx.el, esc=ctx.esc, active='', chosen={}, jobs={}, pending=false, redo={}, choice='', loaded='', seenComplete={},briefLoaded='',briefDrafts={},supportKey='',savingBrief=false;
+        var el=ctx.el, esc=ctx.esc, active='', chosen={}, jobs={}, pending=false, redo={}, choice='', loaded='', seenComplete={},briefLoaded='',briefDrafts={},supportKey='',savingBrief=false,fileOperation='',refsKey='',referenceChoices=[];
         function read(key, fallback) { try { return window.localStorage.getItem('sbs-freestyle:'+key) || fallback; } catch(e) { return fallback; } }
         function save(key,value) { try { window.localStorage.setItem('sbs-freestyle:'+key,value); } catch(e) {} }
         active=read('session','');choice=read('new-character','');
@@ -65,7 +76,35 @@
         function applySettings(s) {
             s=s||{};var values=Array.isArray(s.styles)?s.styles:s.style?[s.style]:['house'];appliedStyles=values.filter(function(key,index){return !!(styleChoices[key]||legacyStyles[key])&&values.indexOf(key)===index;});if(!appliedStyles.length)appliedStyles=['house'];paintStyles();el('sbs-fs-style-menu').open=false;
             ['treatment','size','width','height'].forEach(function(k){if(s[k]!=null)el('sbs-fs-'+k).value=s[k];});
-            el('sbs-fs-background').value=s.background==='opaque'?'opaque':s.transparency==='print'?'transparent-print':s.transparency==='soft'?'transparent-soft':'transparent';
+            el('sbs-fs-background').value=s.background==='opaque'?'opaque':s.transparency==='print'?'transparent-print':s.transparency==='soft'?'transparent-soft':s.transparency==='print'?'transparent-print':'transparent';
+        }
+        function importedSource(){var p=project(),g=selected();return p&&g?branch(p.generations||[],g.uuid).find(function(v){return v.action==='upload';}):null;}
+        function referenceAssets(){return (project()&&project().assets||[]).filter(function(a){return a.role==='freestyle_reference';});}
+        function referenceSelection(){if(refsKey!==active){refsKey=active;try{referenceChoices=JSON.parse(read('references:'+active,'[]'));}catch(e){referenceChoices=[];}if(!Array.isArray(referenceChoices))referenceChoices=[];}return referenceChoices.filter(function(uuid){return referenceAssets().some(function(a){return a.uuid===uuid;});});}
+        function uploadFile(file,mode,parent){
+            if(busy())return Promise.resolve();if(!file){ctx.showMessage('Choose an image file first.',true);return Promise.resolve();}
+            if(file.size>20*1024*1024||!['image/png','image/jpeg','image/webp'].includes(file.type)){ctx.showMessage('Choose a PNG, JPEG or WebP image up to 20 MB.',true);return Promise.resolve();}
+            var previousActive=active,uploadDraft=el('sbs-fs-instruction').value,uploadBrief=el('sbs-fs-brief').value;var form=new FormData();form.append('file',file);form.append('mode',mode);form.append('project_uuid',active);form.append('pack_uuid',el('sbs-fs-character').value);form.append('title',el('sbs-fs-title').value);form.append('label',el('sbs-fs-upload-label').value||file.name);form.append('settings',JSON.stringify(settings()));if(parent)form.append('parent_uuid',parent);
+            preserveInputs();pending=true;fileOperation='Saving uploaded '+(mode==='reference'?'reference':'artwork copy')+'…';el('sbs-fs-file-status').textContent=fileOperation;render();
+            return ctx.api('freestyle/upload',{method:'POST',body:form}).then(function(data){
+                ctx.replaceProject(data.project);active=data.project.uuid;save('session',active);loaded=mode==='reference'&&previousActive===active?active:'';if(!previousActive){save('draft:'+active,uploadDraft);save('brief:'+active+':'+(data.generation_uuid||'initial'),JSON.stringify(uploadBrief));}
+                if(data.generation_uuid){chosen[active]=data.generation_uuid;save('selected:'+active,data.generation_uuid);redo[active]=[];save('allow-edit:'+active,'no');}
+                if(mode==='reference'){refsKey=active;try{referenceChoices=JSON.parse(read('references:'+active,'[]'));}catch(e){referenceChoices=[];}if(!Array.isArray(referenceChoices))referenceChoices=[];if(referenceChoices.length<6)referenceChoices.push(data.asset.uuid);save('references:'+active,JSON.stringify(referenceChoices));}
+                el('sbs-fs-upload-file').value='';el('sbs-fs-file-status').textContent=mode==='reference'?'Reference saved. Tick it below to guide the next generation.':'Artwork saved as a separate version. No generation or upscale was run.';return true;
+            }).catch(function(error){el('sbs-fs-file-status').textContent='Upload failed: '+error.message;ctx.handleError(error);return false;}).finally(function(){pending=false;fileOperation='';render();});
+        }
+        async function removeFlatBackground(){
+            var g=selected();if(!g||busy())return;var source=g.uuid,tolerance=Number(el('sbs-fs-remove-tolerance').value),colour=el('sbs-fs-remove-colour').value;
+            if(!Number.isFinite(tolerance)||tolerance<0||tolerance>100){ctx.showMessage('Choose a colour tolerance between 0 and 100.',true);return;}
+            pending=true;fileOperation='Checking connected background…';render();
+            try{
+                var img=new Image();img.src=g.asset_url;await img.decode();if(img.naturalWidth*img.naturalHeight>32000000)throw new Error('This image is too large for tablet background removal (32 million pixels maximum).');
+                var canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;var paint=canvas.getContext('2d',{willReadFrequently:true});paint.drawImage(img,0,0);var pixels=paint.getImageData(0,0,canvas.width,canvas.height),rgb=[1,3,5].map(function(n){return parseInt(colour.slice(n,n+2),16);});
+                var removed=await eraseConnectedBackground(pixels.data,canvas.width,canvas.height,rgb,tolerance,function(checked,total){el('sbs-fs-remove-status').textContent='Checked '+checked.toLocaleString()+' connected background pixels out of '+total.toLocaleString()+' image pixels.';});
+                if(!removed){el('sbs-fs-remove-status').textContent='No matching edge-connected background found. Try another colour or tolerance. Nothing was changed.';return;}
+                paint.putImageData(pixels,0,0);var blob=await new Promise(function(resolve){canvas.toBlob(resolve,'image/png');});if(!blob)throw new Error('Could not save the PNG copy.');
+                pending=false;fileOperation='';var saved=await uploadFile(new File([blob],'background-removed-copy.png',{type:'image/png'}),'background_removed',source);el('sbs-fs-remove-status').textContent=saved?'Background copy saved. Inspect the result; Undo restores the previous image.':'The copy could not be saved. Your source image is unchanged.';
+            }catch(error){el('sbs-fs-remove-status').textContent=error.message;ctx.handleError(error);}finally{pending=false;fileOperation='';render();}
         }
         function currentDraftKey() {return 'draft:'+(active||'new');}
         function briefKey() {var g=selected();return (active||'new')+':'+(g?g.uuid:'initial');}
@@ -104,7 +143,7 @@
             if(pending)return;
             preserveInputs();active='';choice=pack||'';save('new-character',choice);loaded='';save('session','');
             el('sbs-fs-title').value='';el('sbs-fs-instruction').value=read('draft:new','');el('sbs-fs-reviewed').checked=false;
-            applySettings({style:rememberedStyle(),styles:rememberedStyles(),treatment:'vintage',background:'transparent',size:'1024x1536',width:15,height:18});render();
+            applySettings({style:rememberedStyle(),styles:rememberedStyles(),treatment:'vintage',background:'transparent',transparency:'print',size:'1024x1536',width:15,height:18});render();
         }
         function stage(letter,done,text) {var node=el('sbs-fs-step-'+letter);node.classList.toggle('done',done);node.querySelector('strong').textContent=(done?'✓ ':'○ ')+text;}
         function render() {
@@ -117,7 +156,7 @@
             if(loaded!==(p?active:'new')) {
                 loaded=p?active:'new';el('sbs-fs-title').value=read('title:'+(active||'new'),p?p.title:'');
                 el('sbs-fs-instruction').value=read(currentDraftKey(),'');
-                applySettings(p?p.concept.settings:{style:rememberedStyle(),styles:rememberedStyles(),treatment:'vintage',background:'transparent',size:'1024x1536',width:15,height:18});
+                applySettings(p?p.concept.settings:{style:rememberedStyle(),styles:rememberedStyles(),treatment:'vintage',background:'transparent',transparency:'print',size:'1024x1536',width:15,height:18});
                 el('sbs-fs-reviewed').checked=!!g&&read('review:'+g.uuid,'')==='yes';
             }
             var nextBriefKey=briefKey();if(briefLoaded!==nextBriefKey){briefLoaded=nextBriefKey;el('sbs-fs-brief').value=loadBrief(nextBriefKey,designBrief(p,g));el('sbs-fs-brief-status').textContent='This brief belongs to the selected image branch.';}
@@ -128,13 +167,18 @@
             if(g&&el('sbs-fs-image').getAttribute('src')!==g.asset_url)el('sbs-fs-image').src=g.asset_url;
             if(!g){el('sbs-fs-image').removeAttribute('src');el('sbs-fs-image-info').textContent='';}
             var path=g?branch(gs,g.uuid):[];
-            el('sbs-fs-conversation').innerHTML=path.map(function(turn,index){return '<li><strong>Instruction '+(index+1)+(turn.action==='upscale'?' · upscale':'')+'</strong><p>'+esc(turn.freestyle_instruction||(turn.action==='upscale'?'AI upscale '+turn.quality:'Initial design'))+'</p></li>';}).join('')||'<li>Describe your first idea below.</li>';
+            var original=importedSource(),allowed=read('allow-edit:'+active,'no')==='yes';el('sbs-fs-edit-lock').hidden=!original;el('sbs-fs-allow-edit').checked=allowed;if(original){el('sbs-fs-original').href=original.asset_url;}
+            var refs=referenceSelection();el('sbs-fs-references').innerHTML=referenceAssets().map(function(a){return '<label class="sbs-fs-reference"><input type="checkbox" data-fs-ref="'+esc(a.uuid)+'"'+(refs.includes(a.uuid)?' checked':'')+'><img src="'+esc(a.url)+'" alt=""><span>'+esc(a.label||a.filename)+'</span></label>';}).join('');
+            el('sbs-fs-references').querySelectorAll('[data-fs-ref]').forEach(function(box){box.disabled=running;box.addEventListener('change',function(){var values=Array.from(el('sbs-fs-references').querySelectorAll('input:checked')).map(function(x){return x.getAttribute('data-fs-ref');});if(values.length>6){box.checked=false;ctx.showMessage('Select up to six references.',true);return;}referenceChoices=values;save('references:'+active,JSON.stringify(values));});});
+            el('sbs-fs-upload').disabled=running;el('sbs-fs-remove-background').disabled=running||!g;
+            el('sbs-fs-background-note').textContent=el('sbs-fs-background').value==='opaque'?'Background: opaque. A solid or scenic background becomes part of the image.':el('sbs-fs-background').value==='transparent-soft'?'Background: transparent with soft edges or effects. Check partial transparency before printing.':el('sbs-fs-background').value==='transparent'?'Background: transparent cutout. Inspect the natural edges.':'Background: transparent, solid print colour. Empty areas show the shirt; artwork colours should stay solid.';
+            el('sbs-fs-conversation').innerHTML=path.map(function(turn,index){return '<li><strong>Instruction '+(index+1)+(turn.action==='upscale'?' · upscale':'')+'</strong><p>'+esc(turn.freestyle_instruction||(turn.action==='upscale'?'AI upscale '+turn.quality:turn.action==='upload'?'Uploaded original — unchanged':turn.action==='background_remove'?'Flat background removed into a separate copy':'Initial design'))+'</p></li>';}).join('')||'<li>Describe your first idea below.</li>';
             el('sbs-fs-undo').disabled=running||!g||!gs.some(function(x){return x.id===g.parent_id;});el('sbs-fs-redo').disabled=running||!(redo[active]||[]).length;
             var rows=jobRows().sort(function(a,b){return a.id-b.id;}),activeJobs=rows.filter(function(j){return !['completed','failed','blocked','cancelled'].includes(j.status);});
             if(!activeJobs.length)activeJobs=rows.slice(-1);
-            var statusMarkup=(pending?'<p role="status">'+(savingBrief?'Saving design brief…':'Submitting your instruction…')+'</p><progress max="100" aria-label="'+(savingBrief?'Saving design brief':'Submitting instruction')+'"></progress>':'')+activeJobs.map(function(j){var done=j.status==='completed', live=!['completed','failed','blocked','cancelled'].includes(j.status);var status=done?'Completed — 100%':j.status==='running'?'Generating — provider does not supply a measured percentage':j.status==='submitted'||j.status==='queued'?'Queued — waiting for provider':j.status;return '<p role="status">'+esc(status)+'</p>'+(live||done?'<progress max="100"'+(done?' value="100"':'')+' aria-label="'+esc(status)+'"></progress>':'')+(j.poll_error?'<p>Connection interrupted; retrying.</p>':'')+(j.error&&j.error.message?'<p>'+esc(j.error.message)+'</p>':'')+(j.error&&j.error.moderation_details?'<details><summary>Safety check details</summary><p>Stage: '+esc(j.error.moderation_details.moderation_stage||'unknown')+'</p><p>Provider categories: '+esc((j.error.moderation_details.categories||[]).join(', ')||'Not supplied')+'</p><p>These are broad provider labels, not a judgement about your intent.</p></details>':'')+(j.status==='failed'&&j.provider==='openai'&&!(j.error&&j.error.diagnostics_version===2)?'<button type="button" class="sbs-button" data-fs-explain="'+esc(j.uuid)+'">Show provider failure details</button>':'')+(['failed','blocked'].includes(j.status)&&j.payload&&j.payload.freestyle_instruction?'<p><strong>Unapplied instruction:</strong> '+esc(j.payload.freestyle_instruction)+'</p><button type="button" class="sbs-button" data-fs-restore="'+esc(j.uuid)+'">Restore failed instruction</button>':'')+(['failed','blocked'].includes(j.status)?'<button type="button" class="sbs-button" data-fs-support="'+esc(j.uuid)+'">Prepare support review details</button>':'')+(live?'<button type="button" class="sbs-button" data-fs-cancel="'+esc(j.uuid)+'">Cancel generation</button>':'');}).join('');
+            var statusMarkup=(pending?'<p role="status">'+(savingBrief?'Saving design brief…':fileOperation||'Submitting your instruction…')+'</p><progress max="100" aria-label="'+(savingBrief?'Saving design brief':fileOperation||'Submitting instruction')+'"></progress>':'')+activeJobs.map(function(j){var done=j.status==='completed', live=!['completed','failed','blocked','cancelled'].includes(j.status);var status=done?'Completed — 100%':j.status==='running'?'Generating — provider does not supply a measured percentage':j.status==='submitted'||j.status==='queued'?'Queued — waiting for provider':j.status;return '<p role="status">'+esc(status)+'</p>'+(live||done?'<progress max="100"'+(done?' value="100"':'')+' aria-label="'+esc(status)+'"></progress>':'')+(j.poll_error?'<p>Connection interrupted; retrying.</p>':'')+(j.error&&j.error.message?'<p>'+esc(j.error.message)+'</p>':'')+(j.error&&j.error.moderation_details?'<details><summary>Safety check details</summary><p>Stage: '+esc(j.error.moderation_details.moderation_stage||'unknown')+'</p><p>Provider categories: '+esc((j.error.moderation_details.categories||[]).join(', ')||'Not supplied')+'</p><p>These are broad provider labels, not a judgement about your intent.</p></details>':'')+(j.status==='failed'&&j.provider==='openai'&&!(j.error&&j.error.diagnostics_version===2)?'<button type="button" class="sbs-button" data-fs-explain="'+esc(j.uuid)+'">Show provider failure details</button>':'')+(['failed','blocked'].includes(j.status)&&j.payload&&j.payload.freestyle_instruction?'<p><strong>Unapplied instruction:</strong> '+esc(j.payload.freestyle_instruction)+'</p><button type="button" class="sbs-button" data-fs-restore="'+esc(j.uuid)+'">Restore failed instruction</button>':'')+(['failed','blocked'].includes(j.status)?'<button type="button" class="sbs-button" data-fs-support="'+esc(j.uuid)+'">Prepare support review details</button>':'')+(live?'<button type="button" class="sbs-button" data-fs-cancel="'+esc(j.uuid)+'">Cancel generation</button>':'');}).join('');
             ['sbs-fs-progress','sbs-fs-submit-status'].forEach(function(id){el(id).innerHTML=statusMarkup;el(id).querySelectorAll('[data-fs-restore]').forEach(function(b){b.addEventListener('click',function(){restoreInstruction(b.getAttribute('data-fs-restore'));});});el(id).querySelectorAll('[data-fs-support]').forEach(function(b){b.addEventListener('click',function(){showSupport(b.getAttribute('data-fs-support'));});});el(id).querySelectorAll('[data-fs-explain]').forEach(function(b){b.addEventListener('click',function(){b.disabled=true;ctx.api('jobs/'+b.getAttribute('data-fs-explain')+'?explain=1').then(function(j){onJob(j);render();}).catch(function(error){b.disabled=false;ctx.handleError(error);});});});el(id).querySelectorAll('[data-fs-cancel]').forEach(function(b){b.addEventListener('click',function(){ctx.api('jobs/'+b.getAttribute('data-fs-cancel'),{method:'DELETE'}).then(function(j){onJob(j);render();}).catch(ctx.handleError);});});});
-            el('sbs-fs-submit').disabled=running;el('sbs-fs-submit').textContent=g?'Apply next instruction to selected image':'Create one image';
+            el('sbs-fs-submit').disabled=running||!!(original&&!allowed);el('sbs-fs-submit').textContent=g?'Apply next instruction to selected image':'Create one image';
             ['sbs-fs-upscale-2','sbs-fs-upscale-4'].forEach(function(id){el(id).disabled=running||!g||!(ctx.state.providers&&ctx.state.providers.replicate);});
             el('sbs-fs-promote').disabled=running||!g||!el('sbs-fs-reviewed').checked;
             el('sbs-fs-character').disabled=pending;el('sbs-fs-session').disabled=pending;el('sbs-fs-new').disabled=pending;
@@ -144,13 +188,13 @@
             stage('a',true,(p?p.concept.character_uuid:choice)?'Character selected':'New composition');stage('b',!!g,g?'Image ready':'Waiting for first image');stage('c',!!g&&!running&&!failedTurn&&!el('sbs-fs-instruction').value.trim(),savingBrief?'Saving design brief':running?'Generating':failedTurn?'Instruction not applied':el('sbs-fs-instruction').value.trim()?'Draft ready to submit':g?'Instructions applied':'Ready for your idea');stage('d',!!(p&&g&&p.concept.merch_ready&&p.concept.visual_review_generation_uuid===g.uuid),p&&g&&p.concept.merch_ready&&p.concept.visual_review_generation_uuid===g.uuid?'Sent to print workflow':'Review and finish');
         }
         function submit(event) {
-            event.preventDefault();if(busy())return;if(stylesPending){ctx.showMessage('Press Apply styles before generating.',true);el('sbs-fs-style-apply').focus();return;}
+            event.preventDefault();if(busy())return;if(importedSource()&&read('allow-edit:'+active,'no')!=='yes'){ctx.showMessage('Uploaded artwork is protected. Tick Allow AI editing only if you want a separate edited copy.',true);return;}if(stylesPending){ctx.showMessage('Press Apply styles before generating.',true);el('sbs-fs-style-apply').focus();return;}
             var instruction=el('sbs-fs-instruction').value.trim(),g=selected(),s=settings(),brief=el('sbs-fs-brief').value;
             if(instruction.length<3){ctx.showMessage('Describe your idea or next change first.',true);el('sbs-fs-instruction').focus();return;}
             if(!Number.isFinite(s.width)||!Number.isFinite(s.height)||s.width<1||s.height<1||s.width>30||s.height>30){ctx.showMessage('Choose print dimensions between 1 and 30 inches.',true);return;}
             if(!g&&!brief.trim()){brief=instruction;el('sbs-fs-brief').value=brief;}
             save('last-style',s.style);save('last-styles',JSON.stringify(s.styles));preserveInputs();pending=true;render();
-            ctx.post('freestyle',{project_uuid:active,parent_uuid:g?g.uuid:'',pack_uuid:el('sbs-fs-character').value,title:el('sbs-fs-title').value,instruction:instruction,design_brief:brief,settings:s}).then(function(data){ctx.replaceProject(data.project);active=data.project.uuid;briefLoaded=briefKey();storeBrief();save('brief:new:initial','null');delete briefDrafts['new:initial'];save('session',active);loaded=active;el('sbs-fs-title').value=data.project.title;save('title:'+active,data.project.title);save('title:new','');if(el('sbs-fs-instruction').value.trim()===instruction)el('sbs-fs-instruction').value='';save(currentDraftKey(),el('sbs-fs-instruction').value);save('draft:new','');ctx.trackJobs(data.jobs||[]);}).catch(ctx.handleError).finally(function(){pending=false;render();});
+            ctx.post('freestyle',{project_uuid:active,parent_uuid:g?g.uuid:'',pack_uuid:el('sbs-fs-character').value,title:el('sbs-fs-title').value,instruction:instruction,design_brief:brief,settings:s,reference_uuids:referenceSelection(),finishing:!!importedSource()}).then(function(data){ctx.replaceProject(data.project);active=data.project.uuid;briefLoaded=briefKey();storeBrief();save('brief:new:initial','null');delete briefDrafts['new:initial'];save('session',active);loaded=active;el('sbs-fs-title').value=data.project.title;save('title:'+active,data.project.title);save('title:new','');if(el('sbs-fs-instruction').value.trim()===instruction)el('sbs-fs-instruction').value='';save(currentDraftKey(),el('sbs-fs-instruction').value);save('draft:new','');ctx.trackJobs(data.jobs||[]);}).catch(ctx.handleError).finally(function(){pending=false;render();});
         }
         function upscale(scale) {
             var g=selected();if(!g||busy())return;pending=true;render();ctx.post('jobs/upscale',{generation_uuid:g.uuid,scale:scale}).then(function(data){ctx.trackJobs(data.jobs||[data]);}).catch(function(error){ctx.handleError(error);return ctx.api('projects/'+active).then(function(p){ctx.replaceProject(p);}).catch(ctx.handleError);}).finally(function(){pending=false;render();});
@@ -166,6 +210,10 @@
             if(window.navigator&&window.navigator.clipboard&&window.navigator.clipboard.writeText){window.navigator.clipboard.writeText(text).then(function(){ctx.showMessage('Support details copied. Review them before sharing with OpenAI support.');}).catch(function(){el('sbs-fs-support-text').focus();el('sbs-fs-support-text').select();ctx.showMessage('Select Copy from your keyboard or browser menu.');});}
             else{el('sbs-fs-support-text').focus();el('sbs-fs-support-text').select();ctx.showMessage('Select Copy from your keyboard or browser menu.');}
         });
+        el('sbs-fs-upload-form').addEventListener('submit',function(event){event.preventDefault();uploadFile(el('sbs-fs-upload-file').files[0],el('sbs-fs-upload-mode').value);});
+        el('sbs-fs-remove-background').addEventListener('click',removeFlatBackground);
+        el('sbs-fs-allow-edit').addEventListener('change',function(){save('allow-edit:'+active,this.checked?'yes':'no');render();});
+        el('sbs-fs-background').addEventListener('change',render);
         el('sbs-fs-form').addEventListener('submit',submit);
         el('sbs-fs-instruction').addEventListener('input',function(){save(currentDraftKey(),this.value);var g=selected(),running=busy(),last=jobRows().sort(function(a,b){return a.id-b.id;}).slice(-1)[0],failed=last&&['failed','blocked'].includes(last.status)&&last.payload&&last.payload.purpose==='freestyle'&&Number(last.payload.parent_id||0)===Number(g&&g.id||0);stage('c',!!g&&!running&&!failed&&!this.value.trim(),savingBrief?'Saving design brief':running?'Generating':this.value.trim()?'Draft ready to submit':failed?'Instruction not applied':g?'Instructions applied':'Ready for your idea');});
         el('sbs-fs-title').addEventListener('input',function(){save('title:'+(active||'new'),this.value);});
@@ -188,5 +236,5 @@
         el('sbs-fs-promote').addEventListener('click',function(){var g=selected();if(!g||busy()||!el('sbs-fs-reviewed').checked)return;pending=true;render();ctx.post('freestyle/promote',{project_uuid:active,generation_uuid:g.uuid,settings:settings(),reviewed:true}).then(function(p){ctx.replaceProject(p);return ctx.loadBootstrap().then(function(){ctx.openProject(p.uuid,g.uuid);ctx.showMessage('Selected design is in Creations. Upscale if needed, then use Merch Canvas and run print preflight.');});}).catch(ctx.handleError).finally(function(){pending=false;render();});});
         render();return {render:render,isJob:isJob,onJob:onJob,restoreInstruction:restoreInstruction,showSupport:showSupport,open:function(uuid){preserveInputs();active=uuid;loaded='';save('session',uuid);render();}};
     }
-    window.SBSFreestyle={init:init,recentSix:recentSix,branch:branch,designBrief:designBrief,supportReport:supportReport};
+    window.SBSFreestyle={init:init,recentSix:recentSix,branch:branch,designBrief:designBrief,supportReport:supportReport,eraseConnectedBackground:eraseConnectedBackground};
 })();

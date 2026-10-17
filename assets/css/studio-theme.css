@@ -279,3 +279,23 @@ body#sbs-studio-page #sbs-fs-style-choices .sbs-fs-style-choice { display:flex; 
 body#sbs-studio-page #sbs-fs-style-choices input[type="checkbox"] { flex:0 0 26px; width:26px; height:26px; accent-color:var(--sbs-gold); }
 body#sbs-studio-page .sbs-fs-style-picker fieldset { min-width:0; margin:8px 0 14px; border:1px solid var(--sbs-orange); }
 body#sbs-studio-page #sbs-fs-styles-applied { overflow-wrap:anywhere; color:var(--sbs-text); }
+
+/* Clear action affordances throughout Studio; image/thumbnail/nav controls retain their shapes. */
+body#sbs-studio-page .sbs-button { border-radius:999px !important; }
+body#sbs-studio-page .sbs-button:not(:disabled) { color:#ffc45e !important; }
+/* Read-only history and reports use a muted panel shade, distinct from editable navy fields. */
+body#sbs-studio-page .sbs-fs-conversation :is(#sbs-fs-conversation li, textarea[readonly], .sbs-locked-text, #sbs-fs-submit-status:not(:empty)) { background:#213049; color:var(--sbs-text); }
+body#sbs-studio-page .sbs-fs-conversation :is(#sbs-fs-conversation, textarea, .sbs-section-progress) { overflow-y:auto; scrollbar-color:#ee6b2f #213049; }
+body#sbs-studio-page .sbs-fs-conversation :is(#sbs-fs-conversation, textarea, .sbs-section-progress)::-webkit-scrollbar { width:5px; }
+body#sbs-studio-page .sbs-fs-conversation :is(#sbs-fs-conversation, textarea, .sbs-section-progress)::-webkit-scrollbar-thumb { background:#ee6b2f; border-radius:5px; }
+body#sbs-studio-page .sbs-fs-conversation :is(#sbs-fs-conversation, textarea, .sbs-section-progress)::-webkit-scrollbar-track { background:#213049; }
+body#sbs-studio-page #sbs-fs-submit-status { max-height:280px; padding:12px; }
+body#sbs-studio-page .sbs-fs-options { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) minmax(0,.8fr); gap:10px; align-items:start; }
+body#sbs-studio-page .sbs-fs-options label { min-width:0; font-size:17px; }
+body#sbs-studio-page .sbs-fs-options select { width:100%; min-width:0; padding:10px 7px; font-size:16px; }
+body#sbs-studio-page .sbs-fs-files { padding:16px; margin:18px 0; border:1px solid var(--sbs-orange); border-radius:12px; }
+body#sbs-studio-page #sbs-fs-references { display:flex; flex-wrap:wrap; gap:12px; }
+body#sbs-studio-page .sbs-fs-reference { display:flex; align-items:center; gap:10px; min-height:60px; max-width:100%; padding:10px; border:1px solid var(--sbs-orange); border-radius:8px; overflow-wrap:anywhere; }
+body#sbs-studio-page .sbs-fs-reference img { width:70px; height:70px; object-fit:contain; background:var(--sbs-field); }
+body#sbs-studio-page .sbs-locked-text { padding:14px; border:1px solid var(--sbs-orange); border-radius:8px; }
+body#sbs-studio-page #sbs-fs-original { display:inline-block; margin:12px 0; text-decoration:none; }

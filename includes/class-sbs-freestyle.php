@@ -6,7 +6,7 @@ final class SBS_Freestyle
 {
     public static function register_routes()
     {
-        foreach (array('' => 'turn', '/select' => 'select', '/promote' => 'promote', '/brief' => 'save_brief') as $suffix => $callback) {
+        foreach (array('' => 'turn', '/select' => 'select', '/promote' => 'promote', '/brief' => 'save_brief', '/upload' => 'upload') as $suffix => $callback) {
             register_rest_route(SBS_REST::NS, '/freestyle' . $suffix, array('methods' => 'POST', 'callback' => array(__CLASS__, $callback), 'permission_callback' => array('SBS_REST', 'permission')));
         }
     }
@@ -56,7 +56,7 @@ final class SBS_Freestyle
             return new WP_Error('invalid_freestyle_print_size', 'Print width and height must be between 1 and 30 inches.', array('status' => 400));
         }
         $background = $input['background'] ?? 'transparent';
-        $transparency = $input['transparency'] ?? 'standard';
+        $transparency = $input['transparency'] ?? (isset($input['background']) ? 'standard' : 'print');
         if (!in_array($background, array('transparent', 'opaque'), true) || !in_array($transparency, array('standard', 'print', 'soft'), true)) {
             return new WP_Error('invalid_freestyle_background', 'Choose an available background and transparency treatment.', array('status'=>400));
         }
@@ -138,6 +138,68 @@ final class SBS_Freestyle
         return rest_ensure_response(self::project($project['uuid']));
     }
 
+    /** Validate project-scoped user references; never accept another experiment's assets. */
+    public static function references($project, $uuids)
+    {
+        if ($uuids === null) { $uuids = array(); }
+        if (!is_array($uuids) || count($uuids)>6) { return new WP_Error('invalid_freestyle_references', 'Select up to six image references.', array('status'=>400)); }
+        $assets = array();
+        foreach ($uuids as $uuid) {
+            if (!is_string($uuid)) { return new WP_Error('invalid_freestyle_reference', 'Invalid reference.', array('status'=>400)); }
+            $asset = SBS_Storage::asset_by_uuid($uuid);
+            if (!$asset || $asset['owner_type']!=='project' || (int)$asset['owner_id']!==(int)$project['id'] || $asset['role']!=='freestyle_reference' || !in_array($asset['mime'], array('image/png','image/jpeg','image/webp'), true)) {
+                return new WP_Error('invalid_freestyle_reference', 'Choose references uploaded to this experiment.', array('status'=>400));
+            }
+            $assets[$uuid] = $asset;
+        }
+        return array_values($assets);
+    }
+
+    public static function upload($request)
+    {
+        global $wpdb;
+        $files = $request->get_file_params(); $file = $files['file'] ?? array();
+        $mode = $request->get_param('mode') ?: 'reference';
+        if (!in_array($mode, array('reference','artwork','background_removed'), true)) { return new WP_Error('invalid_freestyle_upload_mode', 'Choose reference or existing artwork.', array('status'=>400)); }
+        $image = !empty($file['tmp_name']) ? @getimagesize($file['tmp_name']) : false;
+        if (!$image || !in_array($image['mime'] ?? '', array('image/png','image/jpeg','image/webp'), true) || !empty($file['error']) || empty($file['size']) || $file['size']>20*1024*1024 || $image[0]*$image[1]>40000000) {
+            return new WP_Error('invalid_freestyle_upload', 'Choose a PNG, JPEG or WebP image up to 20 MB and 40 million pixels. Large uploads may also be limited by the server.', array('status'=>400));
+        }
+        $settings = self::settings(json_decode((string)$request->get_param('settings'), true));
+        if (is_wp_error($settings)) { return $settings; }
+        $uuid = sanitize_text_field($request->get_param('project_uuid'));
+        $parent_uuid = sanitize_text_field($request->get_param('parent_uuid'));
+        $project = $uuid ? self::project($uuid) : null;
+        if (is_wp_error($project)) { return $project; }
+        if ($project) { foreach ($project['jobs'] as $job) { if (!in_array($job['status'],array('completed','failed','blocked','cancelled'),true)) { return new WP_Error('freestyle_busy','Wait for this experiment to finish before uploading.',array('status'=>409)); } } }
+        $parent = null;
+        if ($parent_uuid && $project) { foreach ($project['generations'] as $g) { if ($g['uuid']===$parent_uuid && !empty($g['asset_url'])) { $parent=$g; break; } } }
+        if (($parent_uuid && !$parent) || ($mode==='background_removed' && (!$parent || $image['mime']!=='image/png'))) { return new WP_Error('invalid_freestyle_parent', 'Choose a source image in this experiment for the PNG copy.', array('status'=>400)); }
+        if (!$project) {
+            $pack_uuid = sanitize_text_field($request->get_param('pack_uuid'));
+            if (!$pack_uuid) { $pack_uuid=self::neutral_pack(); }
+            if (is_wp_error($pack_uuid)) { return $pack_uuid; }
+            $create = new WP_REST_Request('POST');
+            $create->set_param('pack_uuid',$pack_uuid);
+            $create->set_param('title',sanitize_text_field($request->get_param('title')) ?: sanitize_text_field($file['name']));
+            $create->set_param('concept',array('type'=>'freestyle','original_brief'=>'','character_uuid'=>sanitize_text_field($request->get_param('pack_uuid')),'settings'=>$settings,'merch_ready'=>false));
+            $project=self::data(SBS_REST::create_project($create)); if (is_wp_error($project)) { return $project; }
+        }
+        $asset=SBS_Storage::store_upload($file,'project',(int)$project['id'],$mode==='reference'?'freestyle_reference':'freestyle_original',sanitize_text_field($request->get_param('label')) ?: sanitize_text_field($file['name']));
+        if (is_wp_error($asset)) { return $asset; }
+        $generation_uuid='';
+        if ($mode!=='reference') {
+            $generation_uuid=wp_generate_uuid4();
+            $result=$wpdb->insert(SBS_DB::table('generations'),array('uuid'=>$generation_uuid,'project_id'=>(int)$project['id'],'parent_id'=>$parent?(int)$parent['id']:null,'job_id'=>null,'action'=>$mode==='background_removed'?'background_remove':'upload','provider'=>'local','model'=>'original-file','prompt'=>$mode==='background_removed'?'Removed connected flat-colour background into a separate PNG copy.':'Uploaded artwork - original file unchanged.','revised_prompt'=>'','refs_json'=>'[]','output_asset_id'=>(int)$asset['id'],'quality'=>'original','size'=>$image[0].'x'.$image[1],'usage_json'=>'{}','cost_estimate'=>0,'created_at'=>current_time('mysql',true)));
+            if ($result===false) { return new WP_Error('freestyle_import_failed','The file was saved, but the artwork version could not be registered. Do not upload again until the administrator checks the saved asset.',array('status'=>500)); }
+            $generation_id=(int)$wpdb->insert_id;
+            $concept=$project['concept'];$concept['active_generation_uuid']=$generation_uuid;$concept['settings']=$settings;$concept['merch_ready']=false;
+            $concept['local_versions'][$generation_uuid]=array('settings'=>$settings,'brief'=>$parent?self::brief_for($project,$parent_uuid):'');
+            $wpdb->update(SBS_DB::table('projects'),array('concept_json'=>wp_json_encode($concept),'current_generation_id'=>$generation_id,'updated_at'=>current_time('mysql',true)),array('id'=>(int)$project['id']));
+        }
+        return rest_ensure_response(array('project'=>self::project($project['uuid']),'asset'=>$asset,'generation_uuid'=>$generation_uuid));
+    }
+
     public static function turn($request)
     {
         global $wpdb;
@@ -180,6 +242,8 @@ final class SBS_Freestyle
         if ($parent_uuid && !array_filter($project['generations'], function ($generation) use ($parent_uuid) { return $generation['uuid'] === $parent_uuid && !empty($generation['asset_url']); })) {
             return new WP_Error('invalid_freestyle_parent', 'Choose a completed image from this experiment.', array('status' => 400));
         }
+        $user_references = self::references($project, $request->get_param('reference_uuids'));
+        if (is_wp_error($user_references)) { return $user_references; }
         $concept = $project['concept'];
         $concept['settings'] = $settings;
         $brief = $brief_input !== null ? $brief_input : self::brief_for($project, $parent_uuid);
@@ -191,6 +255,8 @@ final class SBS_Freestyle
         $generation->set_param('prompt', $instruction);
         $generation->set_param('freestyle_settings', $settings);
         $generation->set_param('freestyle_brief', $brief);
+        $generation->set_param('freestyle_reference_uuids', array_column($user_references, 'uuid'));
+        $generation->set_param('freestyle_finishing', (bool)$request->get_param('finishing'));
         $generation->set_param('purpose', 'freestyle');
         $generation->set_param('count', 1);
         $generation->set_param('quality', 'high');

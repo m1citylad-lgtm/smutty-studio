@@ -997,7 +997,13 @@ final class SBS_REST
         $assets = SBS_DB::table('assets');
         $reference_ids = $wpdb->get_col($wpdb->prepare("SELECT id FROM {$assets} WHERE owner_type = 'pack_version' AND owner_id = %d AND role <> 'logo' ORDER BY CASE role WHEN 'face' THEN 1 WHEN 'full_body' THEN 2 WHEN 'master_reference' THEN 3 WHEN 'generated_reference' THEN 4 WHEN 'outfit' THEN 5 WHEN 'style' THEN 6 ELSE 9 END, id ASC LIMIT 8", (int) $version['id']));
         if ($freestyle_unbound) { $reference_ids = array(); }
-        $asset_ids = array_merge($asset_ids, array_map('intval', $reference_ids));
+        $user_references = $freestyle ? SBS_Freestyle::references($project, $request->get_param('freestyle_reference_uuids')) : array();
+        if (is_wp_error($user_references)) { return $user_references; }
+        if ($user_references) {
+            $prompt .= "\nADDITIONAL USER REFERENCES: These supporting images guide only the details requested, such as clothing fit, pose or finish. Do not replace the selected source image with a reference or copy unrelated reference details. Labels: " . implode('; ', array_column($user_references,'label'));
+        }
+        if ($freestyle && $request->get_param('freestyle_finishing')) { $prompt .= "\nFINISHING EXISTING ARTWORK: Preserve the original composition, character, clothing, lettering, colours and style. Apply only the latest explicit cleanup request. Style and treatment selectors do not authorise restyling this source. Return a separate review candidate; exact pixel preservation cannot be guaranteed by generation."; }
+        $asset_ids = array_values(array_unique(array_merge($asset_ids, array_map('intval',array_column($user_references,'id')), array_map('intval', $reference_ids))));
         $count = $parent ? 1 : max(1, min(4, (int) ($request->get_param('count') ?: 4)));
         $quality = sanitize_key($request->get_param('quality') ?: 'medium');
         $size = sanitize_text_field($request->get_param('size') ?: '1024x1024');
@@ -1024,6 +1030,7 @@ final class SBS_REST
                 'freestyle_instruction' => $freestyle ? $scene : '',
                 'freestyle_settings' => $freestyle_settings,
                 'freestyle_brief' => $freestyle ? $freestyle_brief : null,
+                'freestyle_reference_uuids' => array_column($user_references,'uuid'),
             ));
             if (is_wp_error($job)) {
                 return $job;
@@ -1056,12 +1063,14 @@ final class SBS_REST
         $scale = in_array((int) $request->get_param('scale'), array(2, 4), true) ? (int) $request->get_param('scale') : 2;
         $source_project = self::project_by_uuid($wpdb->get_var($wpdb->prepare('SELECT uuid FROM ' . SBS_DB::table('projects') . ' WHERE id = %d', (int) $generation['project_id'])));
         $source_brief = $source_project && ($source_project['concept']['type'] ?? '') === 'freestyle' ? SBS_Freestyle::brief_for($source_project, $generation['uuid']) : null;
+        $source_settings=null;foreach (($source_project['generations'] ?? array()) as $source_image) { if ($source_image['uuid']===$generation['uuid']) { $source_settings=$source_image['freestyle_settings'] ?? null; break; } }
         $job = self::create_provider_job('upscale', 'replicate', array(
             'generation_id' => (int) $generation['id'],
             'project_id' => (int) $generation['project_id'],
             'asset_id' => (int) $generation['output_asset_id'],
             'scale' => $scale,
             'freestyle_brief' => $source_brief,
+            'freestyle_settings' => $source_settings,
         ));
         if (is_wp_error($job)) {
             return $job;
@@ -1491,6 +1500,7 @@ final class SBS_REST
         $assets_table = SBS_DB::table('assets');
         $jobs_table = SBS_DB::table('jobs');
         $generations = $wpdb->get_results($wpdb->prepare("SELECT g.*, a.uuid AS asset_uuid, a.filename AS asset_filename, j.payload_json AS job_payload_json FROM {$generations_table} g LEFT JOIN {$assets_table} a ON a.id = g.output_asset_id LEFT JOIN {$jobs_table} j ON j.id = g.job_id WHERE g.project_id = %d ORDER BY g.created_at DESC, g.id DESC", (int) $project['id']), ARRAY_A);
+        $local_concept = json_decode($project['concept_json'], true) ?: array();
         foreach ($generations as &$generation) {
             $generation['id'] = (int) $generation['id'];
             $generation['parent_id'] = $generation['parent_id'] ? (int) $generation['parent_id'] : null;
@@ -1500,8 +1510,9 @@ final class SBS_REST
             $job_payload = !empty($generation['job_payload_json']) ? json_decode($generation['job_payload_json'], true) : array();
             $generation['purpose'] = is_array($job_payload) && !empty($job_payload['purpose']) ? sanitize_key($job_payload['purpose']) : 'scene';
             $generation['freestyle_instruction'] = $job_payload['freestyle_instruction'] ?? '';
-            $generation['freestyle_settings'] = $job_payload['freestyle_settings'] ?? null;
-            $generation['freestyle_brief'] = $job_payload['freestyle_brief'] ?? null;
+            $generation['freestyle_settings'] = $job_payload['freestyle_settings'] ?? ($local_concept['local_versions'][$generation['uuid']]['settings'] ?? null);
+            $generation['freestyle_brief'] = $job_payload['freestyle_brief'] ?? ($local_concept['local_versions'][$generation['uuid']]['brief'] ?? null);
+            $generation['freestyle_reference_uuids'] = $job_payload['freestyle_reference_uuids'] ?? array();
             unset($generation['usage_json'], $generation['job_payload_json']);
         }
         unset($generation);
