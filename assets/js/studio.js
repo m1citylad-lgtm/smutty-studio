@@ -880,7 +880,7 @@
         document.querySelectorAll('[data-tool]').forEach(function (button) { var tool = button.getAttribute('data-tool'); if (Object.prototype.hasOwnProperty.call(validity, tool)) { button.disabled = !validity[tool]; } });
     }
     function updatePrintReadout() { var width = Number(el('sbs-print-width').value || 0), height = Number(el('sbs-print-height').value || 0), dpi = Number(el('sbs-print-dpi').value || 0); el('sbs-print-readout').textContent = Math.round(width * dpi) + ' × ' + Math.round(height * dpi) + ' px target'; }
-    function canvasDocument() { return { schema_version: 1, character: state.selectedPack ? { uuid: state.selectedPack.uuid, name: state.selectedPack.name, version: state.selectedPack.current_version } : null, project_uuid: state.activeProject ? state.activeProject.uuid : '', artboard: { width: state.canvas.width, height: state.canvas.height, transparent: el('sbs-transparent').checked }, print: { width_inches: Number(el('sbs-print-width').value), height_inches: Number(el('sbs-print-height').value), dpi: Number(el('sbs-print-dpi').value) }, fabric: state.canvas.toJSON(['name', 'sbsType', 'excludeFromExport']) }; }
+    function canvasDocument() { return { schema_version: 1, character: state.selectedPack ? { uuid: state.selectedPack.uuid, name: state.selectedPack.name, version: state.selectedPack.current_version } : null, project_uuid: state.activeProject ? state.activeProject.uuid : '', artboard: { width: state.canvas.width, height: state.canvas.height, transparent: el('sbs-transparent').checked }, print: { width_inches: Number(el('sbs-print-width').value), height_inches: Number(el('sbs-print-height').value), dpi: Number(el('sbs-print-dpi').value), method: el('sbs-print-method').value, visual_treatment: el('sbs-visual-treatment').value }, fabric: state.canvas.toJSON(['name', 'sbsType', 'excludeFromExport']) }; }
     function saveCanvas() {
         if (!state.activeProject) { showMessage('Choose a project first.', true); return; }
         var guides = state.canvas.getObjects().filter(function (obj) { return obj.sbsType === 'guide'; }), visible = guides.map(function (obj) { return obj.visible; }); guides.forEach(function (obj) { obj.visible = false; }); state.canvas.renderAll();
@@ -889,7 +889,7 @@
     }
     function loadLatestCanvas() {
         if (!state.activeProject || !state.canvas) { return; }
-        api('canvases?project_uuid=' + encodeURIComponent(state.activeProject.uuid)).then(function (rows) { if (!rows.length) { return; } var canvas = rows[0]; state.canvasUuid = canvas.uuid; state.historyLock = true; state.canvas.loadFromJSON(canvas.document.fabric, function () { state.historyLock = false; state.canvas.renderAll(); state.history = [JSON.stringify(canvas.document.fabric)]; renderLayers(); }); if (canvas.document.print) { el('sbs-print-width').value = canvas.document.print.width_inches; el('sbs-print-height').value = canvas.document.print.height_inches; el('sbs-print-dpi').value = canvas.document.print.dpi; updatePrintReadout(); } }).catch(handleError);
+        api('canvases?project_uuid=' + encodeURIComponent(state.activeProject.uuid)).then(function (rows) { if (!rows.length) { return; } var canvas = rows[0]; state.canvasUuid = canvas.uuid; state.historyLock = true; state.canvas.loadFromJSON(canvas.document.fabric, function () { state.historyLock = false; state.canvas.renderAll(); state.history = [JSON.stringify(canvas.document.fabric)]; renderLayers(); }); if (canvas.document.print) { el('sbs-print-method').value = canvas.document.print.method || 'dtg'; el('sbs-visual-treatment').value = canvas.document.print.visual_treatment || 'vintage-70-20-10'; el('sbs-print-width').value = canvas.document.print.width_inches; el('sbs-print-height').value = canvas.document.print.height_inches; el('sbs-print-dpi').value = canvas.document.print.dpi; updatePrintReadout(); } }).catch(handleError);
     }
     function exportCanvas() {
         ensureCanvas(); var targetW = Number(el('sbs-print-width').value) * Number(el('sbs-print-dpi').value), targetH = Number(el('sbs-print-height').value) * Number(el('sbs-print-dpi').value), multiplier = Math.max(1, Math.min(targetW / state.canvas.width, targetH / state.canvas.height));
@@ -907,6 +907,11 @@
     document.addEventListener('DOMContentLoaded', function () {
         bindLogin(); bindPrimaryTabs(); bindTabs(); bindCharacters(); bindCreate(); bindImageModal(); bindGuide();
         installStudioHelp(); installImageSpecifications();
+        el('sbs-print-method').addEventListener('change',function () {
+            var dtf = this.value === 'dtf';
+            el('sbs-method-advice').textContent = dtf ? 'DTF: inspect stray pixels, cutout edges, fine halftone dots and small isolated details; confirm minimum line and gap widths with your transfer printer.' : 'DTG: check gradients, transparency, garment colour and fine detail; confirm ink and underbase requirements with your garment printer.';
+        });
+
         if (boot.authenticated) { loadBootstrap(); }
     });
 
