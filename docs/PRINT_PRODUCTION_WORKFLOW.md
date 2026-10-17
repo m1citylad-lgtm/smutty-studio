@@ -25,3 +25,12 @@
 - Advanced curved/contour-following logo treatment, separate logo library, 4-background proof generator and automatic vintage treatment recommendations are not implemented.
 - In-browser preflight does not certify the actual exported PNG. Production sign-off requires checking the downloaded file and a physical print sample.
 - Browser multi-download permissions may prevent one or more PNG/report downloads. Verify files individually.
+
+## Approved SmuttyBear signature and logo assets (verified 17 October)
+- 12 transparent signature PNG masters (Plain / Contour / Pill × Black / Copper / Cream / White): Drive ID 1xZ8c-qYT78MWG0bV1K9M5mPNULyUPqlB, ZIP SmuttyBear_Design_Signature_PRINT_Masters.zip. ZIP contents inspected and all 12 names present.
+- Retro wordmark masters: Drive ID 1-STGiDjkbMSte_vBI5RBglVtP5JHiQGh.
+- Main Brand Badge transparent print master: Drive ID 1ei6f0yZOUa2wHvFDi8Hf3ENElvAezhD-.
+- Main character-series logo: Drive ID 1_b2eVSUwSZf1gQclb5bAdOD8R2ecKU1u.
+- Default signature per Global T-shirt Production Guide (updated Oct 14): plain condensed sans-serif smuttybear.com in copper, centred beneath artwork, proportional sizing, no pill. Approved variants can be selected according to contrast and composition. Exact font family, numeric weight, tracking and point size are not documented and must not be invented.
+- The current Studio includes a branding-family choice saved in the canvas document, but it DOES NOT automatically load or substitute the approved PNG master. User must upload the actual master as an Exact logo reference before placement. Do not silently typeset a substitute font or substitute a different asset.
+- The approved logo-free master must be preserved independently; branded output is a derivative. Approved logos should not be generatively warped.
