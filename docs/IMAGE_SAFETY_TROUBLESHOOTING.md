@@ -4,7 +4,16 @@ Recorded 17 October 2026. Incident: Freestyle, “Pole dancing police officer”
 
 ## What happened
 
-The first design completed. A later edit requested: “Make his position more flamboyant but still very masculine.” The selected source remained saved, with only one successful version. The provider's explanatory text reported that its image safety filter blocked the edit. The exact flagged element was not identified in that explanation.
+The first design completed. A later edit requested: “Make his position more flamboyant but still very masculine.” The selected source remained saved, with only one successful version. The provider's explanatory text reported that its image safety filter blocked the edit. A second, deeper inspection in v0.2.35 recovered the structured image-tool error:
+
+| Field | Recorded value |
+| --- | --- |
+| Error code | `moderation_blocked` |
+| Moderation stage | `output` |
+| Public category | `sexual` |
+| Provider support request ID | `wfr_01a14a14f6647097a26a0359f52bf92d` |
+
+The provider therefore identified a sexual-content safety block during generated-output/downstream checks. It did not report an input-stage block. The rejected generated result is not available in Studio, so its exact appearance and triggering visual detail remain unknown. The support request ID is an identifier, not an API credential.
 
 This establishes a provider safety rejection, rather than a Replicate credit, CSS, publishing, or missing-original-image problem. It does **not** establish that the word “flamboyant”, masculinity, sexual orientation, or a particular artist triggered the rejection. Nor does it prove that the artwork violates policy. A false positive is possible, but not proven.
 
@@ -21,9 +30,9 @@ Code inspected: `SBS_Freestyle::turn`, `SBS_Freestyle::compose_prompt`, `SBS_RES
 
 ## Why an initial generation can work and an edit can fail
 
-OpenAI documents checks on prompts and generated images, with optional failure details identifying input or output stage. An edit also supplies an actual image as input. It is a different request from the original text-only generation, and any new generated result is checked too. The initial success therefore does not establish that every later edit will pass. This incident's precise stage/category should only be stated if returned in its saved provider response.
+OpenAI documents checks on prompts and generated images, with optional failure details identifying input or output stage. An edit also supplies an actual image as input. It is a different request from the original text-only generation, and any new generated result is checked too. The initial success therefore does not establish that every later edit will pass. For this incident, the saved provider error explicitly supplies stage `output` and category `sexual`. This points to generated-output/downstream checks; it does not prove that the user's wording or original image is itself prohibited.
 
-Potential explanations include an input-image/context classification, an undesirable generated result blocked on output, or a false positive. These are hypotheses, not diagnosed triggers. No attempt has been made to infer an unpublished classifier threshold, and no repeated generation experiments are needed to inspect the saved response.
+For this incident, an undesirable generated result or an output-stage false positive remain possible explanations. An input-stage block is not the diagnosis returned by the provider. The category is confirmed; an exact trigger and whether the decision was correct are not. No attempt has been made to infer an unpublished classifier threshold, and no repeated generation experiments are needed to inspect the saved response.
 
 ## Application fixes
 
@@ -31,8 +40,8 @@ Potential explanations include an input-image/context classification, an undesir
 | --- | --- | --- |
 | Live in v0.2.34 | Display refusal/explanatory text instead of only “no generated image” | Reveals provider's explanation |
 | Live in v0.2.34 | Keep failed instruction visible; show “Instruction not applied” | Separates failed edits from successful history |
-| v0.2.35 change | Read errors nested inside `image_generation_call` | Preserves stable error code, optional moderation stage/categories and provider response/tool IDs |
-| v0.2.35 change | Show optional structured safety details; allow reinspection of older generic errors | Retrieves the existing response without submitting another image generation |
+| Live in v0.2.35 | Read errors nested inside `image_generation_call` | Preserves stable error code, optional moderation stage/categories and provider response/tool IDs |
+| Live in v0.2.35 | Show optional structured safety details; allow reinspection of older generic errors | Retrieves the existing response without submitting another image generation |
 | Existing protection | Preserve original images and explicit source selection | No overwrite or automatic approval on failure |
 
 The v0.2.35 extractor prefers a valid returned image over error-only output items. It does not invent moderation categories from prose. A missing stage/category remains unknown. The UI escapes provider text. No moderation strictness or provider has been changed.
@@ -47,6 +56,10 @@ The v0.2.35 extractor prefers a valid returned image over error-only output item
 6. **Optional diagnostic precheck.** A standalone moderation assessment can supply additional signals, but cannot predict or override the image generator's own decision or retrospectively prove this failure's trigger. Not implemented or run here.
 
 Adding Replicate credit only enables the separate upscaler. It will not resolve an OpenAI safety rejection. Changing browser, clearing CSS cache, or waiting for deployment is likewise not a remedy for this recorded error.
+
+## Live verification result
+
+The v0.2.35 release workflow and regression checks passed. The published header showed v0.2.35. Inspecting the existing failed job changed its displayed status from generic failed to blocked, and expanding Safety check details showed `Stage: output` and `Provider categories: sexual`. The original single successful version remained selected. No new generation or upscale was submitted, no image was replaced, no moderation setting changed and no provider support message was sent.
 
 ## Verification
 

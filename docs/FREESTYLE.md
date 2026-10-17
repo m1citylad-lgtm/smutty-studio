@@ -75,3 +75,5 @@ Completed OpenAI responses can contain a refusal or explanatory text instead of 
 ## v0.2.35 — structured safety diagnostics
 
 Studio also reads errors nested inside the image-generation tool output, preserving optional input/output stage, public categories and support identifiers. Older generic failures can be inspected again once with this extractor, without resubmission. See [Image safety investigation and recovery](IMAGE_SAFETY_TROUBLESHOOTING.md) for the police-officer incident, evidence limits and proposed improvements.
+
+Live reinspection of the police-officer edit returned the provider's structured `moderation_blocked` error with **output** stage and **sexual** category. This identifies the broad output/downstream classification; it does not identify a specific word or prove a particular visual feature caused the block. No new generation was submitted during this investigation.
