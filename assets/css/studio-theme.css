@@ -299,3 +299,7 @@ body#sbs-studio-page .sbs-fs-reference { display:flex; align-items:center; gap:1
 body#sbs-studio-page .sbs-fs-reference img { width:70px; height:70px; object-fit:contain; background:var(--sbs-field); }
 body#sbs-studio-page .sbs-locked-text { padding:14px; border:1px solid var(--sbs-orange); border-radius:8px; }
 body#sbs-studio-page #sbs-fs-original { display:inline-block; margin:12px 0; text-decoration:none; }
+
+body#sbs-studio-page .sbs-fs-reference input[type="checkbox"] { flex:0 0 26px; width:26px; max-width:26px; height:26px; margin:0; }
+body#sbs-studio-page .sbs-fs-reference img { flex:0 0 70px; }
+body#sbs-studio-page .sbs-fs-reference span { min-width:0; }
