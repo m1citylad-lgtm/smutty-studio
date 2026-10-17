@@ -892,11 +892,47 @@
         api('canvases?project_uuid=' + encodeURIComponent(state.activeProject.uuid)).then(function (rows) { if (!rows.length) { return; } var canvas = rows[0]; state.canvasUuid = canvas.uuid; state.historyLock = true; state.canvas.loadFromJSON(canvas.document.fabric, function () { state.historyLock = false; state.canvas.renderAll(); state.history = [JSON.stringify(canvas.document.fabric)]; renderLayers(); }); if (canvas.document.print) { el('sbs-print-method').value = canvas.document.print.method || 'dtg'; el('sbs-visual-treatment').value = canvas.document.print.visual_treatment || 'vintage-70-20-10'; el('sbs-print-width').value = canvas.document.print.width_inches; el('sbs-print-height').value = canvas.document.print.height_inches; el('sbs-print-dpi').value = canvas.document.print.dpi; updatePrintReadout(); } }).catch(handleError);
     }
     function exportCanvas() {
-        ensureCanvas(); var targetW = Number(el('sbs-print-width').value) * Number(el('sbs-print-dpi').value), targetH = Number(el('sbs-print-height').value) * Number(el('sbs-print-dpi').value), multiplier = Math.max(1, Math.min(targetW / state.canvas.width, targetH / state.canvas.height));
+        ensureCanvas();
+        var targetW = Math.round(Number(el('sbs-print-width').value) * Number(el('sbs-print-dpi').value));
+        var targetH = Math.round(Number(el('sbs-print-height').value) * Number(el('sbs-print-dpi').value));
+        if (!targetW || !targetH || targetW < 1 || targetH < 1) { showMessage('Enter valid print dimensions and resolution.', true); return; }
+        var ratioW = targetW / state.canvas.width, ratioH = targetH / state.canvas.height;
+        if (Math.abs(ratioW-ratioH)>0.001) { showMessage('Print aspect ratio does not match the canvas. Correct the print width and height before export to avoid incorrect dimensions.', true); return; }
         if (targetW * targetH > 60000000 && !window.confirm('This export is over 60 megapixels and may exceed browser memory. Continue?')) { return; }
-        var guides = state.canvas.getObjects().filter(function (obj) { return obj.sbsType === 'guide'; }), visible = guides.map(function (obj) { return obj.visible; }); guides.forEach(function (obj) { obj.visible = false; }); state.canvas.renderAll();
-        try { var url = state.canvas.toDataURL({ format: 'png', multiplier: multiplier, enableRetinaScaling: false }); var link = document.createElement('a'); link.download = ((state.activeProject && state.activeProject.title) || 'smutty-bear-artwork').replace(/[^A-Za-z0-9_-]+/g, '-') + '.png'; link.href = url; link.click(); } catch (error) { showMessage('The browser could not allocate enough memory for that export. Reduce the print dimensions or DPI.', true); }
-        guides.forEach(function (obj, i) { obj.visible = visible[i]; }); state.canvas.renderAll();
+        var guides = state.canvas.getObjects().filter(function (obj) { return obj.sbsType === 'guide'; });
+        var logos = state.canvas.getObjects().filter(function (obj) { return obj.sbsType === 'exact_asset'; });
+        var hidden = guides.map(function (obj) { return obj.visible; });
+        guides.forEach(function (obj) { obj.visible = false; });
+        var basename = ((state.activeProject && state.activeProject.title) || 'smutty-bear-artwork').replace(/[^A-Za-z0-9_-]+/g, '-');
+        function download(suffix) {
+            state.canvas.renderAll();
+            var url = state.canvas.toDataURL({ format: 'png', multiplier: ratioW, enableRetinaScaling: false });
+            var link = document.createElement('a'); link.download = basename + '-' + suffix + '.png'; link.href = url; link.click();
+        }
+        try {
+            download('branded');
+            if (el('sbs-export-both').checked) {
+                var states = logos.map(function (obj) { return obj.visible; });
+                logos.forEach(function (obj) { obj.visible = false; });
+                try { download('logo-free'); } finally { logos.forEach(function (obj,i) { obj.visible = states[i]; }); }
+            }
+            showMessage('PNG export started. These files are not yet certified print-ready; inspect them before production.');
+        } catch (error) { showMessage('Export failed. Check browser memory and image access.', true); }
+        finally { guides.forEach(function (obj,i) { obj.visible = hidden[i]; }); state.canvas.renderAll(); }
+    }
+    function bindLogoControls() {
+        function selectedLogo() {
+            var obj = state.canvas && state.canvas.getActiveObject();
+            if (!obj || obj.sbsType !== 'exact_asset') { showMessage('Select an Exact logo reference on the canvas first.', true); return null; }
+            return obj;
+        }
+        function apply(fn) { var obj = selectedLogo(); if (!obj) { return; } fn(obj); obj.setCoords(); state.canvas.requestRenderAll(); captureCanvas(); }
+        el('sbs-logo-center').addEventListener('click',function () { apply(function (obj) { obj.set({left:state.canvas.width/2,originX:'center'}); }); });
+        el('sbs-logo-rotate-left').addEventListener('click',function () { apply(function (obj) { obj.rotate((obj.angle||0)-15); }); });
+        el('sbs-logo-rotate-right').addEventListener('click',function () { apply(function (obj) { obj.rotate((obj.angle||0)+15); }); });
+        el('sbs-logo-x').addEventListener('input',function () { var v=Number(this.value);apply(function(obj){obj.set({left:state.canvas.width*v/100,originX:'center'});}); });
+        el('sbs-logo-y').addEventListener('input',function () { var v=Number(this.value);apply(function(obj){obj.set({top:state.canvas.height*v/100,originY:'center'});}); });
+        el('sbs-logo-size').addEventListener('input',function () { var v=Number(this.value);apply(function(obj){obj.scaleToWidth(state.canvas.width*v/100);}); });
     }
     function resizeCanvasViewport() { if (state.canvas) { state.canvas.calcOffset(); state.canvas.requestRenderAll(); } }
 
@@ -907,6 +943,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         bindLogin(); bindPrimaryTabs(); bindTabs(); bindCharacters(); bindCreate(); bindImageModal(); bindGuide();
         installStudioHelp(); installImageSpecifications();
+        bindLogoControls();
         el('sbs-print-method').addEventListener('change',function () {
             var dtf = this.value === 'dtf';
             el('sbs-method-advice').textContent = dtf ? 'DTF: inspect stray pixels, cutout edges, fine halftone dots and small isolated details; confirm minimum line and gap widths with your transfer printer.' : 'DTG: check gradients, transparency, garment colour and fine detail; confirm ink and underbase requirements with your garment printer.';
