@@ -144,7 +144,7 @@
             </section>
 
             <section class="sbs-panel" data-panel="settings">
-                <div class="sbs-panel-heading"><div><p class="sbs-kicker">STUDIO MANAGEMENT</p><h1>Settings</h1></div><span class="sbs-pill">Administrator controls</span></div>
+                <div class="sbs-panel-heading"><div><p class="sbs-kicker">STUDIO MANAGEMENT</p><h1>Settings</h1></div><span class="sbs-pill">Studio sign-in required</span></div>
                 <div id="sbs-settings-admin" class="sbs-settings-admin"><?php SBS_Admin::render_studio_settings(); ?></div>
                 <h2 class="sbs-stage-heading"><span class="sbs-stage-number">D.</span> Software updates and rollback</h2>
                 <aside class="sbs-tab-help"><span aria-hidden="true">&#128274;</span><div><strong>Update the Studio without WordPress or FTP access.</strong> Re-enter the shared Studio password to start a short update session. Release files and checksums are verified before installation.</div></aside>

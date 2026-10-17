@@ -18,6 +18,10 @@ final class SBS_Admin
         add_action('admin_post_sbs_rollback', array(__CLASS__, 'rollback'));
         add_action('admin_post_sbs_export', array(__CLASS__, 'export_workspace'));
         add_action('admin_post_sbs_import', array(__CLASS__, 'import_workspace'));
+        // Studio users have their own authenticated session, without a WordPress login.
+        foreach (array('sbs_save_settings' => 'save_settings', 'sbs_export' => 'export_workspace', 'sbs_import' => 'import_workspace') as $action => $method) {
+            add_action('admin_post_nopriv_' . $action, array(__CLASS__, $method));
+        }
     }
 
     public static function enqueue($hook)
@@ -53,15 +57,11 @@ final class SBS_Admin
         echo '</div>';
     }
 
-    /** The same administrator controls, rendered inside the private Studio shell. */
+    /** Management controls protected by the existing private Studio session. */
     public static function render_studio_settings()
     {
         $url = add_query_arg('settings', '1', home_url('/' . SBS_Plugin::studio_slug() . '/'));
         if (!SBS_Auth::is_authenticated()) {
-            return;
-        }
-        if (!current_user_can('manage_options')) {
-            echo '<article class="sbs-card"><h2><span class="sbs-stage-number">A.</span> Administrator access</h2><p>Sign in with your WordPress administrator account to manage API keys, models, Studio access, workspace archives and diagnostics. Your shared Studio password still opens the creative workspace.</p><p><a class="sbs-button" href="' . esc_url(wp_login_url($url)) . '">Sign in as administrator</a></p><p>After signing in, you return here. You do not need to use the WordPress dashboard.</p></article>';
             return;
         }
         ob_start();
@@ -76,8 +76,8 @@ final class SBS_Admin
         }
         echo '<p><a class="sbs-button" href="' . esc_url(add_query_arg('diagnostics', '1', $url)) . '#sbs-settings-admin">Run / refresh diagnostics</a></p>';
         $html = ob_get_clean();
-        // Use the original nonce-protected handlers and return here after every action.
-        $html = str_replace('</form>', '<input type="hidden" name="sbs_return_studio" value="1"></form>', $html);
+        // Bind form submissions to this exact validated Studio session.
+        $html = str_replace('</form>', '<input type="hidden" name="sbs_return_studio" value="1"><input type="hidden" name="_sbs_session_nonce" value="' . esc_attr(self::studio_form_token()) . '"></form>', $html);
         $html = str_replace(esc_url(admin_url('admin.php?page=smutty-bear-studio&tab=portability')), esc_url($url), $html);
         $html = str_replace('class="button', 'class="sbs-button', $html);
         echo $html; // All values are escaped by the existing renderers above.
@@ -298,9 +298,22 @@ final class SBS_Admin
         echo '<div class="notice ' . esc_attr($type) . ' is-dismissible"><p>' . esc_html(wp_unslash($_GET['sbs_notice'])) . '</p></div>';
     }
 
+    private static function studio_form_token()
+    {
+        return hash_hmac('sha256', 'studio-settings|' . (string) ($_COOKIE[SBS_Auth::COOKIE] ?? ''), wp_salt('nonce'));
+    }
+
     private static function guard($nonce)
     {
-        if (!current_user_can('manage_options')) {
+        if (!empty($_POST['sbs_return_studio'])) {
+            if (!in_array($nonce, array('sbs_save_settings', 'sbs_export', 'sbs_import'), true) || !SBS_Auth::is_authenticated()) {
+                wp_die('Sign in to Smutty Studio to manage its settings.', 403);
+            }
+            $token = $_POST['_sbs_session_nonce'] ?? '';
+            if (!is_string($token) || !hash_equals(self::studio_form_token(), $token)) {
+                wp_die('This Settings form has expired. Reload Studio and try again.', 403);
+            }
+        } elseif (!current_user_can('manage_options')) {
             wp_die('You do not have permission to manage the studio.', 403);
         }
         check_admin_referer($nonce);

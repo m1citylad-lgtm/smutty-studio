@@ -55,7 +55,7 @@
                 el('sbs-primary-nav').hidden = false;
                 el('sbs-guide-open').hidden = false;
                 message.textContent = '';
-                loadBootstrap();
+                window.location.reload();
             }).catch(function (error) { message.textContent = error.message; });
         });
     }
