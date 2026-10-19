@@ -6,7 +6,7 @@ final class SBS_Finishing
 {
     public static function register_routes()
     {
-        foreach (array('' => array('GET','listing'), '/upload' => array('POST','upload'), '/(?P<uuid>[a-f0-9-]{36})' => array('GET','get'), '/(?P<uuid>[a-f0-9-]{36})/action' => array('POST','action')) as $path => $route) {
+        foreach (array('' => array('GET','listing'), '/upload' => array('POST','upload'), '/import-drive' => array('POST','import_drive'), '/(?P<uuid>[a-f0-9-]{36})' => array('GET','get'), '/(?P<uuid>[a-f0-9-]{36})/action' => array('POST','action')) as $path => $route) {
             register_rest_route(SBS_REST::NS, '/finishing'.$path, array('methods'=>$route[0], 'callback'=>array(__CLASS__,$route[1]), 'permission_callback'=>array(__CLASS__,'permission')));
         }
     }
@@ -116,6 +116,39 @@ final class SBS_Finishing
         $record=array('schema'=>1,'uuid'=>$uuid,'af_id'=>null,'title'=>sanitize_text_field($title)?:$asset['filename'],'links'=>$links,'source_route'=>'device_local','original'=>$asset,'original_qa'=>$qa,'versions'=>array(),'current_version'=>null,'approval'=>null,'metadata_status'=>'TBC','status'=>'Awaiting Finishing','next_action'=>'Choose a local stage and run preview','drive'=>array('original_file_id'=>null,'folder_id'=>null,'approved_master_file_id'=>null,'verified'=>false),'created_at'=>gmdate('c'),'updated_at'=>gmdate('c'),'revision'=>1,'audit'=>array(array('at'=>gmdate('c'),'action'=>'Untouched original stored locally')));
         return self::write($path,$record);
     }
+
+    public static function import_drive($request)
+    {
+        $file_id=$request->get_param('file_id');
+        $source=SBS_Google_Drive_Transport::image_bytes($file_id);
+        if(is_wp_error($source)){return $source;}
+        $meta=$source['metadata'];
+        $title=$request->get_param('title');
+        if(!is_string($title)||strlen($title)>500){return self::error('title','Enter a title up to 500 bytes.');}
+        $links=self::links(preg_split('/[\\s,]+/',trim((string)$request->get_param('ideas')),-1,PREG_SPLIT_NO_EMPTY),(string)$request->get_param('sb'));
+        if(is_wp_error($links)){return $links;}
+        $uuid=wp_generate_uuid4();
+        $path=self::path($uuid);
+        if(is_wp_error($path)){return $path;}
+        $name=sanitize_file_name((string)($meta['name']??'drive-image.png'));
+        $mime=$meta['mimeType'];
+        $asset=SBS_Storage::store_bytes($source['bytes'],$name,$mime,'finishing',0,'finishing_original',$title?:$name,
+            array('source'=>'google_drive','source_file_id'=>$file_id));
+        if(is_wp_error($asset)){return $asset;}
+        $qa=self::inspect($asset,self::options(array()));
+        if(is_wp_error($qa)){return $qa;}
+        $now=gmdate('c');
+        $record=array('schema'=>1,'uuid'=>$uuid,'af_id'=>null,'title'=>sanitize_text_field($title)?:$name,
+            'links'=>$links,'source_route'=>'google_drive','original'=>$asset,'original_qa'=>$qa,
+            'versions'=>array(),'current_version'=>null,'approval'=>null,'metadata_status'=>'TBC',
+            'status'=>'Awaiting Finishing','next_action'=>'Choose a local stage and run preview',
+            'drive'=>array('original_file_id'=>$file_id,'folder_id'=>null,'approved_master_file_id'=>null,
+                'verified'=>true,'source_sha256'=>$source['sha256']),
+            'created_at'=>$now,'updated_at'=>$now,'revision'=>1,
+            'audit'=>array(array('at'=>$now,'action'=>'Original imported from Google Drive; checksum verified')));
+        return self::write($path,$record);
+    }
+
     public static function action($request)
     {
         $path=self::path($request['uuid']);if(is_wp_error($path)){return $path;}
