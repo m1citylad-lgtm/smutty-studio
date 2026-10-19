@@ -1,6 +1,6 @@
 <section class="sbs-panel sbs-af" data-panel="finishing" aria-labelledby="sbs-af-title">
     <h1 id="sbs-af-title" tabindex="-1">Artwork Finishing</h1>
-    <p class="sbs-af-notice"><strong>Local development preview.</strong> Originals and versions stay in private Studio storage. No AF numbers, Drive folders or catalogue changes are made. Local finishing approval does not approve SB production.</p>
+    <p class="sbs-af-notice"><strong>Artwork Finishing test workspace.</strong> This live test stores originals and versions only in private Studio storage. Google Drive, AF numbering and catalogue updates are not connected yet. Approving a finishing candidate does not approve SB production.</p>
     <div class="sbs-grid two">
         <section class="sbs-card"><h2>1. Choose artwork</h2>
             <form id="sbs-af-upload">
