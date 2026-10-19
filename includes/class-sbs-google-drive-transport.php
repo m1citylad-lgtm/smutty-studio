@@ -144,4 +144,52 @@ final class SBS_Google_Drive_Transport
         }
         return array('bytes'=>$bytes,'metadata'=>$meta,'sha256'=>hash('sha256',$bytes));
     }
+    /**
+     * Create-only upload. Caller must explicitly authorise the destination.
+     * Not exposed to the UI until a separate confirmation flow is reviewed.
+     */
+    public static function upload_new($folder_id,$name,$mime,$bytes)
+    {
+        if (!is_string($folder_id) || !preg_match('/^[A-Za-z0-9_-]{10,200}$/D',$folder_id)
+            || !is_string($bytes) || strlen($bytes)<1 || strlen($bytes)>20971520
+            || !in_array($mime,array('image/png','image/jpeg','image/webp','application/zip'),true)) {
+            return self::error('Invalid Drive upload request.',400);
+        }
+        $folder=self::file_metadata($folder_id);
+        if (is_wp_error($folder)) { return $folder; }
+        if (($folder['mimeType']??'')!=='application/vnd.google-apps.folder') {
+            return self::error('The destination is not an authorised folder.',400);
+        }
+        $token=self::access_token();
+        if (is_wp_error($token)) { return $token; }
+        $name=sanitize_file_name($name);
+        if (!$name) { return self::error('Invalid filename.',400); }
+        $boundary='sbs_'.bin2hex(random_bytes(16));
+        $body='--'.$boundary."\r\n".'Content-Type: application/json; charset=UTF-8'."\r\n\r\n"
+            .wp_json_encode(array('name'=>$name,'parents'=>array($folder_id)))."\r\n"
+            .'--'.$boundary."\r\n".'Content-Type: '.$mime."\r\n\r\n"
+            .$bytes."\r\n".'--'.$boundary."--\r\n";
+        $response=wp_remote_post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',array(
+            'timeout'=>60,'redirection'=>0,
+            'headers'=>array('Authorization'=>'Bearer '.$token,
+                'Content-Type'=>'multipart/related; boundary='.$boundary),
+            'body'=>$body,
+        ));
+        if (is_wp_error($response) || wp_remote_retrieve_response_code($response)!==200) {
+            return self::error('Upload was not confirmed. Check Drive before retrying.');
+        }
+        $created=json_decode(wp_remote_retrieve_body($response),true);
+        if (!is_array($created) || empty($created['id'])) {
+            return self::error('Google did not return a file ID. Check Drive before retrying.');
+        }
+        $verified=self::file_metadata($created['id']);
+        if (is_wp_error($verified)) { return $verified; }
+        if (!in_array($folder_id,$verified['parents']??array(),true)
+            || (int)($verified['size']??-1)!==strlen($bytes)
+            || empty($verified['md5Checksum'])
+            || !hash_equals(strtolower($verified['md5Checksum']),md5($bytes))) {
+            return self::error('Upload verification failed. Check Drive before retrying.',409);
+        }
+        return array('id'=>$created['id'],'verified'=>true,'sha256'=>hash('sha256',$bytes));
+    }
 }
