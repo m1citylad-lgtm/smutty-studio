@@ -125,7 +125,7 @@ final class SBS_Finishing
         $meta=$source['metadata'];
         $title=$request->get_param('title');
         if(!is_string($title)||strlen($title)>500){return self::error('title','Enter a title up to 500 bytes.');}
-        $links=self::links(preg_split('/[\\s,]+/',trim((string)$request->get_param('ideas')),-1,PREG_SPLIT_NO_EMPTY),(string)$request->get_param('sb'));
+        $links=self::links(preg_split('/[\s,]+/',trim((string)$request->get_param('ideas')),-1,PREG_SPLIT_NO_EMPTY),(string)$request->get_param('sb'));
         if(is_wp_error($links)){return $links;}
         $uuid=wp_generate_uuid4();
         $path=self::path($uuid);
