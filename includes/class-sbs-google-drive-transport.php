@@ -114,4 +114,34 @@ final class SBS_Google_Drive_Transport
         }
         return $data;
     }
+    public static function image_bytes($id)
+    {
+        $meta = self::file_metadata($id);
+        if (is_wp_error($meta)) { return $meta; }
+        $mime = $meta['mimeType'] ?? '';
+        $size = (int) ($meta['size'] ?? 0);
+        if (!in_array($mime, array('image/png','image/jpeg','image/webp'), true)
+            || $size < 1 || $size > 20971520) {
+            return self::error('Select a PNG, JPEG or WebP image under 20 MB.', 400);
+        }
+        $token = self::access_token();
+        if (is_wp_error($token)) { return $token; }
+        $response = wp_remote_get('https://www.googleapis.com/drive/v3/files/'.rawurlencode($id).'?alt=media', array(
+            'timeout'=>45, 'redirection'=>0, 'limit_response_size'=>20971521,
+            'headers'=>array('Authorization'=>'Bearer '.$token),
+        ));
+        if (is_wp_error($response) || wp_remote_retrieve_response_code($response)!==200) {
+            return self::error('Google Drive image download failed.');
+        }
+        $bytes = wp_remote_retrieve_body($response);
+        if (strlen($bytes)!==$size || (!empty($meta['md5Checksum'])
+            && !hash_equals(strtolower($meta['md5Checksum']), md5($bytes)))) {
+            return self::error('Downloaded file failed integrity verification.', 409);
+        }
+        $image = @getimagesizefromstring($bytes);
+        if (!$image || ($image['mime']??'')!==$mime || $image[0]*$image[1]>40000000) {
+            return self::error('Invalid image dimensions or content.', 400);
+        }
+        return array('bytes'=>$bytes,'metadata'=>$meta,'sha256'=>hash('sha256',$bytes));
+    }
 }
