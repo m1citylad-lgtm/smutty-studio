@@ -18,22 +18,22 @@ The restore is built from the 0.2.48 source, with the rollback repair. Its packa
 - Automated tests were added for backup creation, restoring an older file-only backup, rejecting an unsafe backup, and restoring the previous plugin after an installation failure.
 - The tests could not be run in this workspace because PHP and ZipArchive are unavailable. A GitHub Actions workflow is included to run syntax checks and the tests on PHP 7.4 and 8.3.
 - The existing Artwork Finishing and export checks passed in Node.js. These are code checks, not a live tablet acceptance test.
-- The 0.2.50 package was built from the 0.2.48 baseline. All 38 packaged files matched the checksums in its manifest. It has no `release.sig`; do not treat it as a signed release.
-- The preferred and alternative 0.2.48 ZIP files were not available locally, so neither archive has been inspected or verified.
+- The 0.2.50 package was built from the 0.2.48 baseline. All 38 packaged files matched the checksums in its manifest, and the default update-feed address is included. The repository's standard release process does not require a signing key.
+- The preferred and alternative 0.2.48 ZIP files were not available locally, so neither archive has been inspected. They are not needed for the prepared restore package, which is built from the 0.2.48 GitHub source tag.
 - No live artwork import, processing, comparison, approval, or package download tests have been run.
 
 ## Deployment sequence
 
-1. Inspect the preferred 0.2.48 backup on the live site and verify its archive contents and version.
-2. Run the automated checks and review the resulting test report.
-3. Prepare the fixed 0.2.48-based package as version 0.2.50, preserving the current 0.2.49 backup for recovery.
-4. Present the exact package, test results, and restore steps for explicit approval.
-5. Only after approval, install the package and verify the live version and the local artwork workflow.
+1. Run the automated checks and review the resulting test report.
+2. Present the exact package and test results for explicit approval.
+3. Only after approval, merge the change to main. GitHub then builds and publishes version 0.2.50 automatically.
+4. After approval, install it on the live site. The updater creates a fresh 0.2.49 backup first.
+5. Verify the live version and local artwork workflow.
 
 ## Outstanding
 
 - Run tests on PHP with ZipArchive enabled.
-- Resolve the signing step for the 0.2.50 candidate before considering it for installation.
+- Obtain a passing PHP rollback test result before considering release approval.
 - Inspect both available backups and confirm which one is restorable.
 - The package version will be 0.2.50 because the current updater rejects same-version and older releases. Confirm the user accepts this displayed version number.
 - After approval and restore, test Browse Files → Import → Process → Review → Download package.
