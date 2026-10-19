@@ -33,6 +33,7 @@ require_once SBS_PLUGIN_DIR . 'includes/class-sbs-rest.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-freestyle.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-finishing.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-google-drive.php';
+require_once SBS_PLUGIN_DIR . 'includes/class-sbs-google-drive-transport.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-finishing-catalogue.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-admin.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-plugin.php';
