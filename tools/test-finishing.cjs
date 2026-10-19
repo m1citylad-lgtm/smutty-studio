@@ -65,6 +65,8 @@ assert.match(backend, /Human-approved local finishing package uploaded to user-s
 assert.match(transport, /https:\/\/www\.googleapis\.com\/drive\/v3\/files/);
 assert.match(transport, /hash_equals\(strtolower\(\$meta\['md5Checksum'\]\), md5\(\$bytes\)\)/);
 assert.match(transport, /image\/png','image\/jpeg','image\/webp/);
+assert.match(transport, /Google sign-in expired\. Reconnect Google Drive, then try again/);
+assert.match(transport, /Google cannot add files to that folder/);
 assert.match(transport, /appProperties/);
 assert.match(transport, /hash_equals\(strtolower\(\$existing\['md5Checksum'\]\),md5\(\$bytes\)\)/);
 assert.match(drive, /const SCOPE = 'https:\/\/www\.googleapis\.com\/auth\/drive\.file'/);

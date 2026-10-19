@@ -163,9 +163,11 @@ final class SBS_Google_Drive_Transport
             'timeout'=>45, 'redirection'=>0, 'limit_response_size'=>20971521,
             'headers'=>array('Authorization'=>'Bearer '.$token),
         ));
-        if (is_wp_error($response) || wp_remote_retrieve_response_code($response)!==200) {
-            return self::error('Google Drive image download failed.');
-        }
+        if (is_wp_error($response)) { return self::error('Google Drive image could not be reached. Check your connection and try again.'); }
+        $download_status=wp_remote_retrieve_response_code($response);
+        if ($download_status===401) { return self::error('Google sign-in expired. Reconnect Google Drive, then try again.',401); }
+        if ($download_status===403||$download_status===404) { return self::error('Google no longer allows this Studio to read the selected image.',403); }
+        if ($download_status!==200) { return self::error('Google Drive image download was not confirmed. No local import was made.'); }
         $bytes = wp_remote_retrieve_body($response);
         if (strlen($bytes)!==$size || empty($meta['md5Checksum'])
             || !preg_match('/^[a-f0-9]{32}$/iD',(string)$meta['md5Checksum'])
@@ -226,9 +228,11 @@ final class SBS_Google_Drive_Transport
                 'Content-Type'=>'multipart/related; boundary='.$boundary),
             'body'=>$body,
         ));
-        if (is_wp_error($response) || !in_array(wp_remote_retrieve_response_code($response),array(200,201),true)) {
-            return self::error('Upload was not confirmed. Check Drive before retrying.');
-        }
+        if (is_wp_error($response)) { return self::error('Drive could not confirm the upload. Check the selected folder before retrying.'); }
+        $upload_status=wp_remote_retrieve_response_code($response);
+        if ($upload_status===401) { return self::error('Google sign-in expired. Reconnect Google Drive. Check the selected folder before retrying.',401); }
+        if ($upload_status===403) { return self::error('Google cannot add files to that folder. Choose a folder you can edit.'); }
+        if (!in_array($upload_status,array(200,201),true)) { return self::error('Upload was not confirmed. Check Drive before retrying.'); }
         $created=json_decode(wp_remote_retrieve_body($response),true);
         if (!is_array($created) || empty($created['id'])) {
             return self::error('Google did not return a file ID. Check Drive before retrying.');
