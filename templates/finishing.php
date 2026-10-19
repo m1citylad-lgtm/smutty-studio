@@ -13,8 +13,15 @@
             <button type="submit" class="sbs-button primary">Store untouched original locally</button>
             <p id="sbs-af-upload-status" role="status" aria-live="polite" aria-atomic="true">No artwork upload completed yet.</p>
             </form>
-            <button id="sbs-af-drive" type="button" class="sbs-button" disabled>Select from Google Drive — deferred</button>
-            <p>Google connection controls are in Settings. Drive artwork search and import await the integration phase.</p>
+            <form id="sbs-af-drive-import">
+                <h3>Import an authorised Google Drive image</h3>
+                <label for="sbs-af-drive-id">Google Drive file ID
+                    <input id="sbs-af-drive-id" type="text" maxlength="200" autocomplete="off" required
+                        placeholder="File ID from a Drive image link"></label>
+                <p>Only files already accessible to this Studio connection can be imported. Use the title and optional IDEA/SB references above. No AF number is assigned.</p>
+                <button class="sbs-button" type="submit">Import Drive image as untouched original</button>
+                <p id="sbs-af-drive-status" role="status" aria-live="polite">No Drive import attempted.</p>
+            </form>
             <label for="sbs-af-resume">Resume local artwork<select id="sbs-af-resume"><option value="">Choose a workspace</option></select></label>
             <button id="sbs-af-refresh" class="sbs-button" type="button">Refresh workspaces</button>
         </section>
