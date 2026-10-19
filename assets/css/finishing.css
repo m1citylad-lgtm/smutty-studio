@@ -13,7 +13,7 @@
 .sbs-af-compare[data-proof=light] .sbs-af-viewport{background:#fff}
 .sbs-af-compare[data-proof=dark] .sbs-af-viewport{background:#17182b}
 .sbs-af-notice,#sbs-af-progress{padding:1rem;border:2px solid #eac56c;background:#17182b;color:#fff3d7;border-radius:8px}
-#sbs-af-upload-status,#sbs-af-drive-status,#sbs-af-drive-folder-status{margin:.8rem 0;padding:.8rem 1rem;border:2px solid #eac56c;background:#17182b;color:#fff3d7;border-radius:8px;overflow-wrap:anywhere}
+#sbs-af-upload-status{margin:.8rem 0;padding:.8rem 1rem;border:2px solid #eac56c;background:#17182b;color:#fff3d7;border-radius:8px;overflow-wrap:anywhere}
 #sbs-af-upload-status[data-state=error]{border-color:#ff987c}
 #sbs-af-upload-status[data-state=success]{border-color:#f0a23b}
 .sbs-af progress{width:100%;height:24px}
