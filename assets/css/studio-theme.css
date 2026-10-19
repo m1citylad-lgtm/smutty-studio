@@ -72,6 +72,19 @@ body#sbs-studio-page .sbs-context-select select {
     font: 17px/1.5 Arial, Helvetica, sans-serif;
     accent-color: var(--sbs-gold);
 }
+/* Keep native menus dark and readable where the browser allows option styling.
+   Android may draw the expanded native menu itself; its system presentation is
+   retained rather than replacing the accessible native select. */
+body#sbs-studio-page select { color-scheme: dark; }
+body#sbs-studio-page select option {
+    background: #101827;
+    color: #fff3d4;
+}
+body#sbs-studio-page select option:checked,
+body#sbs-studio-page select option:focus {
+    background: #f0a23b;
+    color: #101827;
+}
 body#sbs-studio-page input[type="color"] { padding: 3px; }
 body#sbs-studio-page ::placeholder { color: #d3c6b0; opacity: 1; }
 body#sbs-studio-page :is(.sbs-button, .sbs-tool-grid button, .sbs-canvas-status button,

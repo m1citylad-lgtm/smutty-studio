@@ -11,6 +11,7 @@
                 <label for="sbs-af-ideas">Optional IDEA links<input id="sbs-af-ideas" placeholder="IDEA-012, IDEA-013" type="text" maxlength="300"></label>
                 <label for="sbs-af-sb">Optional existing SB link<input id="sbs-af-sb" placeholder="SB0014" type="text" maxlength="30"></label>
             <button type="submit" class="sbs-button primary">Store untouched original locally</button>
+            <p id="sbs-af-upload-status" role="status" aria-live="polite" aria-atomic="true">No artwork upload completed yet.</p>
             </form>
             <button id="sbs-af-drive" type="button" class="sbs-button" disabled>Select from Google Drive — deferred</button>
             <p>Google connection controls are in Settings. Drive artwork search and import await the integration phase.</p>
