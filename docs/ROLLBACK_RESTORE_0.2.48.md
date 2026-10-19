@@ -1,32 +1,33 @@
 # Smutty Studio rollback repair and restore
 
-Updated: 2026-10-19
+Updated: 2026-10-19 — final status after live verification
 
-## Completed
+## Completed and verified
 
-- Corrected the rollback failure. New backups now include the checksum list required by the installer. Older internal backups are checked and safely prepared before restoration; unsafe archives are rejected. Existing release verification remains in place.
-- Restored the 0.2.48 artwork workflow and removed the 0.2.49 Google Drive integration.
-- Published **0.2.50** because the updater will not install an older-numbered release over 0.2.49. Its features are based on 0.2.48, with the rollback repair.
-- GitHub automated checks passed, including backup creation, old-backup rollback, unsafe-backup rejection, recovery after a failed install, PHP checks, and the existing artwork/export checks.
-- GitHub published release v0.2.50 with `release-feed.json` and `smutty-bear-studio-0.2.50.zip`. The release build completed successfully.
-- Local artwork and export checks passed before publishing.
+- The first rollback attempt failed with invalid_manifest_size. Investigation found that internally created backup ZIPs lacked the release manifest expected by the installer.
+- PR #9 corrected backup manifest handling, added validation for older file-only backups, and retained rejection of unsafe archives.
+- The v0.2.48 local Artwork Finishing feature baseline was restored in release v0.2.50. The installed release is labelled 0.2.50 because the updater cannot install a lower-numbered 0.2.48 over 0.2.49.
+- PR #9 merged as commit 7fb2bc90950af4376f34833290b6fe8e512cac00. GitHub release workflow run #51 succeeded and published release v0.2.50 with release-feed.json and smutty-bear-studio-0.2.50.zip.
+- The live Studio page was checked on 2026-10-19 and displayed v0.2.50. This confirms installation of the corrected release.
+- Repository regression checks covered backup creation, restoring legacy file-only backups, invalid-backup rejection, and recovery after a failed installation. Local artwork/export checks also passed before release.
 
-## Data and recovery
+## Current workflow and limits
 
-The update changes plugin files. Both versions use database version 2, and private artwork is stored outside the plugin folder. The uninstall code also retains projects, private assets, and encrypted settings. These code checks indicate that an update should leave those items in place; the live site's records and files have not been inspected directly.
+The owner approved retiring Google Picker and direct Drive transfer from the active workflow. Use Android Files / My Files to import artwork, process and review locally, approve the local finishing candidate, download the artwork/package, then upload the package into ChatGPT for Drive filing and documentation. The live page retains disabled Google controls marked deferred; transfer is not active.
 
-The standard installer makes a fresh backup of the currently installed 0.2.49 before installing 0.2.50, preserving a route back to the current release. The two older 0.2.48 ZIPs were not available to inspect and are not needed: the release was built from the repository's 0.2.48 source.
+The owner returned a local-finishing ZIP on 2026-10-19, confirming that a download was produced. Its contents were not inspected. The public Studio page was signed out during the final check, so authenticated local processing and Android screen-magnification acceptance were not repeated. Local finishing approval is not final production approval.
 
-## Still needed
+AI upscaling, sharpening/denoising and background removal remain pending development. Friendly artwork-title ZIP filenames are an approved documentation requirement only and are not implemented by this release.
 
-The live site remains at 0.2.49. The browser available for this work is stopped at the Studio password screen, so the update has not been installed and the live workflow has not been tested.
+## Historical note
 
-After signing in to the Studio:
+At the time of the initial rollback investigation, the live site was still at v0.2.49 and the installation test had not been performed. That status was superseded: live v0.2.50 was confirmed on 2026-10-19. Do not follow the earlier planned installation steps as outstanding work.
 
-1. Open **Settings**.
-2. Under **Software updates and rollback**, enter the same Studio password again and choose **Unlock Updates**.
-3. Choose **Check now**. Confirm it shows version **0.2.50**, then choose **Install verified feed release**.
-4. After the page reloads, confirm the top of the Studio says **v0.2.50**.
-5. Test: **Browse Files → Import → Process → Review → Download package**.
+A later documentation-only push to main triggered workflow run #52, which failed. This occurred after v0.2.50 was published and did not change the v0.2.50 release.
 
-The 0.2.49 backup made during installation keeps the current release available for recovery. Google Drive saving is not part of this workflow; download the package and add it to Google Drive yourself.
+## References
+
+- Release v0.2.50: https://github.com/m1citylad-lgtm/smutty-studio/releases/tag/v0.2.50
+- PR #9: https://github.com/m1citylad-lgtm/smutty-studio/pull/9
+- Successful release workflow run #51: https://github.com/m1citylad-lgtm/smutty-studio/actions/runs/39325280034
+- Live Studio: https://www.growinsane.com/smutty-studio/
