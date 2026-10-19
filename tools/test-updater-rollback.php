@@ -48,6 +48,7 @@ class SBS_Storage {
 }
 
 wp_mkdir_p(ABSPATH . 'wp-admin/includes');
+file_put_contents(ABSPATH . 'wp-admin/includes/plugin.php', "<?php // WordPress plugin API test stub.\n");
 wp_mkdir_p(SBS_PLUGIN_DIR);
 wp_mkdir_p(WP_PLUGIN_DIR . '/smutty-bear-studio');
 wp_mkdir_p(WP_CONTENT_DIR);
