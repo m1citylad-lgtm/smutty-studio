@@ -60,6 +60,24 @@
         }
         async function refresh(){var data=await api('');records=data.records;var select=el('sbs-af-resume');select.replaceChildren();var empty=document.createElement('option');empty.value='';empty.textContent='Choose a workspace';select.appendChild(empty);records.forEach(function(r){var o=document.createElement('option');o.value=r.uuid;o.textContent=r.title+' — '+r.status;select.appendChild(o);});if(current){current=records.find(function(r){return r.uuid===current.uuid;})||current;select.value=current.uuid;}catalogue();}
         async function action(type,extra){var data=Object.assign({action:type,revision:current.revision},extra||{});var result=await api('/'+current.uuid+'/action',data);if(type==='export'){el('sbs-af-package').href=result.package.url;el('sbs-af-package').hidden=false;message('Local package ready. No Drive save or catalogue update.');}else{current=result;await refresh();render();message(type==='approve'?'Local finishing version approved. SB production and Drive remain unchanged.':'Local stage '+type+' complete.');}}
+        el('sbs-af-drive-import').addEventListener('submit',function(event){
+            event.preventDefault();
+            var form=this,button=form.querySelector('button[type=submit]'),saved=null;
+            operation(async function(){
+                var status=el('sbs-af-drive-status');
+                status.textContent='Checking Drive access and importing untouched original…';
+                var id=el('sbs-af-drive-id').value.trim();
+                if(!/^[A-Za-z0-9_-]{10,200}$/.test(id))throw new Error('Enter a valid Google Drive file ID.');
+                saved=await api('/import-drive',{file_id:id,title:el('sbs-af-name').value,
+                    ideas:el('sbs-af-ideas').value,sb:el('sbs-af-sb').value});
+                current=saved;status.textContent='Original imported successfully. Workspace '+saved.uuid+'. No AF ID assigned.';
+                await refresh();render();form.reset();
+            },'Importing image from Google Drive…',button,function(error){
+                el('sbs-af-drive-status').textContent=saved
+                    ?'Original saved locally as '+saved.uuid+'. Refresh workspaces before retrying. '+error.message
+                    :'Drive import not confirmed: '+error.message;
+            });
+        });
         el('sbs-af-file').addEventListener('change',function(){chooseFile(this);});
         el('sbs-af-gallery-file').addEventListener('change',function(){chooseFile(this);});
         el('sbs-af-upload').addEventListener('submit',function(event){event.preventDefault();var submitter=event.submitter||this.querySelector('button[type=submit]'),uploaded=null;uploadMessage('Saving the untouched original in private Studio storage…');operation(async function(){var f=selectedFile||el('sbs-af-file').files[0]||el('sbs-af-gallery-file').files[0];if(!f)throw new Error('Choose one image using Photos / Gallery or Files / My Files first.');if(f.size>20*1024*1024)throw new Error('This file is '+fileSize(f.size)+'. The limit is 20 MB. Choose a smaller copy; your original file will not be changed.');var data=new FormData();data.append('file',f);data.append('title',el('sbs-af-name').value);data.append('ideas',el('sbs-af-ideas').value);data.append('sb',el('sbs-af-sb').value);current=await api('/upload',data);uploaded=current;await refresh();render();selectedFile=null;el('sbs-af-upload').reset();var saved='Saved successfully: “'+current.title+'”. Workspace '+current.uuid+'. The original is unchanged; no AF number was allocated.';message(saved);uploadMessage(saved,'success');},'Uploading original to private Studio storage…',submitter,function(error){if(uploaded){var saved='Original saved successfully: “'+uploaded.title+'”. Workspace '+uploaded.uuid+'. The workspace list did not refresh: '+error.message+' Do not upload it again; press Refresh workspaces.';uploadMessage(saved,'success');}else{uploadMessage('Upload not confirmed: '+error.message,'error');}});});
