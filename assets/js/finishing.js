@@ -6,7 +6,7 @@
     function canApprove(record) { return !!record && record.status === 'Awaiting Review' && !!record.current_version; }
     function init() {
         var root=document.getElementById('sbs-app');if(!root || root.getAttribute('data-authenticated')!=='1')return;
-        var current=null, records=[], busy=false, selectedFile=null;
+        var current=null, records=[], busy=false, selectedFile=null, driveFolder=null, pickerLoad=null;
         var el=function(id){return document.getElementById(id);};
         function message(text,error){el('sbs-af-progress').textContent=text;el('sbs-af-progress').setAttribute('role',error?'alert':'status');}
         function uploadMessage(text,state){var status=el('sbs-af-upload-status');status.textContent=text;status.dataset.state=state||'info';status.setAttribute('role',state==='error'?'alert':'status');}
@@ -25,6 +25,10 @@
             el('sbs-af-cancel').disabled=busy||!current||!current.pending;
             el('sbs-af-approve').disabled=busy||!canApprove(current)||!Object.values(checks()).every(Boolean);
             el('sbs-af-export').disabled=busy||!current||!current.approval;
+            el('sbs-af-save-drive').disabled=busy||!current||!current.approval||!driveFolder;
+            el('sbs-af-drive-browse').disabled=busy;
+            el('sbs-af-drive-import').querySelector('button[type=submit]').disabled=busy||!el('sbs-af-drive-id').value;
+            el('sbs-af-drive-folder').disabled=busy;
             el('sbs-af-versions').disabled=busy;el('sbs-af-resume').disabled=busy;
             document.querySelectorAll('#sbs-af-upload input,#sbs-af-upload button').forEach(function(n){n.disabled=busy;});
             document.querySelectorAll('[data-af-open]').forEach(function(n){n.disabled=busy;});
@@ -60,6 +64,63 @@
         }
         async function refresh(){var data=await api('');records=data.records;var select=el('sbs-af-resume');select.replaceChildren();var empty=document.createElement('option');empty.value='';empty.textContent='Choose a workspace';select.appendChild(empty);records.forEach(function(r){var o=document.createElement('option');o.value=r.uuid;o.textContent=r.title+' — '+r.status;select.appendChild(o);});if(current){current=records.find(function(r){return r.uuid===current.uuid;})||current;select.value=current.uuid;}catalogue();}
         async function action(type,extra){var data=Object.assign({action:type,revision:current.revision},extra||{});var result=await api('/'+current.uuid+'/action',data);if(type==='export'){el('sbs-af-package').href=result.package.url;el('sbs-af-package').hidden=false;message('Local package ready. No Drive save or catalogue update.');}else{current=result;await refresh();render();message(type==='approve'?'Local finishing version approved. SB production and Drive remain unchanged.':'Local stage '+type+' complete.');}}
+        function loadPicker(){
+            if(window.google&&window.google.picker){return Promise.resolve();}
+            if(pickerLoad){return pickerLoad;}
+            pickerLoad=new Promise(function(resolve,reject){
+                var script=document.createElement('script');script.src='https://apis.google.com/js/api.js';script.async=true;script.onload=function(){
+                    if(!window.gapi){reject(new Error('Google Drive picker could not load.'));return;}
+                    window.gapi.load('picker',{callback:resolve,onerror:function(){reject(new Error('Google Drive picker could not load.'));}});
+                };script.onerror=function(){reject(new Error('Google Drive picker could not load. Check the connection and try again.'));};document.head.appendChild(script);
+            }).catch(function(error){pickerLoad=null;throw error;});
+            return pickerLoad;
+        }
+        function openDrivePicker(mode){
+            var button=el(mode==='folder'?'sbs-af-drive-folder':'sbs-af-drive-browse');
+            operation(async function(){
+                var settings=await api('/google/picker',{});
+                await loadPicker();
+                await new Promise(function(resolve,reject){
+                    try{
+                        var view;
+                        if(mode==='folder'){
+                            view=new google.picker.DocsView(google.picker.ViewId.FOLDERS);
+                            view.setSelectFolderEnabled(true);view.setIncludeFolders(true);
+                        }else{
+                            view=new google.picker.DocsView(google.picker.ViewId.DOCS);
+                            view.setMimeTypes('image/png,image/jpeg,image/webp');view.setIncludeFolders(false);
+                        }
+                        var picker=new google.picker.PickerBuilder().addView(view)
+                            .setOAuthToken(settings.access_token).setDeveloperKey(settings.api_key)
+                            .setAppId(settings.app_id).setOrigin(window.location.protocol+'//'+window.location.host)
+                            .setTitle(mode==='folder'?'Choose a Google Drive folder for the approved package':'Choose an artwork image from Google Drive')
+                            .setCallback(function(data){
+                                var actionName=data[google.picker.Response.ACTION];
+                                if(actionName===google.picker.Action.PICKED){
+                                    var doc=(data[google.picker.Response.DOCUMENTS]||[])[0]||{};
+                                    var id=doc[google.picker.Document.ID],name=doc[google.picker.Document.NAME]||'selected item';
+                                    if(!id){reject(new Error('Google did not return the selected item.'));return;}
+                                    if(mode==='folder'){
+                                        driveFolder={id:id,name:name};el('sbs-af-drive-folder-status').textContent='Drive save folder selected: '+name+'.';
+                                        controls();message('Drive folder selected. The package will only be saved after you press the save button.');
+                                    }else{
+                                        el('sbs-af-drive-id').value=id;
+                                        if(!el('sbs-af-name').value.trim()){el('sbs-af-name').value=name.replace(/\.[^.]+$/,'');}
+                                        el('sbs-af-drive-status').textContent='Selected from Google Drive: '+name+'. Press Import selected Drive image as untouched original.';
+                                        controls();message('Drive image selected. It has not been imported yet.');
+                                    }
+                                }else if(actionName===google.picker.Action.CANCEL){
+                                    message('Google Drive selection cancelled. Nothing was changed.');
+                                }
+                                resolve();
+                            }).build();
+                        picker.setVisible(true);
+                    }catch(error){reject(error);}
+                });
+            },mode==='folder'?'Opening Google Drive folders…':'Opening Google Drive images…',button);
+        }
+        el('sbs-af-drive-browse').addEventListener('click',function(){openDrivePicker('image');});
+        el('sbs-af-drive-folder').addEventListener('click',function(){openDrivePicker('folder');});
         el('sbs-af-drive-import').addEventListener('submit',function(event){
             event.preventDefault();
             var form=this,button=form.querySelector('button[type=submit]'),saved=null;
@@ -70,12 +131,25 @@
                 if(!/^[A-Za-z0-9_-]{10,200}$/.test(id))throw new Error('Enter a valid Google Drive file ID.');
                 saved=await api('/import-drive',{file_id:id,title:el('sbs-af-name').value,
                     ideas:el('sbs-af-ideas').value,sb:el('sbs-af-sb').value});
-                current=saved;status.textContent='Original imported successfully. Workspace '+saved.uuid+'. No AF ID assigned.';
-                await refresh();render();form.reset();
+                current=saved;status.textContent=saved.already_imported?'This image was already imported. Reopened existing workspace '+saved.uuid+'. No duplicate was created.':'Original imported successfully. Workspace '+saved.uuid+'. No AF ID assigned.';
+                await refresh();render();form.reset();el('sbs-af-drive-id').value='';form.querySelector('button[type=submit]').disabled=true;
             },'Importing image from Google Drive…',button,function(error){
                 el('sbs-af-drive-status').textContent=saved
                     ?'Original saved locally as '+saved.uuid+'. Refresh workspaces before retrying. '+error.message
                     :'Drive import not confirmed: '+error.message;
+            });
+        });
+        el('sbs-af-save-drive').addEventListener('click',function(){
+            var button=this,saved=null;
+            operation(async function(){
+                if(!driveFolder)throw new Error('Choose a Google Drive save folder first.');
+                saved=await api('/save-drive',{uuid:current.uuid,revision:current.revision,folder_id:driveFolder.id});
+                current=saved;await refresh();render();
+                var status=el('sbs-af-drive-folder-status');
+                status.textContent=saved.drive_save_already_complete?'This approved package was already saved and verified in '+driveFolder.name+'.':'Approved package saved and checksum verified in '+driveFolder.name+'.';
+                message(status.textContent+' Local finishing approval only; production status is unchanged.');
+            },'Saving and verifying the approved package in Google Drive…',button,function(error){
+                el('sbs-af-drive-folder-status').textContent='Drive save not confirmed: '+error.message+' Check the folder before retrying.';
             });
         });
         el('sbs-af-file').addEventListener('change',function(){chooseFile(this);});
@@ -95,11 +169,11 @@
         ['local','sb'].forEach(function(which){el('sbs-af-show-'+which).addEventListener('click',function(){el('sbs-af-local-catalogue').hidden=which!=='local';el('sbs-af-sb-catalogue').hidden=which!=='sb';el('sbs-af-show-local').setAttribute('aria-pressed',String(which==='local'));el('sbs-af-show-sb').setAttribute('aria-pressed',String(which==='sb'));});});
         var googleBusy=false,googleState={configured:false,connected:false};
         function googleControls(){el('sbs-google-connect').disabled=googleBusy||!googleState.configured||googleState.connected;el('sbs-google-reconnect').disabled=googleBusy||!googleState.configured;el('sbs-google-disconnect').disabled=googleBusy||!googleState.connected;el('sbs-google-refresh').disabled=googleBusy;el('sbs-google-config').querySelectorAll('input,button').forEach(function(n){n.disabled=googleBusy;});}
-        function googlePaint(s,prefix){googleState={configured:!!s.configured,connected:!!s.connected};el('sbs-google-status').textContent=(prefix||'')+(s.connected?'Google sign-in is connected'+(s.access_expired?' (reconnect required)':''):s.configured?'Client settings are saved; Google sign-in is not connected yet.':'Client settings are not saved; Google sign-in is not connected.')+' '+s.message;el('sbs-google-redirect').textContent=s.redirect_uri;googleControls();}
+        function googlePaint(s,prefix){googleState={configured:!!s.configured,connected:!!s.connected};if(s.client_id){el('sbs-google-client').value=s.client_id;}el('sbs-google-status').textContent=(prefix||'')+(s.connected?'Google sign-in is connected'+(s.access_expired?' (reconnect required)':''):s.configured?'Client settings are saved; Google sign-in is not connected yet.':'Client settings are not saved; Google sign-in is not connected.')+' '+s.message+(s.picker_configured?' Google Picker is configured.':' Google Picker browser key is still needed.');el('sbs-google-redirect').textContent=s.redirect_uri;googleControls();}
         function googleButtonBusy(button,on,label){if(!button)return;if(on){if(!button.hasAttribute('aria-busy')){button.dataset.previousLabel=button.textContent;}button.textContent=label||'Processing…';button.setAttribute('aria-busy','true');button.disabled=true;}else{button.removeAttribute('aria-busy');if(button.dataset.previousLabel){button.textContent=button.dataset.previousLabel;delete button.dataset.previousLabel;}}}
         async function google(fn,progress,button){if(googleBusy)return;googleBusy=true;googleButtonBusy(button,true);googleControls();if(progress){el('sbs-google-status').textContent=progress+' Please wait.';}try{await fn();}catch(e){el('sbs-google-status').textContent='Google settings could not be checked or saved: '+e.message;}finally{googleBusy=false;googleButtonBusy(button,false);googleControls();}}
         el('sbs-google-refresh').addEventListener('click',function(){var button=this;google(async function(){googlePaint(await api('/google/status'));},'Checking saved Google settings…',button);});
-        el('sbs-google-config').addEventListener('submit',function(e){e.preventDefault();var button=this.querySelector('button[type="submit"]');google(async function(){try{googlePaint(await api('/google/configure',{client_id:el('sbs-google-client').value.trim(),client_secret:el('sbs-google-secret').value}),'Settings saved securely. ');}finally{el('sbs-google-secret').value='';}},'Saving encrypted Google settings…',button);});
+        el('sbs-google-config').addEventListener('submit',function(e){e.preventDefault();var button=this.querySelector('button[type="submit"]');google(async function(){try{googlePaint(await api('/google/configure',{client_id:el('sbs-google-client').value.trim(),client_secret:el('sbs-google-secret').value,picker_api_key:el('sbs-google-picker-key').value}),'Settings saved securely. ');}finally{el('sbs-google-secret').value='';el('sbs-google-picker-key').value='';}},'Saving encrypted Google settings…',button);});
         ['connect','reconnect'].forEach(function(type){el('sbs-google-'+type).addEventListener('click',function(){var button=this;google(async function(){var result=await api('/google/connect',{}),url=new URL(result.authorization_url);if(url.protocol!=='https:'||url.hostname!=='accounts.google.com')throw new Error('Invalid Google sign-in address.');window.location.assign(url.href);},'Opening Google sign-in…',button);});});
         el('sbs-google-disconnect').addEventListener('click',function(){var button=this;google(async function(){googlePaint(await api('/google/disconnect',{}));},'Disconnecting Google Drive…',button);});
         document.querySelectorAll('[data-primary-tab]').forEach(function(button){button.addEventListener('click',function(){var tab=button.getAttribute('data-primary-tab');if(tab==='finishing'||tab==='catalogue'){operation(async function(){await refresh();if(tab==='finishing')render();message('Local workspaces loaded.');},'Loading local workspaces…');}if(tab==='settings'){google(async function(){googlePaint(await api('/google/status'));},'Checking saved Google settings…');}});});

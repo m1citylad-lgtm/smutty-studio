@@ -6,7 +6,7 @@ final class SBS_Finishing
 {
     public static function register_routes()
     {
-        foreach (array('' => array('GET','listing'), '/upload' => array('POST','upload'), '/import-drive' => array('POST','import_drive'), '/(?P<uuid>[a-f0-9-]{36})' => array('GET','get'), '/(?P<uuid>[a-f0-9-]{36})/action' => array('POST','action')) as $path => $route) {
+        foreach (array('' => array('GET','listing'), '/upload' => array('POST','upload'), '/import-drive' => array('POST','import_drive'), '/save-drive' => array('POST','save_drive'), '/(?P<uuid>[a-f0-9-]{36})' => array('GET','get'), '/(?P<uuid>[a-f0-9-]{36})/action' => array('POST','action')) as $path => $route) {
             register_rest_route(SBS_REST::NS, '/finishing'.$path, array('methods'=>$route[0], 'callback'=>array(__CLASS__,$route[1]), 'permission_callback'=>array(__CLASS__,'permission')));
         }
     }
@@ -120,6 +120,11 @@ final class SBS_Finishing
     public static function import_drive($request)
     {
         $file_id=$request->get_param('file_id');
+        $dir=self::directory();if(is_wp_error($dir)){return $dir;}
+        $source_lock=fopen($dir.'/.drive-'.hash('sha256',(string)$file_id).'.lock','c');
+        if(!$source_lock||!flock($source_lock,LOCK_EX|LOCK_NB)){if($source_lock){fclose($source_lock);}return self::error('busy','This Drive image is already being imported. Refresh workspaces before retrying.',409);}
+        try {
+        foreach(glob($dir.'/*.json')?:array() as $existing_path){$existing=self::read($existing_path);if(!is_wp_error($existing)&&($existing['drive']['original_file_id']??'')===$file_id){$existing['already_imported']=true;return $existing;}}
         $source=SBS_Google_Drive_Transport::image_bytes($file_id);
         if(is_wp_error($source)){return $source;}
         $meta=$source['metadata'];
@@ -146,7 +151,44 @@ final class SBS_Finishing
                 'verified'=>true,'source_sha256'=>$source['sha256']),
             'created_at'=>$now,'updated_at'=>$now,'revision'=>1,
             'audit'=>array(array('at'=>$now,'action'=>'Original imported from Google Drive; checksum verified')));
-        return self::write($path,$record);
+        $saved=self::write($path,$record);
+        return $saved;
+        } finally {flock($source_lock,LOCK_UN);fclose($source_lock);}
+    }
+
+    /** Save only the explicitly approved local package to a user-picked folder. */
+    public static function save_drive($request)
+    {
+        $uuid=$request->get_param('uuid');$path=self::path($uuid);if(is_wp_error($path)){return $path;}
+        $lock=fopen($path.'.lock','c');if(!$lock||!flock($lock,LOCK_EX|LOCK_NB)){if($lock){fclose($lock);}return self::error('busy','Workspace is busy. Refresh it before retrying.',409);}
+        try {
+            $r=self::read($path);if(is_wp_error($r)){return $r;}
+            if((int)$request->get_param('revision')!==(int)$r['revision']){return self::error('conflict','Workspace changed. Refresh it before saving.',409);}
+            $v=self::current($r);
+            if(empty($r['approval'])||!$v||($r['approval']['version']??'')!==$v['uuid']
+                ||!hash_equals((string)($r['approval']['sha256']??''),(string)$v['asset']['sha256'])
+                ||!self::intact($r['original'])||!self::intact($v['asset'])){
+                return self::error('approval','Complete human review and approve the current local version before saving.',409);
+            }
+            $folder_id=$request->get_param('folder_id');
+            if(!is_string($folder_id)||!preg_match('/^[A-Za-z0-9_-]{10,200}$/D',$folder_id)){return self::error('folder','Choose a Google Drive destination folder first.');}
+            if(!empty($r['drive']['approved_master_file_id'])&&($r['drive']['folder_id']??'')===$folder_id
+                &&!empty($r['drive']['verified'])&&hash_equals((string)($r['drive']['candidate_sha256']??''),(string)$v['asset']['sha256'])){
+                $r['drive_save_already_complete']=true;return $r;
+            }
+            $package=self::package($r);if(is_wp_error($package)){return $package;}
+            $package_path=SBS_Storage::absolute_path($package);$bytes=is_readable($package_path)?file_get_contents($package_path):false;
+            if(!is_string($bytes)||$bytes===''){return self::error('package','Approved package could not be read from private storage.');}
+            $operation_id=hash('sha256','sbs-finishing|'.$r['uuid'].'|'.$v['uuid'].'|'.$v['asset']['sha256'].'|'.$folder_id);
+            $upload=SBS_Google_Drive_Transport::upload_new($folder_id,'Smutty-Studio-Finishing-'.$r['uuid'].'.zip','application/zip',$bytes,$operation_id);
+            if(is_wp_error($upload)){return $upload;}
+            $r['drive']['folder_id']=$folder_id;$r['drive']['approved_master_file_id']=$upload['id'];
+            $r['drive']['verified']=true;$r['drive']['candidate_sha256']=$v['asset']['sha256'];
+            $r['drive']['package_sha256']=$upload['sha256'];$r['drive']['saved_at']=gmdate('c');
+            $r['revision']++;$r['updated_at']=gmdate('c');$r['audit'][]=array('at'=>gmdate('c'),'action'=>'Human-approved local finishing package uploaded to user-selected Google Drive folder; checksum verified');
+            $saved=self::write($path,$r);if(is_wp_error($saved)){return $saved;}
+            $saved['drive_save_confirmed']=true;return $saved;
+        } finally {flock($lock,LOCK_UN);fclose($lock);}
     }
 
     public static function action($request)
@@ -239,6 +281,9 @@ final class SBS_Finishing
         $zip->addFromString('metadata.json',wp_json_encode($r,JSON_PRETTY_PRINT));
         $zip->addFromString('report.txt',"LOCAL FINISHING PREVIEW ONLY\nNo AF number allocated. No Drive/catalogue writes. Not an SB production approval.\n".wp_json_encode($v['qa'],JSON_PRETTY_PRINT)."\nOriginal SHA-256: ".$r['original']['sha256']."\nCandidate SHA-256: ".$v['asset']['sha256']."\nHuman local approval: ".$r['approval']['at']);
         if(function_exists('imagewebp')){$im=@imagecreatefromstring(file_get_contents(SBS_Storage::absolute_path($v['asset'])));if($im){$thumb=imagescale($im,min(1200,imagesx($im)));if($thumb){imagesavealpha($thumb,true);ob_start();imagewebp($thumb,null,85);$preview=ob_get_clean();if($preview){$zip->addFromString('preview.webp',$preview);}imagedestroy($thumb);}imagedestroy($im);}}
+        // Stable entry timestamps let a retry match an already-created Drive
+        // file even if the first HTTP response was lost.
+        if(method_exists($zip,'setMtimeName')){foreach(array('metadata.json','report.txt','preview.webp') as $entry){if($zip->locateName($entry)!==false){$zip->setMtimeName($entry,946684800);}}}
         if(!$zip->close()){@unlink($path);return self::error('zip','Package could not be completed.',500);}
         $asset=SBS_Storage::store_file($path,'local-finishing-'.$r['uuid'].'.zip','application/zip','finishing',0,'finishing_package',$r['title']);@unlink($path);return $asset;
     }

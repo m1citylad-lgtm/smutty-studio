@@ -70,3 +70,14 @@ The top-level **Settings** tab contains Studio access/password, OpenAI and Repli
 ### Artwork Finishing test workspace (v0.2.47)
 
 The Artwork Finishing tab supports separate Photos/Gallery and Files/My Files choices, private local intake, a clear file-size limit warning, image inspection, conservative fit-down resizing, side-by-side review and local approval. Review checkboxes stay beside readable text at narrow widths; actions show progress and a saved result. The two local processing steps are numbered. The top navigation no longer inserts information buttons between tabs. This remains a local test workspace: Google Drive selection/storage, permanent AF numbering, and catalogue writes are not active. Local approval does not approve SB production. The original upload remains unchanged.
+
+### Google Drive finishing integration (development branch only)
+
+The open draft pull request adds Google Picker selection, checksum-checked local
+imports, and create-only saving of a human-approved package to a folder the user
+selects. It keeps the existing `drive.file` permission and does not write to AF/SB
+registers or production folders. This work is not part of the live v0.2.48
+installation. Live Google sign-in and Drive transfers still require matching the
+exact OAuth redirect address in Google Cloud, a restricted Picker browser key,
+and owner testing with disposable files. See
+[`docs/GOOGLE_DRIVE_INTEGRATION_PLAN.md`](docs/GOOGLE_DRIVE_INTEGRATION_PLAN.md).
