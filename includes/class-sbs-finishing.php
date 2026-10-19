@@ -156,20 +156,35 @@ final class SBS_Finishing
         // Every repeat starts from the preserved original, avoiding accumulated resampling.
         $path=SBS_Storage::absolute_path($r['original']);$bytes=file_get_contents($path);$mime=$r['original']['mime'];$name=$r['original']['filename'];
         if($options['method']!=='inspect'){
-            if(!function_exists('imagecreatefromstring')){return self::error('gd','The server needs PHP GD for local resize/sharpen. Original retained.',503);}
-            $im=@imagecreatefromstring($bytes);if(!$im){return self::error('decode','Image could not be decoded.');}
-            $w=imagesx($im);$h=imagesy($im);
+            // Use WordPress's image-editor choice so hosts with Imagick but no
+            // GD can still run the same conservative, local resize.
+            if(!function_exists('wp_get_image_editor')){return self::error('editor','This WordPress server cannot edit images. The original is retained.',503);}
+            $editor=wp_get_image_editor($path);
+            if(is_wp_error($editor)){return self::error('editor','WordPress could not open this image with its available image tools. The original is retained.',503);}
+            $dimensions=$editor->get_size();$w=(int)($dimensions['width']??0);$h=(int)($dimensions['height']??0);
+            if($w<1||$h<1){return self::error('decode','Image dimensions could not be read. The original is retained.');}
             if($options['method']==='resize'){
                 $ratio=min($options['width']*300/$w,$options['height']*300/$h);
                 // Local resizing is conservative: never invent extra detail or upscale.
                 $ratio=min(1,$ratio);$nw=max(1,(int)round($w*$ratio));$nh=max(1,(int)round($h*$ratio));
-                $out=imagecreatetruecolor($nw,$nh);imagealphablending($out,false);imagesavealpha($out,true);imagefill($out,0,0,imagecolorallocatealpha($out,0,0,0,127));
-                imagecopyresampled($out,$im,0,0,0,0,$nw,$nh,$w,$h);imagedestroy($im);$im=$out;
+                // The dimensions already preserve the source aspect ratio, so
+                // WordPress must scale without cropping any edge content.
+                $resized=$editor->resize($nw,$nh,false);
+                if(is_wp_error($resized)){return self::error('resize','WordPress could not resize this image. The original is retained.',503);}
             } else {
-                // GD convolution can change alpha/texture: do not offer it on translucent inputs.
-                imagedestroy($im);return self::error('sharpen','Sharpening is deferred until alpha and texture preservation are validated. Use Inspect or Fit down.');
+                // Avoid unvalidated convolution filters that can damage alpha
+                // edges, lettering, or intentional print texture.
+                return self::error('sharpen','Sharpening is not enabled until its effect on transparency and print texture can be verified. Use Inspect or Fit down.');
             }
-            imagesavealpha($im,true);ob_start();imagepng($im);$bytes=ob_get_clean();imagedestroy($im);$mime='image/png';$name='candidate.png';
+            $tmp=wp_tempnam('sbs-finishing.png');
+            if(!$tmp){return self::error('temp','Could not create a temporary image file. The original is retained.',503);}
+            $saved=$editor->save($tmp,'image/png');
+            if(is_wp_error($saved)||empty($saved['path'])||!is_readable($saved['path'])){@unlink($tmp);return self::error('save','WordPress could not save the resized PNG. The original is retained.',503);}
+            $bytes=file_get_contents($saved['path']);
+            if(!empty($saved['path'])&&$saved['path']!==$tmp){@unlink($saved['path']);}
+            @unlink($tmp);
+            if(!is_string($bytes)||$bytes===''){return self::error('save','The resized PNG could not be read. The original is retained.',503);}
+            $mime='image/png';$name='candidate.png';
         }
         $asset=SBS_Storage::store_bytes($bytes,$name,$mime,'finishing',0,'finishing_candidate',$r['title']);if(is_wp_error($asset)){return $asset;}
         $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}

@@ -35,6 +35,7 @@
             resetChecks();var v=current&&current.versions.find(function(v){return v.uuid===current.current_version;});
             image('sbs-af-original',current&&current.original,'Untouched original: '+(current?current.title:''));image('sbs-af-candidate',v&&v.asset,'Candidate version '+(v?v.number:''));
             var link=el('sbs-af-original-download');link.hidden=!current;if(current){link.href=current.original.url;}else{link.removeAttribute('href');}
+            var candidateLink=el('sbs-af-candidate-download');candidateLink.hidden=!v;if(v){candidateLink.href=v.asset.url;}else{candidateLink.removeAttribute('href');}
             el('sbs-af-next').textContent=current?'Next action: '+current.next_action+' — '+current.status+' — local '+current.uuid:'Next action: upload or resume artwork.';
             el('sbs-af-versions').replaceChildren();
             var opt=document.createElement('option');opt.value='';opt.textContent='Choose a version';el('sbs-af-versions').appendChild(opt);
