@@ -7,9 +7,14 @@ final class SBS_Google_Drive
     const SCOPE = 'https://www.googleapis.com/auth/drive.file';
     public static function register_routes()
     {
+        register_rest_route(SBS_REST::NS, '/finishing/google/file-metadata', array('methods'=>'POST', 'callback'=>array(__CLASS__,'metadata'), 'permission_callback'=>array('SBS_Finishing','permission')));
         foreach(array('/status'=>array('GET','status'),'/configure'=>array('POST','configure'),'/connect'=>array('POST','connect'),'/disconnect'=>array('POST','disconnect'),'/callback'=>array('GET','callback')) as $path=>$route){
             register_rest_route(SBS_REST::NS,'/finishing/google'.$path,array('methods'=>$route[0],'callback'=>array(__CLASS__,$route[1]),'permission_callback'=>array('SBS_Finishing','permission')));
         }
+    }
+    public static function metadata($request)
+    {
+        return SBS_Google_Drive_Transport::file_metadata($request->get_param('file_id'));
     }
     public static function redirect_uri(){return rest_url(SBS_REST::NS.'/finishing/google/callback');}
     private static function client_id(){return (string)get_option('sbs_google_client_id','');}
