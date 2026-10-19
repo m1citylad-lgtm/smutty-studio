@@ -98,7 +98,7 @@ final class SBS_Google_Drive_Transport
         $token = self::access_token();
         if (is_wp_error($token)) { return $token; }
         $url = 'https://www.googleapis.com/drive/v3/files/' . rawurlencode($file_id)
-            . '?fields=' . rawurlencode('id,name,mimeType,size,md5Checksum,parents,webViewLink,trashed');
+            . '?supportsAllDrives=true&fields=' . rawurlencode('id,name,mimeType,size,md5Checksum,parents,webViewLink,trashed,appProperties,capabilities(canAddChildren)');
         $response = wp_remote_get($url, array(
             'timeout' => 20,
             'redirection' => 0,
@@ -107,7 +107,7 @@ final class SBS_Google_Drive_Transport
         if (is_wp_error($response)) { return self::error('Google Drive could not be reached.'); }
         $status = wp_remote_retrieve_response_code($response);
         if ($status === 401) { return self::error('Reconnect Google Drive.', 401); }
-        if ($status === 403 || $status === 404) { return self::error('This file is not accessible to Smutty Studio.', 403); }
+        if ($status === 403 || $status === 404) { return self::error('This file is not accessible to Smutty Studio.', $status); }
         if ($status !== 200) { return self::error('Google Drive could not read the file details.'); }
         $data = json_decode(wp_remote_retrieve_body($response), true);
         if (!is_array($data) || ($data['id'] ?? '') !== $file_id || !empty($data['trashed'])) {
@@ -116,36 +116,31 @@ final class SBS_Google_Drive_Transport
         return $data;
     }
 
-    /** Find a create-only upload previously started by this workspace operation. */
-    private static function find_upload($folder_id, $operation_id)
+    /** Reserve one ID before saving the local upload intent; retries reuse it. */
+    public static function reserve_file_id()
     {
-        if (!is_string($operation_id) || !preg_match('/^[a-f0-9]{64}$/D', $operation_id)) {
-            return self::error('Invalid Drive save reference.', 400);
-        }
-        $token = self::access_token();
-        if (is_wp_error($token)) { return $token; }
-        $query = "'" . $folder_id . "' in parents and appProperties has { key='sbs_operation' and value='" . $operation_id . "' } and trashed=false";
-        $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query(array(
-            'q' => $query,
-            'pageSize' => 2,
-            'fields' => 'files(id,name,mimeType,size,md5Checksum,parents,appProperties,trashed)',
-        ), '', '&', PHP_QUERY_RFC3986);
-        $response = wp_remote_get($url, array(
-            'timeout' => 20,
-            'redirection' => 0,
-            'headers' => array('Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json'),
+        $token=self::access_token();if(is_wp_error($token)){return $token;}
+        $response=wp_remote_get('https://www.googleapis.com/drive/v3/files/generateIds?count=1&space=drive&type=files',array(
+            'timeout'=>20,'redirection'=>0,'headers'=>array('Authorization'=>'Bearer '.$token),
         ));
-        if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
-            return self::error('Drive could not check whether this save already completed. Do not repeat it yet.');
+        if(is_wp_error($response)||wp_remote_retrieve_response_code($response)!==200){return self::error('Google could not prepare a safe upload. Try again.');}
+        $data=json_decode(wp_remote_retrieve_body($response),true);$id=$data['ids'][0]??null;
+        if(!is_string($id)||!preg_match('/^[A-Za-z0-9_-]{10,200}$/D',$id)){return self::error('Google did not return a valid upload reference.');}
+        return $id;
+    }
+    public static function verify_upload($file_id,$folder_id,$bytes,$operation_id)
+    {
+        $meta=self::file_metadata($file_id);if(is_wp_error($meta)){return $meta;}
+        if(($meta['mimeType']??'')!=='application/zip'
+            || !in_array($folder_id,$meta['parents']??array(),true)
+            || (int)($meta['size']??-1)!==strlen($bytes)
+            || empty($meta['md5Checksum'])
+            || !hash_equals(strtolower($meta['md5Checksum']),md5($bytes))
+            || ($meta['appProperties']['sbs_operation']??'')!==$operation_id){
+            return self::error('Saved package verification failed. Check the selected Drive folder before retrying.',409);
         }
-        $body = json_decode(wp_remote_retrieve_body($response), true);
-        if (!is_array($body) || !isset($body['files']) || !is_array($body['files'])) {
-            return self::error('Drive returned an invalid save check.');
-        }
-        if (count($body['files']) > 1) {
-            return self::error('More than one matching save exists. Check the destination folder before retrying.', 409);
-        }
-        return empty($body['files']) ? null : $body['files'][0];
+        return array('id'=>$file_id,'verified'=>true,'sha256'=>hash('sha256',$bytes),
+            'url'=>'https://drive.google.com/file/d/'.rawurlencode($file_id).'/view');
     }
     public static function image_bytes($id)
     {
@@ -159,7 +154,7 @@ final class SBS_Google_Drive_Transport
         }
         $token = self::access_token();
         if (is_wp_error($token)) { return $token; }
-        $response = wp_remote_get('https://www.googleapis.com/drive/v3/files/'.rawurlencode($id).'?alt=media', array(
+        $response = wp_remote_get('https://www.googleapis.com/drive/v3/files/'.rawurlencode($id).'?alt=media&supportsAllDrives=true', array(
             'timeout'=>45, 'redirection'=>0, 'limit_response_size'=>20971521,
             'headers'=>array('Authorization'=>'Bearer '.$token),
         ));
@@ -180,71 +175,46 @@ final class SBS_Google_Drive_Transport
         }
         return array('bytes'=>$bytes,'metadata'=>$meta,'sha256'=>hash('sha256',$bytes));
     }
-    /**
-     * Create-only upload. Caller must explicitly authorise the destination.
-     * Not exposed to the UI until a separate confirmation flow is reviewed.
-     */
-    public static function upload_new($folder_id,$name,$mime,$bytes,$operation_id)
+    /** Create at a reserved file ID: Google returns 409 on a completed retry. */
+    public static function upload_new($folder_id,$name,$mime,$bytes,$operation_id,$file_id)
     {
         if (!is_string($folder_id) || !preg_match('/^[A-Za-z0-9_-]{10,200}$/D',$folder_id)
+            || !is_string($file_id) || !preg_match('/^[A-Za-z0-9_-]{10,200}$/D',$file_id)
             || !is_string($bytes) || strlen($bytes)<1 || strlen($bytes)>52428800
-            || !in_array($mime,array('image/png','image/jpeg','image/webp','application/zip'),true)) {
+            || $mime!=='application/zip'
+            || !is_string($operation_id) || !preg_match('/^[a-f0-9]{64}$/D',$operation_id)) {
             return self::error('Invalid Drive upload request.',400);
         }
-        if (!is_string($operation_id) || !preg_match('/^[a-f0-9]{64}$/D', $operation_id)) {
-            return self::error('Invalid Drive save reference.',400);
-        }
-        $folder=self::file_metadata($folder_id);
-        if (is_wp_error($folder)) { return $folder; }
+        $folder=self::file_metadata($folder_id);if(is_wp_error($folder)){return $folder;}
         if (($folder['mimeType']??'')!=='application/vnd.google-apps.folder') {
             return self::error('The destination is not an authorised folder.',400);
         }
-        // Create-only idempotency makes a safe retry possible if the browser or
-        // server loses the successful response after Google has accepted it.
-        $existing=self::find_upload($folder_id,$operation_id);
-        if (is_wp_error($existing)) { return $existing; }
-        if ($existing) {
-            if ((int)($existing['size']??-1)!==strlen($bytes)
-                || empty($existing['md5Checksum'])
-                || !hash_equals(strtolower($existing['md5Checksum']),md5($bytes))
-                || !in_array($folder_id,$existing['parents']??array(),true)
-                || ($existing['appProperties']['sbs_operation']??'')!==$operation_id) {
-                return self::error('A previous save with this reference does not match this package. Check Drive before retrying.',409);
-            }
-            return array('id'=>$existing['id'],'verified'=>true,'sha256'=>hash('sha256',$bytes),'recovered_retry'=>true);
+        if(isset($folder['capabilities']['canAddChildren'])&&!$folder['capabilities']['canAddChildren']){
+            return self::error('Google cannot add files to that folder. Choose a folder you can edit.',403);
         }
-        $token=self::access_token();
-        if (is_wp_error($token)) { return $token; }
-        $name=sanitize_file_name($name);
-        if (!$name) { return self::error('Invalid filename.',400); }
+        $token=self::access_token();if(is_wp_error($token)){return $token;}
+        $name=sanitize_file_name($name);if(!$name){return self::error('Invalid filename.',400);}
         $boundary='sbs_'.bin2hex(random_bytes(16));
         $body='--'.$boundary."\r\n".'Content-Type: application/json; charset=UTF-8'."\r\n\r\n"
-            .wp_json_encode(array('name'=>$name,'parents'=>array($folder_id),'appProperties'=>array('sbs_operation'=>$operation_id)))."\r\n"
+            .wp_json_encode(array('id'=>$file_id,'name'=>$name,'parents'=>array($folder_id),'appProperties'=>array('sbs_operation'=>$operation_id)))."\r\n"
             .'--'.$boundary."\r\n".'Content-Type: '.$mime."\r\n\r\n"
             .$bytes."\r\n".'--'.$boundary."--\r\n";
-        $response=wp_remote_post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',array(
+        $response=wp_remote_post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id',array(
             'timeout'=>60,'redirection'=>0,
-            'headers'=>array('Authorization'=>'Bearer '.$token,
-                'Content-Type'=>'multipart/related; boundary='.$boundary),
+            'headers'=>array('Authorization'=>'Bearer '.$token,'Content-Type'=>'multipart/related; boundary='.$boundary),
             'body'=>$body,
         ));
-        if (is_wp_error($response)) { return self::error('Drive could not confirm the upload. Check the selected folder before retrying.'); }
-        $upload_status=wp_remote_retrieve_response_code($response);
-        if ($upload_status===401) { return self::error('Google sign-in expired. Reconnect Google Drive. Check the selected folder before retrying.',401); }
-        if ($upload_status===403) { return self::error('Google cannot add files to that folder. Choose a folder you can edit.'); }
-        if (!in_array($upload_status,array(200,201),true)) { return self::error('Upload was not confirmed. Check Drive before retrying.'); }
-        $created=json_decode(wp_remote_retrieve_body($response),true);
-        if (!is_array($created) || empty($created['id'])) {
-            return self::error('Google did not return a file ID. Check Drive before retrying.');
+        if(is_wp_error($response)){return self::error('Drive could not confirm the upload. Refresh this workspace and retry; Studio will reuse the same upload reference.');}
+        $status=wp_remote_retrieve_response_code($response);
+        if($status===401){return self::error('Google sign-in expired. Reconnect Google Drive, then retry the same save.',401);}
+        if($status===403){return self::error('Google cannot add files to that folder. Choose a folder you can edit.',403);}
+        if(!in_array($status,array(200,201,409),true)){return self::error('Upload was not confirmed. Refresh the workspace and retry the same save.');}
+        if($status!==409){
+            $created=json_decode(wp_remote_retrieve_body($response),true);
+            if(!is_array($created)||($created['id']??'')!==$file_id){return self::error('Google returned an unexpected upload reference. Refresh the workspace before retrying.',409);}
         }
-        $verified=self::file_metadata($created['id']);
-        if (is_wp_error($verified)) { return $verified; }
-        if (!in_array($folder_id,$verified['parents']??array(),true)
-            || (int)($verified['size']??-1)!==strlen($bytes)
-            || empty($verified['md5Checksum'])
-            || !hash_equals(strtolower($verified['md5Checksum']),md5($bytes))) {
-            return self::error('Upload verification failed. Check Drive before retrying.',409);
-        }
-        return array('id'=>$created['id'],'verified'=>true,'sha256'=>hash('sha256',$bytes));
+        $verified=self::verify_upload($file_id,$folder_id,$bytes,$operation_id);
+        if(!is_wp_error($verified)){$verified['recovered_retry']=$status===409;}
+        return $verified;
     }
 }

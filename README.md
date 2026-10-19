@@ -77,7 +77,8 @@ The open draft pull request adds Google Picker selection, checksum-checked local
 imports, and create-only saving of a human-approved package to a folder the user
 selects. It keeps the existing `drive.file` permission and does not write to AF/SB
 registers or production folders. This work is not part of the live v0.2.48
-installation. Live Google sign-in and Drive transfers still require matching the
-exact OAuth redirect address in Google Cloud, a restricted Picker browser key,
-and owner testing with disposable files. See
+installation. The owner has confirmed successful Google sign-in. Real Drive transfers still
+require Google Picker API/key setup, an approved installation, and testing with
+disposable files. Candidate 0.2.49 has additional isolated PHP and UI tests for
+image imports, human approval, package creation and safe upload retries. See
 [`docs/GOOGLE_DRIVE_INTEGRATION_PLAN.md`](docs/GOOGLE_DRIVE_INTEGRATION_PLAN.md).

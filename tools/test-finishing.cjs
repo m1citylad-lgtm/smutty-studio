@@ -17,8 +17,8 @@ const transport = read('includes/class-sbs-google-drive-transport.php');
 const pluginPhp = read('includes/class-sbs-plugin.php');
 const plugin = read('smutty-bear-studio.php');
 
-assert.match(plugin, /Version: 0\.2\.48/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.48'\)/);
+assert.match(plugin, /Version: 0\.2\.49/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.49'\)/);
 
 // The two choices intentionally call separate Android/browser file pickers.
 assert.match(template, /id="sbs-af-file"[^>]*type="file"[^>]*accept="\.png,\.jpg,\.jpeg,\.webp,application\/octet-stream"/);
@@ -68,7 +68,7 @@ assert.match(transport, /image\/png','image\/jpeg','image\/webp/);
 assert.match(transport, /Google sign-in expired\. Reconnect Google Drive, then try again/);
 assert.match(transport, /Google cannot add files to that folder/);
 assert.match(transport, /appProperties/);
-assert.match(transport, /hash_equals\(strtolower\(\$existing\['md5Checksum'\]\),md5\(\$bytes\)\)/);
+assert.match(transport, /hash_equals\(strtolower\(\$meta\['md5Checksum'\]\),md5\(\$bytes\)\)/);
 assert.match(drive, /const SCOPE = 'https:\/\/www\.googleapis\.com\/auth\/drive\.file'/);
 assert.match(drive, /'\/picker'=>array\('POST','picker'\)/);
 assert.match(drive, /'access_token'=>\$token/);

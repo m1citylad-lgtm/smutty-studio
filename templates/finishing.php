@@ -59,6 +59,7 @@
         <button id="sbs-af-drive-folder" class="sbs-button" type="button">Choose Google Drive save folder</button>
         <p id="sbs-af-drive-folder-status" role="status" aria-live="polite">No Drive destination selected.</p>
         <button id="sbs-af-save-drive" class="sbs-button" type="button" disabled>Save approved package to Google Drive</button>
+        <a id="sbs-af-drive-package" class="sbs-button" target="_blank" rel="noopener noreferrer" hidden>Open saved package in Google Drive</a>
         <p>Saving creates a new package in the folder you select; it does not overwrite an existing file. The package contains the original, candidate, metadata, checksums and report. It is not a final production master.</p>
     </section>
 </section>

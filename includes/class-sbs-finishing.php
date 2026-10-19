@@ -58,7 +58,7 @@ final class SBS_Finishing
             $r=self::read($path); if(!is_wp_error($r)){$records[]=$r;}
         }
         usort($records,function($a,$b){return strcmp($b['updated_at'],$a['updated_at']);});
-        return array('mode'=>'local_preview','records'=>array_slice($records,0,200),'drive_writes_enabled'=>false,'af_register'=>'1LQQAciLLM77nQTiUqaQcOvrpFlUyAWFymX3jWIt8Kb8');
+        return array('mode'=>'local_finishing','records'=>array_slice($records,0,200),'drive_writes_enabled'=>true,'af_register'=>'1LQQAciLLM77nQTiUqaQcOvrpFlUyAWFymX3jWIt8Kb8');
     }
     public static function get($request)
     {
@@ -120,6 +120,7 @@ final class SBS_Finishing
     public static function import_drive($request)
     {
         $file_id=$request->get_param('file_id');
+        if(!is_string($file_id)||!preg_match('/^[A-Za-z0-9_-]{10,200}$/D',$file_id)){return self::error('file','Choose an image using Browse Google Drive images.');}
         $dir=self::directory();if(is_wp_error($dir)){return $dir;}
         $source_lock=fopen($dir.'/.drive-'.hash('sha256',(string)$file_id).'.lock','c');
         if(!$source_lock||!flock($source_lock,LOCK_EX|LOCK_NB)){if($source_lock){fclose($source_lock);}return self::error('busy','This Drive image is already being imported. Refresh workspaces before retrying.',409);}
@@ -141,7 +142,7 @@ final class SBS_Finishing
             array('source'=>'google_drive','source_file_id'=>$file_id));
         if(is_wp_error($asset)){return $asset;}
         $qa=self::inspect($asset,self::options(array()));
-        if(is_wp_error($qa)){return $qa;}
+        if(is_wp_error($qa)||!hash_equals($source['sha256'],$qa['sha256']??'')){SBS_Storage::delete_asset($asset['id']);return is_wp_error($qa)?$qa:self::error('integrity','The stored original failed verification. Import refused.',409);}
         $now=gmdate('c');
         $record=array('schema'=>1,'uuid'=>$uuid,'af_id'=>null,'title'=>sanitize_text_field($title)?:$name,
             'links'=>$links,'source_route'=>'google_drive','original'=>$asset,'original_qa'=>$qa,
@@ -152,6 +153,7 @@ final class SBS_Finishing
             'created_at'=>$now,'updated_at'=>$now,'revision'=>1,
             'audit'=>array(array('at'=>$now,'action'=>'Original imported from Google Drive; checksum verified')));
         $saved=self::write($path,$record);
+        if(is_wp_error($saved)){SBS_Storage::delete_asset($asset['id']);}
         return $saved;
         } finally {flock($source_lock,LOCK_UN);fclose($source_lock);}
     }
@@ -172,19 +174,33 @@ final class SBS_Finishing
             }
             $folder_id=$request->get_param('folder_id');
             if(!is_string($folder_id)||!preg_match('/^[A-Za-z0-9_-]{10,200}$/D',$folder_id)){return self::error('folder','Choose a Google Drive destination folder first.');}
+            $operation_id=hash('sha256','sbs-finishing|'.$r['uuid'].'|'.$v['uuid'].'|'.$v['asset']['sha256'].'|'.$folder_id);
+            $intent=$r['drive']['pending_save']??null;
+            if(!is_array($intent)||($intent['operation_id']??'')!==$operation_id){
+                $package=self::package($r);if(is_wp_error($package)){return $package;}
+                $file_id=SBS_Google_Drive_Transport::reserve_file_id();if(is_wp_error($file_id)){SBS_Storage::delete_asset($package['id']);return $file_id;}
+                $intent=array('operation_id'=>$operation_id,'file_id'=>$file_id,'folder_id'=>$folder_id,'package'=>$package);
+                $r['drive']['pending_save']=$intent;
+                // Persist the exact package and Google ID before any upload. A
+                // lost response can then retry without creating another file.
+                $saved=self::write($path,$r);if(is_wp_error($saved)){SBS_Storage::delete_asset($package['id']);return $saved;}
+            }
+            $package_path=SBS_Storage::absolute_path($intent['package']);
+            if(!self::intact($intent['package'])){return self::error('package','The prepared package failed verification. Saving stopped.',409);}
+            $bytes=file_get_contents($package_path);
+            if(!is_string($bytes)||$bytes===''){return self::error('package','Approved package could not be read from private storage.');}
             if(!empty($r['drive']['approved_master_file_id'])&&($r['drive']['folder_id']??'')===$folder_id
-                &&!empty($r['drive']['verified'])&&hash_equals((string)($r['drive']['candidate_sha256']??''),(string)$v['asset']['sha256'])){
+                &&($r['drive']['approved_master_file_id']??'')===$intent['file_id']
+                &&hash_equals((string)($r['drive']['candidate_sha256']??''),(string)$v['asset']['sha256'])){
+                $verified=SBS_Google_Drive_Transport::verify_upload($intent['file_id'],$folder_id,$bytes,$operation_id);
+                if(is_wp_error($verified)){return $verified;}
                 $r['drive_save_already_complete']=true;return $r;
             }
-            $package=self::package($r);if(is_wp_error($package)){return $package;}
-            $package_path=SBS_Storage::absolute_path($package);$bytes=is_readable($package_path)?file_get_contents($package_path):false;
-            if(!is_string($bytes)||$bytes===''){return self::error('package','Approved package could not be read from private storage.');}
-            $operation_id=hash('sha256','sbs-finishing|'.$r['uuid'].'|'.$v['uuid'].'|'.$v['asset']['sha256'].'|'.$folder_id);
-            $upload=SBS_Google_Drive_Transport::upload_new($folder_id,'Smutty-Studio-Finishing-'.$r['uuid'].'.zip','application/zip',$bytes,$operation_id);
+            $upload=SBS_Google_Drive_Transport::upload_new($folder_id,'Smutty-Studio-Finishing-'.$r['uuid'].'.zip','application/zip',$bytes,$operation_id,$intent['file_id']);
             if(is_wp_error($upload)){return $upload;}
             $r['drive']['folder_id']=$folder_id;$r['drive']['approved_master_file_id']=$upload['id'];
             $r['drive']['verified']=true;$r['drive']['candidate_sha256']=$v['asset']['sha256'];
-            $r['drive']['package_sha256']=$upload['sha256'];$r['drive']['saved_at']=gmdate('c');
+            $r['drive']['package_sha256']=$upload['sha256'];$r['drive']['package_url']=$upload['url'];$r['drive']['saved_at']=gmdate('c');
             $r['revision']++;$r['updated_at']=gmdate('c');$r['audit'][]=array('at'=>gmdate('c'),'action'=>'Human-approved local finishing package uploaded to user-selected Google Drive folder; checksum verified');
             $saved=self::write($path,$r);if(is_wp_error($saved)){return $saved;}
             $saved['drive_save_confirmed']=true;return $saved;
@@ -218,7 +234,7 @@ final class SBS_Finishing
                 $checks=$request->get_param('checks');
                 foreach(array('identity','lettering','texture','garments','warnings') as $check){if(!is_array($checks)||($checks[$check]??false)!==true){return self::error('review','Complete every human review check before local approval.');}}
                 $v=self::current($r);if(!$v||!self::intact($r['original'])||!self::intact($v['asset'])){return self::error('integrity','Asset checksum mismatch. Approval refused.',409);}
-                $r['approval']=array('version'=>$v['uuid'],'sha256'=>$v['asset']['sha256'],'at'=>gmdate('c'),'checks'=>$checks,'scope'=>'local_finishing_only');$r['status']='Finishing Approved (local only)';$r['next_action']='Download local package; Drive save awaits integration';
+                $r['approval']=array('version'=>$v['uuid'],'sha256'=>$v['asset']['sha256'],'at'=>gmdate('c'),'checks'=>$checks,'scope'=>'local_finishing_only');$r['status']='Finishing Approved (local only)';$r['next_action']='Download the package or choose a Drive folder and save it';
             } elseif($action==='export'){
                 if(empty($r['approval'])||$r['approval']['version']!==$r['current_version']){return self::error('approval','Approve the current version first.',409);}
                 $package=self::package($r);if(is_wp_error($package)){return $package;}return array('package'=>$package,'drive_saved'=>false,'catalogue_updated'=>false);
@@ -279,7 +295,7 @@ final class SBS_Finishing
         $zip->addFile(SBS_Storage::absolute_path($r['original']),'original/'.$r['original']['filename']);
         $zip->addFile(SBS_Storage::absolute_path($v['asset']),'candidate/'.$v['asset']['filename']);
         $zip->addFromString('metadata.json',wp_json_encode($r,JSON_PRETTY_PRINT));
-        $zip->addFromString('report.txt',"LOCAL FINISHING PREVIEW ONLY\nNo AF number allocated. No Drive/catalogue writes. Not an SB production approval.\n".wp_json_encode($v['qa'],JSON_PRETTY_PRINT)."\nOriginal SHA-256: ".$r['original']['sha256']."\nCandidate SHA-256: ".$v['asset']['sha256']."\nHuman local approval: ".$r['approval']['at']);
+        $zip->addFromString('report.txt',"LOCAL FINISHING PREVIEW ONLY\nNo AF number allocated. No catalogue updates. Local approval only; not an SB production approval.\n".wp_json_encode($v['qa'],JSON_PRETTY_PRINT)."\nOriginal SHA-256: ".$r['original']['sha256']."\nCandidate SHA-256: ".$v['asset']['sha256']."\nHuman local approval: ".$r['approval']['at']);
         if(function_exists('imagewebp')){$im=@imagecreatefromstring(file_get_contents(SBS_Storage::absolute_path($v['asset'])));if($im){$thumb=imagescale($im,min(1200,imagesx($im)));if($thumb){imagesavealpha($thumb,true);ob_start();imagewebp($thumb,null,85);$preview=ob_get_clean();if($preview){$zip->addFromString('preview.webp',$preview);}imagedestroy($thumb);}imagedestroy($im);}}
         // Stable entry timestamps let a retry match an already-created Drive
         // file even if the first HTTP response was lost.

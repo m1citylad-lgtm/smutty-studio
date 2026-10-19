@@ -13,7 +13,9 @@
         async function api(path,data){
             var options={credentials:'same-origin',headers:{'X-SBS-Request':'studio','X-SBS-Finishing':root.getAttribute('data-finishing-csrf')}};
             if(data){options.method='POST';options.body=data instanceof FormData?data:JSON.stringify(data);if(!(data instanceof FormData))options.headers['Content-Type']='application/json';}
-            var response=await fetch(root.getAttribute('data-rest')+'finishing'+path,options),result;
+            var controller=new AbortController(),timer=setTimeout(function(){controller.abort();},120000),response,result;
+            options.signal=controller.signal;
+            try{response=await fetch(root.getAttribute('data-rest')+'finishing'+path,options);}catch(error){throw new Error(error.name==='AbortError'?'The request timed out. Refresh this workspace before retrying; a save may have finished.':'Studio could not be reached. Check your connection and refresh this workspace before retrying.');}finally{clearTimeout(timer);}
             try{result=await response.json();}catch(e){throw new Error('Unexpected server response. Check the workspace before retrying.');}
             if(!response.ok)throw new Error(result.message||'Request failed. Original retained.');return result;
         }
@@ -55,6 +57,10 @@
                 var list=document.createElement('ul');q.warnings.forEach(function(w){var item=document.createElement('li');item.textContent=w;list.appendChild(item);});qa.appendChild(list);
                 if(v&&v.options.notes){var notes=document.createElement('p');notes.textContent='Recorded review notes: '+v.options.notes;qa.appendChild(notes);}
             }
+            var driveLink=el('sbs-af-drive-package'),drive=current&&current.drive;
+            var saved=!!(v&&drive&&drive.verified&&drive.candidate_sha256===v.asset.sha256&&/^[A-Za-z0-9_-]{10,200}$/.test(drive.approved_master_file_id||''));
+            driveLink.hidden=!saved;
+            if(saved){driveLink.href='https://drive.google.com/file/d/'+encodeURIComponent(drive.approved_master_file_id)+'/view';}else{driveLink.removeAttribute('href');}
             controls();
         }
         function catalogue(){
@@ -68,10 +74,12 @@
             if(window.google&&window.google.picker){return Promise.resolve();}
             if(pickerLoad){return pickerLoad;}
             pickerLoad=new Promise(function(resolve,reject){
+                var timer=setTimeout(function(){reject(new Error('Google Drive picker took too long to load. Check your connection and try again.'));},20000);
+                var done=function(fn){return function(value){clearTimeout(timer);fn(value);};};
                 var script=document.createElement('script');script.src='https://apis.google.com/js/api.js';script.async=true;script.onload=function(){
-                    if(!window.gapi){reject(new Error('Google Drive picker could not load.'));return;}
-                    window.gapi.load('picker',{callback:resolve,onerror:function(){reject(new Error('Google Drive picker could not load.'));}});
-                };script.onerror=function(){reject(new Error('Google Drive picker could not load. Check the connection and try again.'));};document.head.appendChild(script);
+                    if(!window.gapi){clearTimeout(timer);reject(new Error('Google Drive picker could not load.'));return;}
+                    window.gapi.load('picker',{callback:done(resolve),onerror:done(function(){reject(new Error('Google Drive picker could not load.'));}),timeout:15000,ontimeout:done(function(){reject(new Error('Google Drive picker took too long to load. Try again.'));})});
+                };script.onerror=done(function(){reject(new Error('Google Drive picker could not load. Check the connection and try again.'));});document.head.appendChild(script);
             }).catch(function(error){pickerLoad=null;throw error;});
             return pickerLoad;
         }
@@ -80,6 +88,7 @@
             operation(async function(){
                 var settings=await api('/google/picker',{});
                 await loadPicker();
+                el(mode==='folder'?'sbs-af-drive-folder-status':'sbs-af-drive-status').textContent='Google Drive selection is open. Choose an item or cancel to return to Studio.';
                 await new Promise(function(resolve,reject){
                     try{
                         var view;
@@ -90,16 +99,20 @@
                             view=new google.picker.DocsView(google.picker.ViewId.DOCS);
                             view.setMimeTypes('image/png,image/jpeg,image/webp');view.setIncludeFolders(false);
                         }
+                        view.setMode(google.picker.DocsViewMode.LIST);
                         var picker=new google.picker.PickerBuilder().addView(view)
                             .setOAuthToken(settings.access_token).setDeveloperKey(settings.api_key)
                             .setAppId(settings.app_id).setOrigin(window.location.protocol+'//'+window.location.host)
+                            .setSize(Math.max(160,Math.min(900,window.innerWidth-24)),Math.max(160,Math.min(600,window.innerHeight-48)))
                             .setTitle(mode==='folder'?'Choose a Google Drive folder for the approved package':'Choose an artwork image from Google Drive')
                             .setCallback(function(data){
                                 var actionName=data[google.picker.Response.ACTION];
+                                if(actionName!==google.picker.Action.PICKED&&actionName!==google.picker.Action.CANCEL&&actionName!=='error'){return;}
+                                if(actionName==='error'){picker.dispose();reject(new Error('Google Drive could not open the selection window. Check the Picker settings and try again.'));return;}
                                 if(actionName===google.picker.Action.PICKED){
                                     var doc=(data[google.picker.Response.DOCUMENTS]||[])[0]||{};
                                     var id=doc[google.picker.Document.ID],name=doc[google.picker.Document.NAME]||'selected item';
-                                    if(!id){reject(new Error('Google did not return the selected item.'));return;}
+                                    if(!id){picker.dispose();button.focus();reject(new Error('Google did not return the selected item.'));return;}
                                     if(mode==='folder'){
                                         driveFolder={id:id,name:name};el('sbs-af-drive-folder-status').textContent='Drive save folder selected: '+name+'.';
                                         controls();message('Drive folder selected. The package will only be saved after you press the save button.');
@@ -112,12 +125,12 @@
                                 }else if(actionName===google.picker.Action.CANCEL){
                                     message('Google Drive selection cancelled. Nothing was changed.');
                                 }
-                                resolve();
+                                picker.dispose();button.focus();resolve();
                             }).build();
                         picker.setVisible(true);
                     }catch(error){reject(error);}
                 });
-            },mode==='folder'?'Opening Google Drive folders…':'Opening Google Drive images…',button);
+            },mode==='folder'?'Opening Google Drive folders…':'Opening Google Drive images…',button,function(error){el(mode==='folder'?'sbs-af-drive-folder-status':'sbs-af-drive-status').textContent=error.message;});
         }
         el('sbs-af-drive-browse').addEventListener('click',function(){openDrivePicker('image');});
         el('sbs-af-drive-folder').addEventListener('click',function(){openDrivePicker('folder');});
@@ -149,7 +162,7 @@
                 status.textContent=saved.drive_save_already_complete?'This approved package was already saved and verified in '+driveFolder.name+'.':'Approved package saved and checksum verified in '+driveFolder.name+'.';
                 message(status.textContent+' Local finishing approval only; production status is unchanged.');
             },'Saving and verifying the approved package in Google Drive…',button,function(error){
-                el('sbs-af-drive-folder-status').textContent='Drive save not confirmed: '+error.message+' Check the folder before retrying.';
+                el('sbs-af-drive-folder-status').textContent=saved?'Package saved and verified. The workspace list did not refresh. Press Refresh workspaces. '+error.message:'Drive save not confirmed: '+error.message+' Refresh workspaces before retrying.';
             });
         });
         el('sbs-af-file').addEventListener('change',function(){chooseFile(this);});
@@ -169,15 +182,15 @@
         ['local','sb'].forEach(function(which){el('sbs-af-show-'+which).addEventListener('click',function(){el('sbs-af-local-catalogue').hidden=which!=='local';el('sbs-af-sb-catalogue').hidden=which!=='sb';el('sbs-af-show-local').setAttribute('aria-pressed',String(which==='local'));el('sbs-af-show-sb').setAttribute('aria-pressed',String(which==='sb'));});});
         var googleBusy=false,googleState={configured:false,connected:false};
         function googleControls(){el('sbs-google-connect').disabled=googleBusy||!googleState.configured||googleState.connected;el('sbs-google-reconnect').disabled=googleBusy||!googleState.configured;el('sbs-google-disconnect').disabled=googleBusy||!googleState.connected;el('sbs-google-refresh').disabled=googleBusy;el('sbs-google-config').querySelectorAll('input,button').forEach(function(n){n.disabled=googleBusy;});}
-        function googlePaint(s,prefix){googleState={configured:!!s.configured,connected:!!s.connected};if(s.client_id){el('sbs-google-client').value=s.client_id;}el('sbs-google-status').textContent=(prefix||'')+(s.connected?'Google sign-in is connected'+(s.access_expired?' (reconnect required)':''):s.configured?'Client settings are saved; Google sign-in is not connected yet.':'Client settings are not saved; Google sign-in is not connected.')+' '+s.message+(s.picker_configured?' Google Picker is configured.':' Google Picker browser key is still needed.');el('sbs-google-redirect').textContent=s.redirect_uri;googleControls();}
+        function googlePaint(s,prefix){googleState={configured:!!s.configured,connected:!!s.connected};if(s.client_id){el('sbs-google-client').value=s.client_id;}el('sbs-google-status').textContent=(prefix||'')+(s.connected?'Google sign-in is connected'+(s.access_expired?' (the connection will refresh automatically when needed)':''):s.configured?'Client settings are saved; Google sign-in is not connected yet.':'Client settings are not saved; Google sign-in is not connected.')+' '+s.message+(s.picker_configured?' Google Picker is configured.':' Google Picker browser key is still needed.');el('sbs-google-redirect').textContent=s.redirect_uri;googleControls();}
         function googleButtonBusy(button,on,label){if(!button)return;if(on){if(!button.hasAttribute('aria-busy')){button.dataset.previousLabel=button.textContent;}button.textContent=label||'Processing…';button.setAttribute('aria-busy','true');button.disabled=true;}else{button.removeAttribute('aria-busy');if(button.dataset.previousLabel){button.textContent=button.dataset.previousLabel;delete button.dataset.previousLabel;}}}
-        async function google(fn,progress,button){if(googleBusy)return;googleBusy=true;googleButtonBusy(button,true);googleControls();if(progress){el('sbs-google-status').textContent=progress+' Please wait.';}try{await fn();}catch(e){el('sbs-google-status').textContent='Google settings could not be checked or saved: '+e.message;}finally{googleBusy=false;googleButtonBusy(button,false);googleControls();}}
-        el('sbs-google-refresh').addEventListener('click',function(){var button=this;google(async function(){googlePaint(await api('/google/status'));},'Checking saved Google settings…',button);});
-        el('sbs-google-config').addEventListener('submit',function(e){e.preventDefault();var button=this.querySelector('button[type="submit"]');google(async function(){try{googlePaint(await api('/google/configure',{client_id:el('sbs-google-client').value.trim(),client_secret:el('sbs-google-secret').value,picker_api_key:el('sbs-google-picker-key').value}),'Settings saved securely. ');}finally{el('sbs-google-secret').value='';el('sbs-google-picker-key').value='';}},'Saving encrypted Google settings…',button);});
-        ['connect','reconnect'].forEach(function(type){el('sbs-google-'+type).addEventListener('click',function(){var button=this;google(async function(){var result=await api('/google/connect',{}),url=new URL(result.authorization_url);if(url.protocol!=='https:'||url.hostname!=='accounts.google.com')throw new Error('Invalid Google sign-in address.');window.location.assign(url.href);},'Opening Google sign-in…',button);});});
-        el('sbs-google-disconnect').addEventListener('click',function(){var button=this;google(async function(){googlePaint(await api('/google/disconnect',{}));},'Disconnecting Google Drive…',button);});
-        document.querySelectorAll('[data-primary-tab]').forEach(function(button){button.addEventListener('click',function(){var tab=button.getAttribute('data-primary-tab');if(tab==='finishing'||tab==='catalogue'){operation(async function(){await refresh();if(tab==='finishing')render();message('Local workspaces loaded.');},'Loading local workspaces…');}if(tab==='settings'){google(async function(){googlePaint(await api('/google/status'));},'Checking saved Google settings…');}});});
-        if(root.getAttribute('data-open-settings')==='1')google(async function(){googlePaint(await api('/google/status'));},'Checking saved Google settings…');
+        async function googleOperation(fn,progress,button){if(googleBusy)return;googleBusy=true;googleButtonBusy(button,true);googleControls();if(progress){el('sbs-google-status').textContent=progress+' Please wait.';}try{await fn();}catch(e){el('sbs-google-status').textContent='Google settings could not be checked or saved: '+e.message;}finally{googleBusy=false;googleButtonBusy(button,false);googleControls();}}
+        el('sbs-google-refresh').addEventListener('click',function(){var button=this;googleOperation(async function(){googlePaint(await api('/google/status'));},'Checking saved Google settings…',button);});
+        el('sbs-google-config').addEventListener('submit',function(e){e.preventDefault();var button=this.querySelector('button[type="submit"]');googleOperation(async function(){try{googlePaint(await api('/google/configure',{client_id:el('sbs-google-client').value.trim(),client_secret:el('sbs-google-secret').value,picker_api_key:el('sbs-google-picker-key').value}),'Settings saved securely. ');}finally{el('sbs-google-secret').value='';el('sbs-google-picker-key').value='';}},'Saving encrypted Google settings…',button);});
+        ['connect','reconnect'].forEach(function(type){el('sbs-google-'+type).addEventListener('click',function(){var button=this;googleOperation(async function(){var result=await api('/google/connect',{}),url=new URL(result.authorization_url);if(url.protocol!=='https:'||url.hostname!=='accounts.google.com')throw new Error('Invalid Google sign-in address.');window.location.assign(url.href);},'Opening Google sign-in…',button);});});
+        el('sbs-google-disconnect').addEventListener('click',function(){var button=this;googleOperation(async function(){googlePaint(await api('/google/disconnect',{}));},'Disconnecting Google Drive…',button);});
+        document.querySelectorAll('[data-primary-tab]').forEach(function(button){button.addEventListener('click',function(){var tab=button.getAttribute('data-primary-tab');if(tab==='finishing'||tab==='catalogue'){operation(async function(){await refresh();if(tab==='finishing')render();message('Local workspaces loaded.');},'Loading local workspaces…');}if(tab==='settings'){googleOperation(async function(){googlePaint(await api('/google/status'));},'Checking saved Google settings…');}});});
+        if(root.getAttribute('data-open-settings')==='1')googleOperation(async function(){googlePaint(await api('/google/status'));},'Checking saved Google settings…');
         render();
     }
     if(typeof window!=='undefined')window.SBSFinishing={matches:matches,canApprove:canApprove,init:init};
