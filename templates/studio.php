@@ -5,14 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow,noarchive">
     <title>Smutty Studio</title>
-    <?php wp_print_styles(array('sbs-studio', 'sbs-studio-hierarchy', 'sbs-studio-theme')); ?>
+    <?php wp_print_styles(array('sbs-studio', 'sbs-studio-hierarchy', 'sbs-studio-theme', 'sbs-finishing')); ?>
 </head>
 <body id="sbs-studio-page" class="sbs-body">
-<div id="sbs-app" class="sbs-shell" data-rest="<?php echo esc_url(rest_url('smutty-bear/v1/')); ?>" data-authenticated="<?php echo SBS_Auth::is_authenticated() ? '1' : '0'; ?>" data-slug="<?php echo esc_attr(SBS_Plugin::studio_slug()); ?>" data-version="<?php echo esc_attr(SBS_VERSION); ?>" data-open-settings="<?php echo isset($_GET['settings']) ? '1' : '0'; ?>">
+<div id="sbs-app" class="sbs-shell" data-rest="<?php echo esc_url(rest_url('smutty-bear/v1/')); ?>" data-authenticated="<?php echo SBS_Auth::is_authenticated() ? '1' : '0'; ?>" data-slug="<?php echo esc_attr(SBS_Plugin::studio_slug()); ?>" data-version="<?php echo esc_attr(SBS_VERSION); ?>" data-finishing-csrf="<?php echo SBS_Auth::is_authenticated() ? esc_attr(SBS_Finishing::csrf()) : ''; ?>" data-open-settings="<?php echo isset($_GET['settings']) ? '1' : '0'; ?>">
     <header class="sbs-header">
         <nav id="sbs-primary-nav" class="sbs-primary-tabs" aria-label="Main studio areas" <?php echo SBS_Auth::is_authenticated() ? '' : 'hidden'; ?>>
             <button data-primary-tab="characters" class="active">Characters</button>
             <button data-primary-tab="freestyle">Freestyle</button>
+            <button data-primary-tab="finishing">Artwork Finishing</button>
+            <button data-primary-tab="catalogue">Artwork Catalogue</button>
             <button data-primary-tab="usage">Usage</button>
             <button data-primary-tab="settings">Settings</button>
         </nav>
@@ -143,7 +145,9 @@
                 <div id="sbs-usage-summary" class="sbs-metric-grid"></div><div class="sbs-card"><table class="sbs-table"><thead><tr><th>Date</th><th>Character</th><th>Provider</th><th>Operation</th><th>Estimated USD</th></tr></thead><tbody id="sbs-usage-rows"></tbody></table></div>
             </section>
 
+            <?php include SBS_PLUGIN_DIR . 'templates/finishing.php'; ?>
             <section class="sbs-panel" data-panel="settings">
+                <?php include SBS_PLUGIN_DIR . 'templates/finishing-settings.php'; ?>
                 <div class="sbs-panel-heading"><div><p class="sbs-kicker">STUDIO MANAGEMENT</p><h1>Settings</h1></div><span class="sbs-pill">Studio sign-in required</span></div>
                 <div id="sbs-settings-admin" class="sbs-settings-admin"><?php SBS_Admin::render_studio_settings(); ?></div>
                 <h2 class="sbs-stage-heading"><span class="sbs-stage-number">D.</span> Software updates and rollback</h2>
@@ -178,6 +182,6 @@
     </dialog>
     <footer class="sbs-footer">Private creative workspace · Image filtering: Less restrictive (OpenAI low) · Provider content rules still apply</footer>
 </div>
-<?php wp_print_scripts(array('sbs-fabric', 'sbs-studio', 'sbs-freestyle')); ?>
+<?php wp_print_scripts(array('sbs-fabric', 'sbs-studio', 'sbs-freestyle', 'sbs-finishing')); ?>
 </body>
 </html>

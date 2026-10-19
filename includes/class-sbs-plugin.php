@@ -42,6 +42,8 @@ final class SBS_Plugin
         add_action('template_redirect', array($this, 'template_redirect'));
         add_action('rest_api_init', array('SBS_REST', 'register_routes'));
         add_action('rest_api_init', array('SBS_Freestyle', 'register_routes'));
+        add_action('rest_api_init', array('SBS_Finishing', 'register_routes'));
+        add_action('rest_api_init', array('SBS_Google_Drive', 'register_routes'));
         add_action('admin_menu', array('SBS_Admin', 'register_menu'));
         add_action('admin_init', array('SBS_Admin', 'register_actions'));
         add_action('admin_enqueue_scripts', array('SBS_Admin', 'enqueue'));
@@ -110,6 +112,8 @@ final class SBS_Plugin
         wp_enqueue_script('sbs-studio', SBS_PLUGIN_URL . 'assets/js/studio.js', array('sbs-fabric'), SBS_VERSION, true);
 
         wp_enqueue_script('sbs-freestyle', SBS_PLUGIN_URL . 'assets/js/freestyle.js', array('sbs-studio'), SBS_VERSION, true);
+        wp_enqueue_script('sbs-finishing', SBS_PLUGIN_URL . 'assets/js/finishing.js', array('sbs-studio'), SBS_VERSION, true);
+        wp_enqueue_style('sbs-finishing', SBS_PLUGIN_URL . 'assets/css/finishing.css', array('sbs-studio-theme'), SBS_VERSION);
         include SBS_PLUGIN_DIR . 'templates/studio.php';
         exit;
     }
