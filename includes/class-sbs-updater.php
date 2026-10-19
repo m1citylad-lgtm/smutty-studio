@@ -213,12 +213,25 @@ final class SBS_Updater
         if ($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
             return new WP_Error('backup_failed', 'Could not create the pre-update backup.');
         }
+        $files = array();
         $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source, FilesystemIterator::SKIP_DOTS));
         foreach ($iterator as $file) {
             if ($file->isFile()) {
-                $relative = self::SLUG . '/' . ltrim(str_replace('\\', '/', substr($file->getPathname(), strlen($source))), '/');
-                $zip->addFile($file->getPathname(), $relative);
+                $relative = ltrim(str_replace('\\', '/', substr($file->getPathname(), strlen($source))), '/');
+                $sha256 = hash_file('sha256', $file->getPathname());
+                if ($sha256 === false || !$zip->addFile($file->getPathname(), self::SLUG . '/' . $relative)) {
+                    $zip->close();
+                    @unlink($path);
+                    return new WP_Error('backup_failed', 'Could not add a plugin file to the pre-update backup.');
+                }
+                $files[$relative] = $sha256;
             }
+        }
+        $manifest = array('slug' => self::SLUG, 'version' => SBS_VERSION, 'requires_php' => '7.4', 'requires_wp' => '5.8.17', 'files' => $files);
+        if (!$zip->addFromString(self::SLUG . '/release.json', wp_json_encode($manifest, JSON_UNESCAPED_SLASHES))) {
+            $zip->close();
+            @unlink($path);
+            return new WP_Error('backup_failed', 'Could not add the manifest to the pre-update backup.');
         }
         $zip->close();
         return is_readable($path) ? $path : new WP_Error('backup_failed', 'The pre-update backup was not created.');
@@ -243,11 +256,101 @@ final class SBS_Updater
         if (!preg_match('/^' . preg_quote(self::SLUG, '/') . '-.+\.zip$/', $name) || !is_readable($path)) {
             return new WP_Error('missing_backup', 'The selected rollback package was not found.');
         }
-        $result = self::install_uploaded($path, true);
+        // Older internal backups have no manifest. They can only be normalized
+        // from this protected backup directory after strict checks.
+        $install_path = self::prepare_legacy_backup($path, $name);
+        if (is_wp_error($install_path)) {
+            return $install_path;
+        }
+        $result = self::install_uploaded($install_path, true);
+        if ($install_path !== $path) {
+            @unlink($install_path);
+        }
         if (is_wp_error($result)) {
             return $result;
         }
         return array('rolled_back' => true, 'package' => $name, 'version' => $result['version']);
+    }
+
+    private static function prepare_legacy_backup($path, $name)
+    {
+        $zip = new ZipArchive();
+        if ($zip->open($path) !== true) {
+            return new WP_Error('invalid_backup', 'The selected backup is not a readable ZIP archive.');
+        }
+        if ($zip->statName(self::SLUG . '/release.json')) {
+            $zip->close();
+            return $path;
+        }
+        if ($zip->numFiles < 1 || $zip->numFiles > 5000 || !preg_match('/^' . preg_quote(self::SLUG, '/') . '-(\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?)-\d{8}-\d{6}\.zip$/', $name, $match)) {
+            $zip->close();
+            return new WP_Error('invalid_backup', 'The selected legacy backup has an invalid name or entry count.');
+        }
+        $contents = array();
+        $hashes = array();
+        $total = 0;
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entry = $zip->getNameIndex($i);
+            $prefix = self::SLUG . '/';
+            if (!is_string($entry) || strlen($entry) > 500 || !self::safe_zip_path($entry) || strpos($entry, $prefix) !== 0 || substr($entry, -1) === '/') {
+                $zip->close();
+                return new WP_Error('invalid_backup', 'The selected legacy backup contains an unsafe or unexpected path.');
+            }
+            $relative = substr($entry, strlen($prefix));
+            if (isset($contents[$relative])) {
+                $zip->close();
+                return new WP_Error('invalid_backup', 'The selected legacy backup contains duplicate file paths.');
+            }
+            $stat = $zip->statIndex($i);
+            $size = is_array($stat) ? (int) ($stat['size'] ?? 0) : 0;
+            $total += $size;
+            if ($size > 100 * MB_IN_BYTES || $total > 250 * MB_IN_BYTES || in_array($relative, array('release.json', 'release.sig'), true)) {
+                $zip->close();
+                return new WP_Error('invalid_backup', 'The selected legacy backup exceeds limits or contains release metadata.');
+            }
+            if (method_exists($zip, 'getExternalAttributesIndex')) {
+                $opsys = 0; $attributes = 0;
+                if ($zip->getExternalAttributesIndex($i, $opsys, $attributes) && (($attributes >> 16) & 0170000) === 0120000) {
+                    $zip->close();
+                    return new WP_Error('invalid_backup', 'The selected legacy backup may not contain symbolic links.');
+                }
+            }
+            $bytes = $zip->getFromIndex($i);
+            if ($bytes === false || strlen($bytes) !== $size) {
+                $zip->close();
+                return new WP_Error('invalid_backup', 'A file in the selected legacy backup could not be read.');
+            }
+            $contents[$relative] = $bytes;
+            $hashes[$relative] = hash('sha256', $bytes);
+        }
+        $zip->close();
+        if (!isset($contents['smutty-bear-studio.php']) || !preg_match('/^\s*\* Version:\s*' . preg_quote($match[1], '/') . '\s*$/m', $contents['smutty-bear-studio.php'])) {
+            return new WP_Error('invalid_backup_version', 'The backup filename and plugin version do not match.');
+        }
+        $manifest = array('slug' => self::SLUG, 'version' => $match[1], 'requires_php' => '7.4', 'requires_wp' => '5.8.17', 'files' => $hashes);
+        $tmp = wp_tempnam(self::SLUG . '-rollback.zip');
+        if (!$tmp) {
+            return new WP_Error('backup_stage_failed', 'Temporary storage is unavailable to prepare this rollback.');
+        }
+        $normalized = new ZipArchive();
+        if ($normalized->open($tmp, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            @unlink($tmp);
+            return new WP_Error('backup_stage_failed', 'The legacy backup could not be staged safely.');
+        }
+        foreach ($contents as $relative => $bytes) {
+            if (!$normalized->addFromString(self::SLUG . '/' . $relative, $bytes)) {
+                $normalized->close();
+                @unlink($tmp);
+                return new WP_Error('backup_stage_failed', 'A file could not be copied into the staged rollback package.');
+            }
+        }
+        if (!$normalized->addFromString(self::SLUG . '/release.json', wp_json_encode($manifest, JSON_UNESCAPED_SLASHES))) {
+            $normalized->close();
+            @unlink($tmp);
+            return new WP_Error('backup_stage_failed', 'The staged rollback manifest could not be written.');
+        }
+        $normalized->close();
+        return is_readable($tmp) ? $tmp : new WP_Error('backup_stage_failed', 'The staged rollback package could not be read.');
     }
 
     public static function install_feed_release()

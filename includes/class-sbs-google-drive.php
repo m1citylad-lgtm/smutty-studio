@@ -1,66 +1,36 @@
 <?php
 if (!defined('ABSPATH')) { exit; }
 
-/** Encrypted OAuth configuration; Drive file operations use the guarded transport. */
+/** Server-only OAuth scaffold. Deliberately contains NO Drive or Sheets write API. */
 final class SBS_Google_Drive
 {
     const SCOPE = 'https://www.googleapis.com/auth/drive.file';
     public static function register_routes()
     {
-        register_rest_route(SBS_REST::NS, '/finishing/google/file-metadata', array('methods'=>'POST', 'callback'=>array(__CLASS__,'metadata'), 'permission_callback'=>array('SBS_Finishing','permission')));
-        foreach(array('/status'=>array('GET','status'),'/configure'=>array('POST','configure'),'/picker'=>array('POST','picker'),'/connect'=>array('POST','connect'),'/disconnect'=>array('POST','disconnect'),'/callback'=>array('GET','callback')) as $path=>$route){
+        foreach(array('/status'=>array('GET','status'),'/configure'=>array('POST','configure'),'/connect'=>array('POST','connect'),'/disconnect'=>array('POST','disconnect'),'/callback'=>array('GET','callback')) as $path=>$route){
             register_rest_route(SBS_REST::NS,'/finishing/google'.$path,array('methods'=>$route[0],'callback'=>array(__CLASS__,$route[1]),'permission_callback'=>array('SBS_Finishing','permission')));
         }
-    }
-    public static function metadata($request)
-    {
-        return SBS_Google_Drive_Transport::file_metadata($request->get_param('file_id'));
     }
     public static function redirect_uri(){return rest_url(SBS_REST::NS.'/finishing/google/callback');}
     private static function client_id(){return (string)get_option('sbs_google_client_id','');}
     private static function secret(){return SBS_Crypto::decrypt((string)get_option('sbs_google_client_secret',''));}
-    private static function picker_key(){return SBS_Crypto::decrypt((string)get_option('sbs_google_picker_key',''));}
-    private static function project_number(){ $parts=explode('-',self::client_id(),2);return preg_match('/^[0-9]{6,20}$/D',$parts[0]??'')?$parts[0]:''; }
     private static function tokens(){return json_decode(SBS_Crypto::decrypt((string)get_option('sbs_google_tokens','')),true) ?: array();}
     public static function status()
     {
         $t=self::tokens();
-        return array('configured'=>(bool)(self::client_id()&&self::secret()),'client_id'=>self::client_id(),'connected'=>!empty($t['refresh_token']), 'access_expired'=>!empty($t)&&($t['expires_at']??0)<=time(),'picker_configured'=>(bool)(self::picker_key()&&self::project_number()),'redirect_uri'=>self::redirect_uri(),'scope'=>self::SCOPE,'drive_import_enabled'=>true,'approved_package_upload_enabled'=>true,'catalogue_writes_enabled'=>false,'message'=>'Drive access is limited to files and folders the user selects with Google Picker or files created by this app.');
+        return array('configured'=>(bool)(self::client_id()&&self::secret()),'connected'=>!empty($t['refresh_token']), 'access_expired'=>!empty($t)&&($t['expires_at']??0)<=time(),'redirect_uri'=>self::redirect_uri(),'scope'=>self::SCOPE,'drive_route_enabled'=>false,'writes_enabled'=>false,'message'=>'OAuth scaffold only. Drive selection, reads, AF allocation and all remote writes remain disabled.');
     }
     public static function configure($request)
     {
         if(!is_ssl()){return SBS_Finishing::error('https','Google client settings require HTTPS.',403);}
-        $id=$request->get_param('client_id');$secret=$request->get_param('client_secret');$picker_key=$request->get_param('picker_api_key');
+        if(self::tokens()){return SBS_Finishing::error('disconnect','Disconnect before changing the OAuth client.',409);}
+        $id=$request->get_param('client_id');$secret=$request->get_param('client_secret');
         if(!is_string($id)||!preg_match('/^[A-Za-z0-9._-]+\.apps\.googleusercontent\.com$/D',$id)||strlen($id)>255||!is_string($secret)||strlen($secret)>1000){return SBS_Finishing::error('client','Enter the web application client ID and client secret.');}
-        if($picker_key!==null&&(!is_string($picker_key)||($picker_key!==''&&!preg_match('/^[A-Za-z0-9_-]{20,100}$/D',$picker_key)))){return SBS_Finishing::error('picker_key','Enter a valid Google browser API key.');}
         $encrypted=$secret!==''?SBS_Crypto::encrypt($secret):(string)get_option('sbs_google_client_secret','');
         if(!$encrypted||!SBS_Crypto::decrypt($encrypted)){return SBS_Finishing::error('crypto','Encrypted storage is unavailable or the client secret is missing.',503);}
-        $stored_picker=(string)get_option('sbs_google_picker_key','');
-        if(is_string($picker_key)&&$picker_key!==''){$stored_picker=SBS_Crypto::encrypt($picker_key);if(!$stored_picker||!SBS_Crypto::decrypt($stored_picker)){return SBS_Finishing::error('picker_key','The browser API key could not be stored securely.',503);}}
-        if(!SBS_Storage::ensure_directories()){return SBS_Finishing::error('storage','Private storage is unavailable.',503);}
-        $lock=fopen(SBS_Storage::base_dir().'/tmp/google-oauth.lock','c');
-        if(!$lock||!flock($lock,LOCK_EX|LOCK_NB)){if($lock){fclose($lock);}return SBS_Finishing::error('busy','Google settings are busy. Try again.',409);}
-        try {
-            $client_changed=$id!==self::client_id()||$secret!=='';
-            if(self::tokens()&&$client_changed){return SBS_Finishing::error('disconnect','Disconnect before replacing the OAuth client. Leave the client secret empty when adding a Picker key.',409);}
-            // Adding the restricted Picker key must preserve the working connection.
-            $settings=array('sbs_google_client_id'=>$id,'sbs_google_client_secret'=>$encrypted);
-            if($stored_picker!==''){$settings['sbs_google_picker_key']=$stored_picker;}
-            foreach($settings as $key=>$value){
-                update_option($key,$value,false);
-                if((string)get_option($key,'')!==$value){return SBS_Finishing::error('save','Google settings could not be saved. Check connection status before retrying.',503);}
-            }
-            if($client_changed){update_option('sbs_google_generation',bin2hex(random_bytes(16)),false);}
-            return self::status();
-        } finally {flock($lock,LOCK_UN);fclose($lock);}
-    }
-    /** Return a short-lived token only to the signed-in Studio page to open Picker. */
-    public static function picker()
-    {
-        if(!self::picker_key()||!self::project_number()){return SBS_Finishing::error('picker_setup','Google Picker needs a restricted browser API key in Studio Settings.',409);}
-        $token=SBS_Google_Drive_Transport::access_token();if(is_wp_error($token)){return $token;}
-        $response=new WP_REST_Response(array('access_token'=>$token,'api_key'=>self::picker_key(),'app_id'=>self::project_number()));
-        $response->header('Cache-Control','no-store, private');$response->header('Pragma','no-cache');return $response;
+        update_option('sbs_google_client_secret',$encrypted,false);update_option('sbs_google_client_id',$id,false);
+        update_option('sbs_google_generation',bin2hex(random_bytes(16)),false);
+        return self::status();
     }
     public static function connect()
     {

@@ -1,6 +1,6 @@
 <section class="sbs-panel sbs-af" data-panel="finishing" aria-labelledby="sbs-af-title">
     <h1 id="sbs-af-title" tabindex="-1">Artwork Finishing</h1>
-    <p class="sbs-af-notice"><strong>Artwork Finishing workspace.</strong> Originals and versions stay in private Studio storage. Google Drive import and saving are limited to files and folders you select. No AF number or catalogue change is made. Local finishing approval is not SB production approval.</p>
+    <p class="sbs-af-notice"><strong>Artwork Finishing test workspace.</strong> This live test stores originals and versions only in private Studio storage. Google Drive, AF numbering and catalogue updates are not connected yet. Approving a finishing candidate does not approve SB production.</p>
     <div class="sbs-grid two">
         <section class="sbs-card"><h2>1. Choose artwork</h2>
             <form id="sbs-af-upload">
@@ -13,14 +13,8 @@
             <button type="submit" class="sbs-button primary">Store untouched original locally</button>
             <p id="sbs-af-upload-status" role="status" aria-live="polite" aria-atomic="true">No artwork upload completed yet.</p>
             </form>
-            <form id="sbs-af-drive-import">
-                <h3>Import an image from Google Drive</h3>
-                <input id="sbs-af-drive-id" type="hidden" value="">
-                <p id="sbs-af-drive-help">Choose a PNG, JPEG or WebP image from the Google window. Google only shares that selected file with this Studio. Use the title and optional IDEA/SB references above.</p>
-                <button id="sbs-af-drive-browse" class="sbs-button" type="button">Browse Google Drive images</button>
-                <button class="sbs-button" type="submit" disabled>Import selected Drive image as untouched original</button>
-                <p id="sbs-af-drive-status" role="status" aria-live="polite">No Drive import attempted.</p>
-            </form>
+            <button id="sbs-af-drive" type="button" class="sbs-button" disabled>Select from Google Drive — deferred</button>
+            <p>Google connection controls are in Settings. Drive artwork search and import await the integration phase.</p>
             <label for="sbs-af-resume">Resume local artwork<select id="sbs-af-resume"><option value="">Choose a workspace</option></select></label>
             <button id="sbs-af-refresh" class="sbs-button" type="button">Refresh workspaces</button>
         </section>
@@ -56,11 +50,8 @@
         <button id="sbs-af-approve" class="sbs-button primary" type="button" disabled>Approve this local finishing version</button>
         <button id="sbs-af-export" class="sbs-button" type="button" disabled>Build approved local package</button>
         <a id="sbs-af-package" class="sbs-button" hidden download>Download local package</a>
-        <button id="sbs-af-drive-folder" class="sbs-button" type="button">Choose Google Drive save folder</button>
-        <p id="sbs-af-drive-folder-status" role="status" aria-live="polite">No Drive destination selected.</p>
-        <button id="sbs-af-save-drive" class="sbs-button" type="button" disabled>Save approved package to Google Drive</button>
-        <a id="sbs-af-drive-package" class="sbs-button" target="_blank" rel="noopener noreferrer" hidden>Open saved package in Google Drive</a>
-        <p>Saving creates a new package in the folder you select; it does not overwrite an existing file. The package contains the original, candidate, metadata, checksums and report. It is not a final production master.</p>
+        <button class="sbs-button" type="button" disabled>Save Approved Artwork to Drive — deferred</button>
+        <p>Download contains original, candidate, metadata, checksums and report; WebP preview when supported. It is not a final production master. No success in Drive is claimed.</p>
     </section>
 </section>
 <section class="sbs-panel sbs-af" data-panel="catalogue" aria-labelledby="sbs-af-catalogue-title">

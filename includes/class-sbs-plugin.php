@@ -103,7 +103,7 @@ final class SBS_Plugin
         nocache_headers();
         header('X-Robots-Tag: noindex, nofollow, noarchive', true);
         header('Referrer-Policy: same-origin', true);
-        header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' https://apis.google.com; frame-src https://docs.google.com; connect-src 'self' https://www.googleapis.com; font-src 'self' data:", true);
+        header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self' data:", true);
 
         wp_enqueue_style('sbs-studio', SBS_PLUGIN_URL . 'assets/css/studio.css', array(), SBS_VERSION);
         wp_enqueue_style('sbs-studio-hierarchy', SBS_PLUGIN_URL . 'assets/css/studio-hierarchy.css', array('sbs-studio'), SBS_VERSION);
