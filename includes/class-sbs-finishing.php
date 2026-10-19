@@ -100,8 +100,12 @@ final class SBS_Finishing
     public static function upload($request)
     {
         $files=$request->get_file_params();$file=$files['file']??array();
-        $size=!empty($file['tmp_name'])?@getimagesize($file['tmp_name']):false;
-        if(!$size||!in_array($size['mime']??'',array('image/png','image/jpeg','image/webp'),true)||!empty($file['error'])||empty($file['size'])||$file['size']>20*1024*1024||$size[0]*$size[1]>40000000){return self::error('upload','Choose PNG, JPEG or WebP, up to 20 MB and 40 million pixels. Try Files / My Files if Photos is empty.');}
+        $max_bytes=20*1024*1024;$file_bytes=(int)($file['size']??0);
+        if($file_bytes>$max_bytes){return self::error('too_large','This file is '.number_format($file_bytes/1048576,2,'.','').' MB. The limit is 20 MB. Choose a smaller copy; your original file will not be changed.');}
+        if(!empty($file['error'])||empty($file['tmp_name'])||!is_readable($file['tmp_name'])){return self::error('upload','The file did not finish uploading. Studio can receive images up to 20 MB. Try a smaller copy and upload again.');}
+        $size=@getimagesize($file['tmp_name']);
+        if(!$size||!in_array($size['mime']??'',array('image/png','image/jpeg','image/webp'),true)){return self::error('format','Choose a PNG, JPEG or WebP image. The original file was not changed.');}
+        if($file_bytes<1||$size[0]*$size[1]>40000000){return self::error('pixels','This image is larger than the 40-million-pixel limit. Choose a smaller copy. The original file was not changed.');}
         $title=$request->get_param('title'); if(!is_string($title)||strlen($title)>500){return self::error('title','Enter a title up to 500 bytes.');}
         $links=self::links(preg_split('/[\s,]+/',trim((string)$request->get_param('ideas')),-1,PREG_SPLIT_NO_EMPTY),(string)$request->get_param('sb'));
         if(is_wp_error($links)){return $links;}

@@ -23,6 +23,8 @@ jobs:
         run: |
           node --check assets/js/studio.js
           node --check assets/js/freestyle.js
+          node --check assets/js/finishing.js
+          node tools/test-finishing.cjs
           node tools/test-development.cjs
           node tools/test-freestyle.cjs
           node tools/test-export.cjs

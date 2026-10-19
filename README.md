@@ -67,6 +67,6 @@ The top-level **Freestyle** tab provides optional-character generation, eight dr
 
 The top-level **Settings** tab contains Studio access/password, OpenAI and Replicate credentials/models, update feed, workspace export/import, storage usage, diagnostics and software updates/rollback. Settings unlocks with the existing Studio sign-in. Forms check the Studio session, a session-bound anti-forgery token and a WordPress nonce; no separate administrator login is required. The existing wp-admin screen remains a recovery route. See [Settings](docs/SETTINGS.md).
 
-### Artwork Finishing test workspace (v0.2.46)
+### Artwork Finishing test workspace (v0.2.47)
 
-The Artwork Finishing tab supports private local intake, image inspection, conservative fit-down resizing through the WordPress image editor, side-by-side review, local approval and package download. This is a live test workspace: Google Drive selection/storage, permanent AF numbering, and catalogue writes are not active. Local approval does not approve SB production. The original upload remains unchanged.
+The Artwork Finishing tab supports separate Photos/Gallery and Files/My Files choices, private local intake, a clear file-size limit warning, image inspection, conservative fit-down resizing, side-by-side review and local approval. Review checkboxes stay beside readable text at narrow widths; actions show progress and a saved result. The two local processing steps are numbered. The top navigation no longer inserts information buttons between tabs. This remains a local test workspace: Google Drive selection/storage, permanent AF numbering, and catalogue writes are not active. Local approval does not approve SB production. The original upload remains unchanged.

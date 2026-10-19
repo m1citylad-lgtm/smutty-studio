@@ -151,6 +151,24 @@ body#sbs-studio-page .sbs-progress span { background: var(--sbs-gold); }
 body#sbs-studio-page a { color: var(--sbs-gold); }
 body#sbs-studio-page :focus-visible { outline: 3px solid var(--sbs-gold); outline-offset: 3px; }
 body#sbs-studio-page .sbs-version { opacity: 1; }
+/* Shared, readable busy feedback for actions handled through buttonBusy(). */
+body#sbs-studio-page :is(button, .sbs-button)[aria-busy="true"] {
+    position: relative;
+    padding-left: 42px;
+    cursor: progress;
+}
+body#sbs-studio-page :is(button, .sbs-button)[aria-busy="true"]::before {
+    content: "";
+    position: absolute;
+    left: 13px;
+    width: 16px;
+    height: 16px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: sbs-action-spin .8s linear infinite;
+}
+@keyframes sbs-action-spin { to { transform: rotate(360deg); } }
 /* The guide's illustration is decorative; keep the instructions themselves. */
 body#sbs-studio-page .sbs-guide-hero img { display: none; }
 body#sbs-studio-page .sbs-guide-hero { grid-template-columns: 1fr; }

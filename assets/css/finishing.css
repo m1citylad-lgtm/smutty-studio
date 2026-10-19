@@ -1,1 +1,27 @@
-.sbs-af{font-size:1rem;line-height:1.6;overflow-wrap:anywhere}.sbs-af button,.sbs-af .sbs-button,.sbs-af input:not([type=checkbox]),.sbs-af select,.sbs-af summary{min-height:48px}.sbs-af button:focus-visible,.sbs-af a:focus-visible,.sbs-af input:focus-visible,.sbs-af select:focus-visible,.sbs-af textarea:focus-visible,.sbs-af summary:focus-visible,.sbs-af-viewport:focus-visible{outline:3px solid #ffe08a;outline-offset:4px}.sbs-af input[type=checkbox]{min-width:28px;min-height:28px;flex-shrink:0}.sbs-af label{display:block;margin:.8rem 0}.sbs-af fieldset label{display:flex;align-items:center;gap:1rem;min-height:48px}.sbs-af-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.sbs-af-compare figure{margin:0;min-width:0}.sbs-af-viewport{overflow:auto;max-height:65vh;min-height:120px;background-color:#c9c9c9;background-image:conic-gradient(#fff 25%,transparent 0 50%,#fff 0 75%,transparent 0);background-size:24px 24px}.sbs-af-viewport img{display:block;width:100%;max-width:none;height:auto}.sbs-af-compare[data-proof=light] .sbs-af-viewport{background:#fff}.sbs-af-compare[data-proof=dark] .sbs-af-viewport{background:#17182b}.sbs-af-notice,#sbs-af-progress{padding:1rem;border:2px solid #eac56c;background:#17182b;color:#fff3d7;border-radius:8px}.sbs-af progress{width:100%;height:24px}.sbs-af [hidden]{display:none!important}.sbs-af code{white-space:normal}.sbs-af button:disabled{opacity:.65;cursor:not-allowed}.sbs-af-qa-list{padding-left:1.5rem}#sbs-af-records article{margin:1rem 0}#sbs-af-checks{margin:1rem 0}.sbs-primary-tabs{flex-wrap:wrap}@media(max-width:750px){.sbs-af-compare{grid-template-columns:1fr}.sbs-af .sbs-grid.two{grid-template-columns:1fr}.sbs-af button,.sbs-af .sbs-button{white-space:normal;max-width:100%}}
+.sbs-af{font-size:1rem;line-height:1.6;overflow-wrap:anywhere;min-width:0}
+.sbs-af button,.sbs-af .sbs-button,.sbs-af input:not([type=checkbox]),.sbs-af select,.sbs-af summary{min-height:48px}
+.sbs-af button:focus-visible,.sbs-af a:focus-visible,.sbs-af input:focus-visible,.sbs-af select:focus-visible,.sbs-af textarea:focus-visible,.sbs-af summary:focus-visible,.sbs-af-viewport:focus-visible{outline:3px solid #ffe08a;outline-offset:4px}
+.sbs-af input[type=checkbox]{display:block;width:28px;min-width:28px;max-width:28px;height:28px;min-height:28px;flex:0 0 28px;margin:0;}
+.sbs-af label{display:block;margin:.8rem 0;min-width:0}
+.sbs-af fieldset{min-width:0;max-width:100%;}
+.sbs-af fieldset label{display:grid;grid-template-columns:28px minmax(0,1fr);align-items:start;gap:.8rem;min-height:48px;overflow-wrap:anywhere;}
+.sbs-af-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;align-items:start;min-width:0}
+.sbs-af-compare figure{margin:0;min-width:0;max-width:100%}
+.sbs-af-compare figcaption{margin-bottom:.5rem}
+.sbs-af-viewport{width:100%;min-width:0;overflow:auto;max-height:65vh;min-height:120px;background-color:#c9c9c9;background-image:conic-gradient(#fff 25%,transparent 0 50%,#fff 0 75%,transparent 0);background-size:24px 24px}
+.sbs-af-viewport img{display:block;width:100%;max-width:none;height:auto}
+.sbs-af-compare[data-proof=light] .sbs-af-viewport{background:#fff}
+.sbs-af-compare[data-proof=dark] .sbs-af-viewport{background:#17182b}
+.sbs-af-notice,#sbs-af-progress{padding:1rem;border:2px solid #eac56c;background:#17182b;color:#fff3d7;border-radius:8px}
+.sbs-af progress{width:100%;height:24px}
+.sbs-af [hidden]{display:none!important}
+.sbs-af code{white-space:normal}
+.sbs-af button:disabled{opacity:.65;cursor:not-allowed}
+.sbs-af-qa-list{padding-left:1.5rem}
+#sbs-af-records article{margin:1rem 0}
+#sbs-af-checks{margin:1rem 0;padding:1rem;max-width:100%;}
+.sbs-af-then{margin:.4rem 0;text-align:left;font-weight:700}
+.sbs-af [aria-busy=true]{position:relative;padding-left:2.8rem}
+.sbs-af [aria-busy=true]::before{content:"";position:absolute;left:.85rem;width:1rem;height:1rem;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sbs-af-spin .8s linear infinite}
+@keyframes sbs-af-spin{to{transform:rotate(360deg)}}
+@media(max-width:750px){.sbs-af-compare{grid-template-columns:minmax(0,1fr)}.sbs-af .sbs-grid.two{grid-template-columns:minmax(0,1fr)}.sbs-af button,.sbs-af .sbs-button{white-space:normal;max-width:100%}}

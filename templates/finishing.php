@@ -5,11 +5,12 @@
         <section class="sbs-card"><h2>1. Choose artwork</h2>
             <form id="sbs-af-upload">
                 <label for="sbs-af-name">Artwork title<input id="sbs-af-name" type="text" maxlength="190" spellcheck="true" autocapitalize="sentences"></label>
-                <label for="sbs-af-file">Browse device — Files / My Files<input id="sbs-af-file" type="file" accept=".png,.jpg,.jpeg,.webp,application/octet-stream" required aria-describedby="sbs-af-file-help"></label>
-                <p id="sbs-af-file-help">PNG, JPEG or WebP; up to 20 MB and 40 million pixels. Choose Files / My Files if offered. If Photos is empty, save the image in Downloads then try this file browser. The server validates image content.</p>
+                <label for="sbs-af-file">Browse device — Files / My Files<input id="sbs-af-file" type="file" accept=".png,.jpg,.jpeg,.webp,application/octet-stream" aria-describedby="sbs-af-file-help"></label>
+                <label for="sbs-af-gallery-file">Browse Photos / Gallery on this device<input id="sbs-af-gallery-file" type="file" accept="image/*" aria-describedby="sbs-af-file-help"></label>
+                <p id="sbs-af-file-help">Choose either Files / My Files or Photos / Gallery. PNG, JPEG or WebP; up to 20 MB and 40 million pixels. Photos / Gallery uses the image picker offered by your browser and tablet. Google Drive is a separate future connection.</p>
                 <label for="sbs-af-ideas">Optional IDEA links<input id="sbs-af-ideas" placeholder="IDEA-012, IDEA-013" type="text" maxlength="300"></label>
                 <label for="sbs-af-sb">Optional existing SB link<input id="sbs-af-sb" placeholder="SB0014" type="text" maxlength="30"></label>
-                <button type="submit" class="sbs-button primary">Store untouched original locally</button>
+            <button type="submit" class="sbs-button primary">Store untouched original locally</button>
             </form>
             <button id="sbs-af-drive" type="button" class="sbs-button" disabled>Select from Google Drive — deferred</button>
             <p>Google connection controls are in Settings. Drive artwork search and import await the integration phase.</p>
@@ -21,8 +22,10 @@
             <div class="sbs-grid two"><label for="sbs-af-width">Print width (inches)<input id="sbs-af-width" type="number" min="1" max="30" step="0.25" value="15"></label><label for="sbs-af-height">Print height (inches)<input id="sbs-af-height" type="number" min="1" max="30" step="0.25" value="18"></label></div>
             <p>300 PPI target; 4500 × 5400 pixels at 15 × 18 inches. Fit down never enlarges or distorts. Source detail and colour must be reviewed. Local processing uses no paid provider.</p>
             <label for="sbs-af-notes">Correction notes for this version<textarea id="sbs-af-notes" rows="4" maxlength="6000" spellcheck="true" autocapitalize="sentences" placeholder="Dictate details to check. Notes are recorded; they do not instruct AI or redraw this image."></textarea></label>
-            <button id="sbs-af-prepare" class="sbs-button" type="button" disabled>Queue selected stage</button>
-            <button id="sbs-af-run" class="sbs-button primary" type="button" disabled>Run queued local stage</button>
+            <p id="sbs-af-stage-help">1. Choose the processing option and press “Queue selected stage.” 2. When it is queued, press “Run queued local stage.” You can cancel before running.</p>
+            <button id="sbs-af-prepare" class="sbs-button" type="button" disabled>1. Queue selected stage</button>
+            <p class="sbs-af-then" aria-hidden="true">Then ↓</p>
+            <button id="sbs-af-run" class="sbs-button primary" type="button" disabled>2. Run queued local stage</button>
             <button id="sbs-af-cancel" class="sbs-button" type="button" disabled>Cancel queued stage</button>
             <p>Cancel is available before running. A running local server operation finishes as a separate version; the original is retained. Retry by queuing the stage again.</p>
         </section>
