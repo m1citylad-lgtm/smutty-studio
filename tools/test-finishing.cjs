@@ -77,3 +77,6 @@ assert.match(finishing, /uniquePackageName/);
 assert.match(finishing, /getFileHandle\(candidate\)/);
 assert.match(finishing, /Folder selection cancelled\. No ZIP package was built\./);
 assert.match(finishing, /Download local package to save it through your browser/);
+
+assert.match(finishing, /Choose a folder for the ZIP/);
+assert.match(finishing, /response\.body\.pipeTo/);
