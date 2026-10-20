@@ -197,7 +197,7 @@ final class SBS_Finishing
     private static function package_filename($title,$requested,$version)
     {
         $base=is_string($requested)&&trim($requested)!==''?$requested:$title;
-        $base=preg_replace('/\\.zip$/i','',$base);
+        $base=preg_replace('/\.zip$/i','',$base);
         $base=remove_accents($base);
         $base=preg_replace('/[^A-Za-z0-9]+/','-',(string)$base);
         $base=trim($base,'-');
