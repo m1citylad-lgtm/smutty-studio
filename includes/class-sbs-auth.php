@@ -8,7 +8,7 @@ final class SBS_Auth
 {
     const COOKIE = 'sbs_studio_session';
     const UPDATE_COOKIE = 'sbs_update_session';
-    const UPDATE_SESSION_SECONDS = 900;
+    const UPDATE_SESSION_SECONDS = 32 * HOUR_IN_SECONDS;
 
     public static function password_is_set()
     {

@@ -14,8 +14,8 @@ const studio = read('assets/js/studio.js');
 const backend = read('includes/class-sbs-finishing.php');
 const plugin = read('smutty-bear-studio.php');
 
-assert.match(plugin, /Version: 0\.2\.52/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.52'\)/);
+assert.match(plugin, /Version: 0\.2\.53/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.53'\)/);
 
 // The two choices intentionally call separate Android/browser file pickers.
 assert.match(template, /id="sbs-af-file"[^>]*type="file"[^>]*accept="\.png,\.jpg,\.jpeg,\.webp,application\/octet-stream"/);
@@ -66,3 +66,17 @@ assert.match(css, /\.sbs-af-review-controls\{display:grid;grid-template-columns:
 assert.doesNotMatch(finishing, /sbs-af-(ideas|sb|original-download|show-sb|sb-catalogue)/);
 assert.match(finishing, /data\.append\('title',el\('sbs-af-name'\)\.value\)/);
 console.log('Artwork Finishing checks passed.');
+
+assert.match(template, /Build and save approved local package/);
+assert.match(template, /Smutty Studio ZIP files/);
+assert.match(template, /id="sbs-af-package-help"/);
+assert.match(finishing, /showDirectoryPicker/);
+assert.match(finishing, /startIn:'downloads'/);
+assert.match(finishing, /folder\.getDirectoryHandle\('Smutty Studio ZIP files',\{create:true\}\)/);
+assert.match(finishing, /uniquePackageName/);
+assert.match(finishing, /getFileHandle\(candidate\)/);
+assert.match(finishing, /Folder selection cancelled\. No ZIP package was built\./);
+assert.match(finishing, /Download local package to save it through your browser/);
+
+assert.match(finishing, /Choose a folder for the ZIP/);
+assert.match(finishing, /response\.body\.pipeTo/);

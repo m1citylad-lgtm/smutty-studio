@@ -64,4 +64,7 @@ check($options['sbs_openai_api_key']==='encrypted:new-private-key','Key was not 
 check(strpos($redirect,'https://example.test/new-studio/?settings=1')===0,'Did not return to new Studio URL');
 check(strpos($redirect,'new-private-key')===false,'Redirect exposed key');
 $_POST['openai_api_key']='';save();check($options['sbs_openai_api_key']==='encrypted:new-private-key','Blank key overwrote saved key');
+$auth_source=file_get_contents(__DIR__.'/../includes/class-sbs-auth.php');
+check(strpos($auth_source, "const UPDATE_SESSION_SECONDS = 32 * HOUR_IN_SECONDS;")!==false, 'Updater session is not configured for 32 hours');
+check(strpos($auth_source, 'time() + self::UPDATE_SESSION_SECONDS')!==false && strpos($auth_source, '), self::UPDATE_SESSION_SECONDS)')!==false, 'Updater cookie and server session expiry are not aligned');
 echo "PASS: Studio session, session-bound CSRF, dashboard capability, update isolation, nonce, pre-save validation, encrypted credentials, blank preservation and safe Studio return\n";
