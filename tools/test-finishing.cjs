@@ -14,8 +14,8 @@ const studio = read('assets/js/studio.js');
 const backend = read('includes/class-sbs-finishing.php');
 const plugin = read('smutty-bear-studio.php');
 
-assert.match(plugin, /Version: 0\.2\.51/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.51'\)/);
+assert.match(plugin, /Version: 0\.2\.52/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.52'\)/);
 
 // The two choices intentionally call separate Android/browser file pickers.
 assert.match(template, /id="sbs-af-file"[^>]*type="file"[^>]*accept="\.png,\.jpg,\.jpeg,\.webp,application\/octet-stream"/);
@@ -55,4 +55,14 @@ assert.match(studio, /if \(button\.closest\('\.sbs-primary-tabs'\)\) \{ return; 
 assert.match(studio, /button\.textContent = 'Processing…'/);
 assert.match(theme, /\[aria-busy="true"\]::before/);
 
+// Simple local workflow UI: no reference entry, Drive transfer, or redundant original download.
+assert.doesNotMatch(template, /sbs-af-(ideas|sb)|sbs-af-original-download|Select from Google Drive|Save Approved Artwork to Drive/);
+assert.match(template, /Artwork title <span class="sbs-af-required">Required<\/span>[^\n]*required aria-required="true"/);
+assert.match(template, /Comparison zoom \(display only\)/);
+assert.match(template, /does not upscale or change the image/);
+assert.match(template, /Choose Light, inspect the candidate, then choose Dark/);
+assert.match(template, /data-af-check="garments"[^>]*> I inspected the candidate on both Light and Dark backgrounds/);
+assert.match(css, /\.sbs-af-review-controls\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+assert.doesNotMatch(finishing, /sbs-af-(ideas|sb|original-download|show-sb|sb-catalogue)/);
+assert.match(finishing, /data\.append\('title',el\('sbs-af-name'\)\.value\)/);
 console.log('Artwork Finishing checks passed.');
