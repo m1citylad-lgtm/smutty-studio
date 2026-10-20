@@ -30,7 +30,7 @@ assert.match(css, /fieldset label\{[^}]*grid-template-columns:28px minmax\(0,1fr
 assert.match(css, /@media\(max-width:750px\)\{\.sbs-af-compare\{grid-template-columns:minmax\(0,1fr\)/);
 
 assert.match(template, /1\. Queue selected stage/);
-assert.match(template, /2\. Run queued local stage/);
+assert.match(template, /2\\. Run queued stage/);
 assert.match(template, /Then ↓/);
 assert.match(finishing, /20\*1024\*1024/);
 assert.match(finishing, /selectedFile=null;input\.value='';var warning='This file is '/);
@@ -91,3 +91,15 @@ assert.match(finishing, /Download local package to save it through your browser/
 
 assert.match(finishing, /Choose a folder for the ZIP/);
 assert.match(finishing, /response\.body\.pipeTo/);
+
+// Replicate upscale is explicitly supported by the existing adapter and remains a separate review candidate.
+assert.match(template, /value="upscale"[^>]*>AI upscale — Replicate Real-ESRGAN/);
+assert.match(backend, /SBS_Replicate::is_configured\(\)/);
+assert.match(backend, /SBS_Replicate::submit\(\$r\['original'\],\$scale\)/);
+assert.match(backend, /SBS_Replicate::poll\(/);
+assert.match(backend, /SBS_Replicate::cancel\(/);
+assert.match(backend, /nightmareai\/real-esrgan/);
+assert.match(read('includes/class-sbs-replicate.php'), /'face_enhance' => false/);
+assert.match(backend, /40-million-pixel candidate limit/);
+assert.match(backend, /original is unchanged/);
+assert.match(finishing, /Do not run another upscale/);
