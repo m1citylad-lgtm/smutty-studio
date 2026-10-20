@@ -14,7 +14,7 @@ const studio = read('assets/js/studio.js');
 const backend = read('includes/class-sbs-finishing.php');
 const plugin = read('smutty-bear-studio.php');
 
-assert.match(plugin, /Version: 0\.2\.50/);
+assert.match(plugin, /Version: 0\.2\.51/);
 assert.match(plugin, /define\('SBS_VERSION', '0\.2\.50'\)/);
 
 // The two choices intentionally call separate Android/browser file pickers.
