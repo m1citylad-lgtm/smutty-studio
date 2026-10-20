@@ -30,7 +30,7 @@ assert.match(css, /fieldset label\{[^}]*grid-template-columns:28px minmax\(0,1fr
 assert.match(css, /@media\(max-width:750px\)\{\.sbs-af-compare\{grid-template-columns:minmax\(0,1fr\)/);
 
 assert.match(template, /1\. Queue selected stage/);
-assert.match(template, /2\\. Run queued stage/);
+assert.match(template, /2\. Run queued stage/);
 assert.match(template, /Then ↓/);
 assert.match(finishing, /20\*1024\*1024/);
 assert.match(finishing, /selectedFile=null;input\.value='';var warning='This file is '/);
