@@ -164,7 +164,7 @@ final class SBS_Finishing
     private static function start_upscale($r)
     {
         if(!self::intact($r['original'])){return self::error('integrity','Original checksum mismatch. Processing refused.',409);}
-        $ppi=(float)($r['original_qa']['effective_ppi']??0);
+        $target=$r['pending']??array();$pw=(float)($target['width']??15);$ph=(float)($target['height']??18);$ppi=min((float)($r['original_qa']['width']??0)/$pw,(float)($r['original_qa']['height']??0)/$ph);
         if($ppi>=300){return self::error('upscale_not_needed','This artwork already meets the 300 PPI pixel-dimension target at the selected print size. Use Inspect; no Replicate credits were used.',409);}
         $dimensions=@getimagesize(SBS_Storage::absolute_path($r['original']));$pixels=$dimensions?(int)$dimensions[0]*(int)$dimensions[1]:0;
         $scale=$ppi>=150?2:4;
