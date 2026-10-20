@@ -21,7 +21,7 @@
         function resetChecks(){document.querySelectorAll('[data-af-check]').forEach(function(n){n.checked=false;});el('sbs-af-package').hidden=true;el('sbs-af-package').removeAttribute('href');}
         function controls(){
             el('sbs-af-prepare').disabled=busy||!current;
-            el('sbs-af-run').disabled=busy||!current||!current.pending;
+            el('sbs-af-run').disabled=busy||!current||!current.pending||!!current.pending.replicate_prediction_id;
             el('sbs-af-cancel').disabled=busy||!current||!current.pending;
             el('sbs-af-approve').disabled=busy||!canApprove(current)||!Object.values(checks()).every(Boolean);
             el('sbs-af-export').disabled=busy||exportPickerOpen||!current||!current.approval;
@@ -144,6 +144,19 @@
             found.forEach(function(r){var article=document.createElement('article');article.className='sbs-card';var title=document.createElement('h2');title.textContent=r.title;article.appendChild(title);var p=document.createElement('p');p.textContent='Local '+r.uuid+' · '+r.status+' · Next action: '+r.next_action+' · Metadata: '+r.metadata_status;article.appendChild(p);var button=document.createElement('button');button.className='sbs-button';button.type='button';button.setAttribute('data-af-open',r.uuid);button.textContent='Open in Finishing';button.disabled=busy;button.addEventListener('click',function(){if(busy)return;current=r;render();document.querySelector('[data-primary-tab="finishing"]').click();el('sbs-af-title').focus();});article.appendChild(button);list.appendChild(article);});
         }
         async function refresh(){var data=await api('');records=data.records;var select=el('sbs-af-resume');select.replaceChildren();var empty=document.createElement('option');empty.value='';empty.textContent='Choose a workspace';select.appendChild(empty);records.forEach(function(r){var o=document.createElement('option');o.value=r.uuid;o.textContent=r.title+' — '+r.status;select.appendChild(o);});if(current){current=records.find(function(r){return r.uuid===current.uuid;})||current;select.value=current.uuid;}catalogue();}
+        async function pollReplicate(){
+            message('AI upscale is processing on Replicate. The untouched original remains unchanged.');
+            var attempts=0;
+            while(current&&current.pending&&current.pending.replicate_prediction_id&&attempts<60){
+                await new Promise(function(resolve){window.setTimeout(resolve,2000);});
+                var poll=await api('/'+current.uuid+'/action',{action:'poll',revision:current.revision});
+                current=poll;render();attempts++;
+                if(current.processing_error){message(current.processing_error,true);return;}
+                if(current.pending&&current.pending.replicate_prediction_id){message('AI upscale is still processing. The original remains unchanged.');}
+            }
+            if(current&&current.pending&&current.pending.replicate_prediction_id){message('Replicate is still processing. Do not run another upscale. You can cancel the current stage after this check stops.');}
+            else if(current&&!current.processing_error){await refresh();render();message('AI upscale finished. Compare the candidate with the untouched original before approval.');}
+        }
         async function action(type,extra,saveFolder){
             var data=Object.assign({action:type,revision:current.revision},extra||{});
             var result=await api('/'+current.uuid+'/action',data);
@@ -154,19 +167,8 @@
                 return;
             }
             current=result;render();
-            if(type==='run'&&current.pending&&current.pending.replicate_prediction_id){
-                message('AI upscale is processing on Replicate. The untouched original remains unchanged.');
-                var attempts=0;
-                while(current.pending&&current.pending.replicate_prediction_id&&attempts<60){
-                    await new Promise(function(resolve){window.setTimeout(resolve,2000);});
-                    var poll=await api('/'+current.uuid+'/action',{action:'poll',revision:current.revision});
-                    current=poll;render();attempts++;
-                    if(current.processing_error){message(current.processing_error,true);break;}
-                    if(current.pending&&current.pending.replicate_prediction_id){message('AI upscale is still processing. The original remains unchanged.');}
-                }
-                if(current.pending&&current.pending.replicate_prediction_id){message('Replicate is still processing. Do not run another upscale. You can cancel the current stage after this check stops.');}
-                else if(!current.processing_error){await refresh();render();message('AI upscale finished. Compare the candidate with the untouched original before approval.');}
-            }else{
+            if(type==='run'&&current.pending&&current.pending.replicate_prediction_id){await pollReplicate();}
+            else{
                 await refresh();render();
                 message(type==='approve'?'Local finishing version approved. SB production and Drive remain unchanged.':'Stage '+type+' complete.');
             }
@@ -178,7 +180,7 @@
         ['run','cancel','approve'].forEach(function(type){el('sbs-af-'+type).addEventListener('click',function(){var button=this;operation(function(){return action(type,type==='approve'?{checks:checks()}:{});},type==='run'?'Running local stage. The original remains untouched…':'Processing '+type+'…',button);});});
         el('sbs-af-export').addEventListener('click',function(){var button=this;if(busy||exportPickerOpen||!current||!current.approval)return;choosePackageFolder().then(function(folder){if(folder===undefined)return;operation(function(){return action('export',{filename:el('sbs-af-package-name').value},folder);},folder?'Building ZIP and saving to the chosen folder…':'Building approved local package…',button);});});
         el('sbs-af-versions').addEventListener('change',function(){var uuid=this.value,button=this;if(uuid)operation(function(){return action('select',{version:uuid});},'Selecting version; new approval will be required…',button);});
-        el('sbs-af-resume').addEventListener('change',function(){var uuid=this.value,button=this;if(!uuid||busy)return;operation(async function(){current=await api('/'+uuid);render();message('Workspace resumed from private storage.');},'Loading workspace…',button);});
+        el('sbs-af-resume').addEventListener('change',function(){var uuid=this.value,button=this;if(!uuid||busy)return;operation(async function(){current=await api('/'+uuid);render();if(current.pending&&current.pending.replicate_prediction_id){message('Resumed the existing Replicate upscale. Checking its status; do not queue another request.');await pollReplicate();}else{message('Workspace resumed from private storage.');}},'Loading workspace…',button);});
         el('sbs-af-refresh').addEventListener('click',function(){var button=this;operation(async function(){await refresh();render();message('Local workspaces refreshed.');},'Refreshing workspaces…',button);});
         document.querySelectorAll('[data-af-check]').forEach(function(n){n.addEventListener('change',controls);});
         el('sbs-af-zoom').addEventListener('change',function(){var width=Number(this.value)*100+'%';['sbs-af-original','sbs-af-candidate'].forEach(function(id){el(id).style.width=width;});document.querySelectorAll('[data-af-proof-image]').forEach(function(img){img.style.width=width;});});
