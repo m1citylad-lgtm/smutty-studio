@@ -48,9 +48,9 @@
         <button id="sbs-af-approve" class="sbs-button primary" type="button" disabled>Approve this local finishing version</button>
         <label for="sbs-af-package-name">ZIP download filename (editable)<input id="sbs-af-package-name" type="text" maxlength="150" autocomplete="off" aria-describedby="sbs-af-package-name-help"></label>
         <p id="sbs-af-package-name-help">Suggested from the artwork title. You may change it before building the ZIP. Studio adds a version and date to prevent confusing duplicate downloads.</p>
-        <button id="sbs-af-export" class="sbs-button" type="button" disabled>Build approved local package</button>
+        <button id="sbs-af-export" class="sbs-button" type="button" disabled aria-describedby="sbs-af-package-help">Build and save approved local package</button>
         <a id="sbs-af-package" class="sbs-button" hidden download>Download local package</a>
-        <p>Download contains the untouched original, candidate, metadata, checksums and report; WebP preview when supported. It is not a final production master.</p>
+        <p id="sbs-af-package-help">The ZIP contains the untouched original, candidate, metadata, checksums and report; it is not a final production master. On Android Chrome, choose Downloads to save inside “Smutty Studio ZIP files” (created if needed), or choose an existing folder. If folder access is unavailable, use the browser download link.</p>
     </section>
 </section>
 <section class="sbs-panel sbs-af" data-panel="catalogue" aria-labelledby="sbs-af-catalogue-title">
