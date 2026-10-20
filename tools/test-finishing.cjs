@@ -95,7 +95,7 @@ assert.match(finishing, /response\.body\.pipeTo/);
 // Replicate upscale is explicitly supported by the existing adapter and remains a separate review candidate.
 assert.match(template, /value="upscale"[^>]*>AI upscale — Replicate Real-ESRGAN/);
 assert.match(backend, /SBS_Replicate::is_configured\(\)/);
-assert.match(backend, /SBS_Replicate::submit\(\$r\['original'\],\$scale\)/);
+assert.match(backend, /SBS_Replicate::submit\(\$r\['original'\]\['id'\],\$scale\)/);
 assert.match(backend, /SBS_Replicate::poll\(/);
 assert.match(backend, /SBS_Replicate::cancel\(/);
 assert.match(backend, /nightmareai\/real-esrgan/);
