@@ -14,8 +14,8 @@ const studio = read('assets/js/studio.js');
 const backend = read('includes/class-sbs-finishing.php');
 const plugin = read('smutty-bear-studio.php');
 
-assert.match(plugin, /Version: 0\.2\.54/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.54'\)/);
+assert.match(plugin, /Version: 0\.2\.55/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.55'\)/);
 
 // The two choices intentionally call separate Android/browser file pickers.
 assert.match(template, /id="sbs-af-file"[^>]*type="file"[^>]*accept="\.png,\.jpg,\.jpeg,\.webp,application\/octet-stream"/);
@@ -95,7 +95,7 @@ assert.match(finishing, /response\.body\.pipeTo/);
 // Replicate upscale is explicitly supported by the existing adapter and remains a separate review candidate.
 assert.match(template, /value="upscale"[^>]*>AI upscale — Replicate Real-ESRGAN/);
 assert.match(backend, /SBS_Replicate::is_configured\(\)/);
-assert.match(backend, /SBS_Replicate::submit\(\$r\['original'\],\$scale\)/);
+assert.match(backend, /SBS_Replicate::submit\(\$r\['original'\]\['id'\],\$scale\)/);
 assert.match(backend, /SBS_Replicate::poll\(/);
 assert.match(backend, /SBS_Replicate::cancel\(/);
 assert.match(backend, /nightmareai\/real-esrgan/);
