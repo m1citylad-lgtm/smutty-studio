@@ -66,3 +66,14 @@ assert.match(css, /\.sbs-af-review-controls\{display:grid;grid-template-columns:
 assert.doesNotMatch(finishing, /sbs-af-(ideas|sb|original-download|show-sb|sb-catalogue)/);
 assert.match(finishing, /data\.append\('title',el\('sbs-af-name'\)\.value\)/);
 console.log('Artwork Finishing checks passed.');
+
+assert.match(template, /Build and save approved local package/);
+assert.match(template, /Smutty Studio ZIP files/);
+assert.match(template, /id="sbs-af-package-help"/);
+assert.match(finishing, /showDirectoryPicker/);
+assert.match(finishing, /startIn:'downloads'/);
+assert.match(finishing, /folder\.getDirectoryHandle\('Smutty Studio ZIP files',\{create:true\}\)/);
+assert.match(finishing, /uniquePackageName/);
+assert.match(finishing, /getFileHandle\(candidate\)/);
+assert.match(finishing, /Folder selection cancelled\. No ZIP package was built\./);
+assert.match(finishing, /Download local package to save it through your browser/);
