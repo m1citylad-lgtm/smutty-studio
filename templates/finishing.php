@@ -15,15 +15,15 @@
             <button id="sbs-af-refresh" class="sbs-button" type="button">Refresh workspaces</button>
         </section>
         <section class="sbs-card"><h2>2. Choose a stage</h2>
-            <label for="sbs-af-method">Processing option<select id="sbs-af-method"><option value="inspect">Inspect — exact byte copy, no image changes</option><option value="resize">Fit down to print box — preserve aspect ratio, no crop</option><option disabled>Conservative AI upscale — adapter pending</option><option disabled>Sharpen / denoise / edge cleaning — preservation validation pending</option><option disabled>Background removal — deliberate background protection pending</option></select></label>
+            <label for="sbs-af-method">Processing option<select id="sbs-af-method"><option value="inspect">Inspect — exact byte copy, no image changes</option><option value="resize">Fit down to print box — preserve aspect ratio, no crop</option><option value="upscale">AI upscale — Replicate Real-ESRGAN (automatic 2× or 4×)</option><option disabled>Sharpen / denoise / edge cleaning — preservation validation pending</option><option disabled>Background removal — deliberate background protection pending</option></select></label>
             <div class="sbs-grid two"><label for="sbs-af-width">Print width (inches)<input id="sbs-af-width" type="number" min="1" max="30" step="0.25" value="15"></label><label for="sbs-af-height">Print height (inches)<input id="sbs-af-height" type="number" min="1" max="30" step="0.25" value="18"></label></div>
-            <p>300 PPI target; 4500 × 5400 pixels at 15 × 18 inches. Fit down never enlarges or distorts. Source detail and colour must be reviewed. Local processing uses no paid provider.</p>
+            <p>300 PPI is a pixel-dimension target, not proof of print quality. Fit down never enlarges or distorts. Inspect and Fit down stay local. AI upscale sends the original to Replicate, uses your configured credits, and saves its result as a separate candidate; the original stays unchanged. Review text, faces, texture, transparency and all proof backgrounds.</p>
             <label for="sbs-af-notes">Correction notes for this version<textarea id="sbs-af-notes" rows="4" maxlength="6000" spellcheck="true" autocapitalize="sentences" placeholder="Dictate details to check. Notes are recorded; they do not instruct AI or redraw this image."></textarea></label>
-            <p id="sbs-af-stage-help">1. Choose the processing option and press “Queue selected stage.” 2. When it is queued, press “Run queued local stage.” You can cancel before running.</p>
+            <p id="sbs-af-stage-help">1. Choose the processing option and press “Queue selected stage.” 2. Press “Run queued stage.” For AI upscale, Studio checks progress and saves the finished result locally. The untouched original is retained.</p>
             <button id="sbs-af-prepare" class="sbs-button" type="button" disabled>1. Queue selected stage</button>
             <p class="sbs-af-then" aria-hidden="true">Then ↓</p>
-            <button id="sbs-af-run" class="sbs-button primary" type="button" disabled>2. Run queued local stage</button>
-            <button id="sbs-af-cancel" class="sbs-button" type="button" disabled>Cancel queued stage</button>
+            <button id="sbs-af-run" class="sbs-button primary" type="button" disabled>2. Run queued stage</button>
+            <button id="sbs-af-cancel" class="sbs-button" type="button" disabled>Cancel queued stage or upscale</button>
             <p>Cancel is available before running. A running local server operation finishes as a separate version; the original is retained. Retry by queuing the stage again.</p>
         </section>
     </div>
