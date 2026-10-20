@@ -146,7 +146,7 @@ final class SBS_Finishing
                 $r['approval']=array('version'=>$v['uuid'],'sha256'=>$v['asset']['sha256'],'at'=>gmdate('c'),'checks'=>$checks,'scope'=>'local_finishing_only');$r['status']='Finishing Approved (local only)';$r['next_action']='Download local package; Drive save awaits integration';
             } elseif($action==='export'){
                 if(empty($r['approval'])||$r['approval']['version']!==$r['current_version']){return self::error('approval','Approve the current version first.',409);}
-                $package=self::package($r);if(is_wp_error($package)){return $package;}return array('package'=>$package,'drive_saved'=>false,'catalogue_updated'=>false);
+                $package=self::package($r,$request->get_param('filename'));if(is_wp_error($package)){return $package;}return array('package'=>$package,'drive_saved'=>false,'catalogue_updated'=>false);
             } else {return self::error('action','Unsupported finishing action.');}
             $r['revision']++;$r['updated_at']=gmdate('c');$r['audit'][]=array('at'=>gmdate('c'),'action'=>$action);
             return self::write($path,$r);
@@ -194,7 +194,18 @@ final class SBS_Finishing
         $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
         return array('uuid'=>wp_generate_uuid4(),'number'=>count($r['versions'])+1,'asset'=>$asset,'options'=>$options,'qa'=>$qa,'created_at'=>gmdate('c'),'comparison'=>array('byte_identical'=>hash_equals($r['original']['sha256'],$asset['sha256']),'structural_detection'=>'Not run — human review required','text_face_detection'=>'Not run — human review required'));
     }
-    private static function package($r)
+    private static function package_filename($title,$requested,$version)
+    {
+        $base=is_string($requested)&&trim($requested)!==''?$requested:$title;
+        $base=preg_replace('/\.zip$/i','',$base);
+        $base=remove_accents($base);
+        $base=preg_replace('/[^A-Za-z0-9]+/','-',(string)$base);
+        $base=trim($base,'-');
+        $base=substr($base?:'Artwork',0,110);
+        $base=rtrim($base,'-');
+        return $base.'-v'.max(1,(int)$version).'-'.gmdate('Ymd-His').'.zip';
+    }
+    private static function package($r,$requested_name=null)
     {
         $v=self::current($r);
         if(!$v||!self::intact($r['original'])||!self::intact($v['asset'])||!hash_equals($r['approval']['sha256'],$v['asset']['sha256'])){return self::error('integrity','Package checksum verification failed.',409);}
@@ -207,6 +218,7 @@ final class SBS_Finishing
         $zip->addFromString('report.txt',"LOCAL FINISHING PREVIEW ONLY\nNo AF number allocated. No Drive/catalogue writes. Not an SB production approval.\n".wp_json_encode($v['qa'],JSON_PRETTY_PRINT)."\nOriginal SHA-256: ".$r['original']['sha256']."\nCandidate SHA-256: ".$v['asset']['sha256']."\nHuman local approval: ".$r['approval']['at']);
         if(function_exists('imagewebp')){$im=@imagecreatefromstring(file_get_contents(SBS_Storage::absolute_path($v['asset'])));if($im){$thumb=imagescale($im,min(1200,imagesx($im)));if($thumb){imagesavealpha($thumb,true);ob_start();imagewebp($thumb,null,85);$preview=ob_get_clean();if($preview){$zip->addFromString('preview.webp',$preview);}imagedestroy($thumb);}imagedestroy($im);}}
         if(!$zip->close()){@unlink($path);return self::error('zip','Package could not be completed.',500);}
-        $asset=SBS_Storage::store_file($path,'local-finishing-'.$r['uuid'].'.zip','application/zip','finishing',0,'finishing_package',$r['title']);@unlink($path);return $asset;
+        $filename=self::package_filename($r['title'],$requested_name,$v['number']);
+        $asset=SBS_Storage::store_file($path,$filename,'application/zip','finishing',0,'finishing_package',$r['title']);@unlink($path);return $asset;
     }
 }

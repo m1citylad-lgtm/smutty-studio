@@ -48,6 +48,8 @@
             <label><input type="checkbox" data-af-check="warnings"> I reviewed the quality warnings and accept any unresolved limitations for this local candidate.</label>
         </fieldset>
         <button id="sbs-af-approve" class="sbs-button primary" type="button" disabled>Approve this local finishing version</button>
+        <label for="sbs-af-package-name">ZIP download filename (editable)<input id="sbs-af-package-name" type="text" maxlength="150" autocomplete="off" aria-describedby="sbs-af-package-name-help"></label>
+        <p id="sbs-af-package-name-help">Suggested from the artwork title. You may change it before building the ZIP. Studio adds a version and date to prevent confusing duplicate downloads.</p>
         <button id="sbs-af-export" class="sbs-button" type="button" disabled>Build approved local package</button>
         <a id="sbs-af-package" class="sbs-button" hidden download>Download local package</a>
         <button class="sbs-button" type="button" disabled>Save Approved Artwork to Drive — deferred</button>
