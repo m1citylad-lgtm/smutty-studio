@@ -20,7 +20,7 @@
         function checks(){var result={};document.querySelectorAll('[data-af-check]').forEach(function(n){result[n.getAttribute('data-af-check')]=n.checked;});return result;}
         function resetChecks(){document.querySelectorAll('[data-af-check]').forEach(function(n){n.checked=false;});el('sbs-af-package').hidden=true;el('sbs-af-package').removeAttribute('href');}
         function controls(){
-            el('sbs-af-prepare').disabled=busy||!current;
+            el('sbs-af-prepare').disabled=busy||!current||!!current.pending;
             el('sbs-af-run').disabled=busy||!current||!current.pending||!!current.pending.replicate_prediction_id;
             el('sbs-af-cancel').disabled=busy||!current||!current.pending;
             el('sbs-af-approve').disabled=busy||!canApprove(current)||!Object.values(checks()).every(Boolean);
