@@ -103,3 +103,7 @@ assert.match(read('includes/class-sbs-replicate.php'), /'face_enhance' => false/
 assert.match(backend, /40-million-pixel candidate limit/);
 assert.match(backend, /original is unchanged/);
 assert.match(finishing, /Do not run another upscale/);
+
+assert.match(backend, /\$r\['original_qa'\]\['width'\].*\$pw/);
+assert.match(finishing, /sbs-af-prepare'\)\.disabled=busy\|\|!current\|\|!!current\.pending/);
+assert.match(finishing, /sbs-af-run'\)\.disabled=busy\|\|!current\|\|!current\.pending\|\|!!current\.pending\.replicate_prediction_id/);
