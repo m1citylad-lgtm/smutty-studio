@@ -42,3 +42,9 @@
 - Restores artwork, logo and guide visibility even if PNG encoding fails; no source artwork is saved or replaced by exporting.
 - Export regression checks: run `node tools/test-export.cjs` from the repository root.
 - Publishing requires a new version in both declarations in smutty-bear-studio.php; publishing to GitHub is followed by a verified install through Studio Updates and a live check.
+
+## Next release request — full-screen proof inspection (20 October 2026)
+- Make each black, white, red and navy proof image tappable/clickable to open a full-screen viewer.
+- Provide accessible zoom-in and zoom-out controls (plus pinch zoom where supported), and a clear close/back action.
+- Keep the selected proof background visible behind transparent pixels; never alter the artwork or exported package.
+- Verify on the user's Android tablet at magnified display size. Check that edge halos, unwanted colour show-through and transparency defects can be inspected before approval.
