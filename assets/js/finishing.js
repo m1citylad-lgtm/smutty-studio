@@ -6,7 +6,7 @@
     function canApprove(record) { return !!record && record.status === 'Awaiting Review' && !!record.current_version; }
     function init() {
         var root=document.getElementById('sbs-app');if(!root || root.getAttribute('data-authenticated')!=='1')return;
-        var current=null, records=[], busy=false, selectedFile=null, exportPickerOpen=false;
+        var current=null, records=[], busy=false, selectedFile=null, exportPickerOpen=false, proofPreviewUrl=null, proofSourceKey='', proofRenderedKey='', activePrintQA=null;
         var el=function(id){return document.getElementById(id);};
         function message(text,error){el('sbs-af-progress').textContent=text;el('sbs-af-progress').setAttribute('role',error?'alert':'status');}
         function uploadMessage(text,state){var status=el('sbs-af-upload-status');status.textContent=text;status.dataset.state=state||'info';status.setAttribute('role',state==='error'?'alert':'status');}
@@ -20,8 +20,8 @@
         function checks(){var result={};document.querySelectorAll('[data-af-check]').forEach(function(n){result[n.getAttribute('data-af-check')]=n.checked;});return result;}
         function resetChecks(){document.querySelectorAll('[data-af-check]').forEach(function(n){n.checked=false;});el('sbs-af-package').hidden=true;el('sbs-af-package').removeAttribute('href');}
         function controls(){
-            el('sbs-af-prepare').disabled=busy||!current;
-            el('sbs-af-run').disabled=busy||!current||!current.pending;
+            el('sbs-af-prepare').disabled=busy||!current||!!current.pending;
+            el('sbs-af-run').disabled=busy||!current||!current.pending||!!current.pending.replicate_prediction_id;
             el('sbs-af-cancel').disabled=busy||!current||!current.pending;
             el('sbs-af-approve').disabled=busy||!canApprove(current)||!Object.values(checks()).every(Boolean);
             el('sbs-af-export').disabled=busy||exportPickerOpen||!current||!current.approval;
@@ -67,6 +67,59 @@
         }
         function chooseFile(input){var file=input.files&&input.files[0];selectedFile=file||null;if(!file){message('No file selected. Choose Photos / Gallery or Files / My Files.',true);uploadMessage('No file selected. Choose an image to continue.');return;}var other=el(input.id==='sbs-af-file'?'sbs-af-gallery-file':'sbs-af-file');other.value='';if(file.size>20*1024*1024){selectedFile=null;input.value='';var warning='This file is '+fileSize(file.size)+'. The limit is 20 MB. Choose a smaller copy; your original file will not be changed.';message(warning,true);uploadMessage(warning,'error');return;}var selected=file.name+' selected ('+fileSize(file.size)+'). Press Store untouched original locally to continue.';message(selected);uploadMessage(selected);}
         function image(id,asset,alt){var img=el(id);img.hidden=!asset;if(asset){img.src=asset.url;img.alt=alt;}else{img.removeAttribute('src');img.alt='';}}
+        function refreshPrintStatus(){
+            var q=activePrintQA,status=el('sbs-af-print-status');
+            if(!q){status.textContent='HOLD — no image data is available for the print-size check.';status.dataset.state='review';return;}
+            var width=Number(el('sbs-af-width').value),height=Number(el('sbs-af-height').value);
+            if(!isFinite(width)||!isFinite(height)||width<=0||height<=0){status.textContent='HOLD — enter a valid print width and height.';status.dataset.state='review';return;}
+            var ppi=Math.min(Number(q.width)/width,Number(q.height)/height);
+            var size=width+' × '+height+' inches';
+            status.dataset.state='review';
+            status.textContent=ppi>=300
+                ?'Pixel-size check: '+ppi.toFixed(1)+' PPI at '+size+'; meets the 300 PPI dimension target. This does not prove source detail or print quality. Review all four proofs.'
+                :'REVIEW: '+ppi.toFixed(1)+' PPI at '+size+'; below the 300 PPI dimension target. This check does not add detail or upscale the image. Review the four proofs and consider a separately validated upscale.';
+        }
+        function renderPrintProof(q,asset,isCandidate){
+            var section=el('sbs-af-print-proof');
+            section.hidden=!asset;activePrintQA=q||null;
+            if(!asset){el('sbs-af-print-proof-title').textContent='Four-colour print check';refreshPrintStatus();return;}
+            el('sbs-af-print-proof-title').textContent=isCandidate?'Four-colour candidate proof':'Four-colour source proof';
+            refreshPrintStatus();
+            var key=(asset.uuid||asset.url||'')+'|'+(isCandidate?'candidate':'original');
+            if(proofSourceKey===key&&proofPreviewUrl)return;
+            proofSourceKey=key;proofRenderedKey='';
+            var source=el(isCandidate?'sbs-af-candidate':'sbs-af-original');
+            function drawPreview(){
+                if(proofSourceKey!==key||proofRenderedKey===key||!source.naturalWidth||!source.naturalHeight)return;
+                proofRenderedKey=key;
+                try{
+                    var scale=Math.min(1,512/source.naturalWidth,512/source.naturalHeight);
+                    var canvas=document.createElement('canvas');
+                    canvas.width=Math.max(1,Math.round(source.naturalWidth*scale));
+                    canvas.height=Math.max(1,Math.round(source.naturalHeight*scale));
+                    var context=canvas.getContext('2d');
+                    if(!context)throw new Error('Canvas unavailable');
+                    context.drawImage(source,0,0,canvas.width,canvas.height);
+                    function showPreview(url){
+                        if(proofSourceKey!==key)return;
+                        if(proofPreviewUrl&&proofPreviewUrl.indexOf('blob:')===0)URL.revokeObjectURL(proofPreviewUrl);
+                        proofPreviewUrl=url;
+                        document.querySelectorAll('[data-af-proof-image]').forEach(function(img){
+                            img.src=url;img.alt='Artwork on '+img.getAttribute('data-af-proof-image')+' proof background';img.hidden=false;
+                            img.style.width=Number(el('sbs-af-zoom').value)*100+'%';
+                        });
+                    }
+                    if(typeof canvas.toBlob==='function'){
+                        canvas.toBlob(function(blob){if(blob)showPreview(URL.createObjectURL(blob));else showPreview(canvas.toDataURL('image/png'));},'image/png');
+                    }else{showPreview(canvas.toDataURL('image/png'));}
+                }catch(error){
+                    document.querySelectorAll('[data-af-proof-image]').forEach(function(img){img.hidden=true;img.removeAttribute('src');});
+                    el('sbs-af-print-status').textContent='The four-colour preview could not be rendered. Use the original/candidate comparison above.';
+                }
+            }
+            source.addEventListener('load',drawPreview,{once:true});
+            if(source.complete&&source.naturalWidth)drawPreview();
+        }
         function friendlyName(title){return (title||'Artwork').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[\u2018\u2019']/g,'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,110)||'Artwork';}
         function render(){
             resetChecks();var nameField=el('sbs-af-package-name');var workspaceKey=current?current.uuid:'';if(nameField.dataset.workspace!==workspaceKey){nameField.value=current?friendlyName(current.title)+'-local-finishing.zip':'';nameField.dataset.workspace=workspaceKey;}var v=current&&current.versions.find(function(v){return v.uuid===current.current_version;});
@@ -80,7 +133,7 @@
             var qa=el('sbs-af-qa');qa.replaceChildren();
             if(current){var q=v?v.qa:current.original_qa,p=document.createElement('p');p.textContent=q.width+' × '+q.height+' px; '+q.mime+'; '+q.alpha+(v?'; effective '+q.effective_ppi+' PPI at '+v.options.width+' × '+v.options.height+' inches.':'.');qa.appendChild(p);
                 var integrity=document.createElement('p');integrity.textContent=v?(v.comparison.byte_identical?'Candidate is byte-identical to original.':'Pixels have changed. Aligned side-by-side human comparison required.')+' Automated structural/text/face detection: not run.':'Original SHA-256: '+current.original.sha256;qa.appendChild(integrity);
-                var list=document.createElement('ul');q.warnings.forEach(function(w){var item=document.createElement('li');item.textContent=w;list.appendChild(item);});qa.appendChild(list);
+                var list=document.createElement('ul');q.warnings.forEach(function(w){var item=document.createElement('li');item.textContent=w;list.appendChild(item);});qa.appendChild(list);renderPrintProof(q,v?v.asset:current.original,!!v);
                 if(v&&v.options.notes){var notes=document.createElement('p');notes.textContent='Recorded review notes: '+v.options.notes;qa.appendChild(notes);}
             }
             controls();
@@ -91,7 +144,35 @@
             found.forEach(function(r){var article=document.createElement('article');article.className='sbs-card';var title=document.createElement('h2');title.textContent=r.title;article.appendChild(title);var p=document.createElement('p');p.textContent='Local '+r.uuid+' · '+r.status+' · Next action: '+r.next_action+' · Metadata: '+r.metadata_status;article.appendChild(p);var button=document.createElement('button');button.className='sbs-button';button.type='button';button.setAttribute('data-af-open',r.uuid);button.textContent='Open in Finishing';button.disabled=busy;button.addEventListener('click',function(){if(busy)return;current=r;render();document.querySelector('[data-primary-tab="finishing"]').click();el('sbs-af-title').focus();});article.appendChild(button);list.appendChild(article);});
         }
         async function refresh(){var data=await api('');records=data.records;var select=el('sbs-af-resume');select.replaceChildren();var empty=document.createElement('option');empty.value='';empty.textContent='Choose a workspace';select.appendChild(empty);records.forEach(function(r){var o=document.createElement('option');o.value=r.uuid;o.textContent=r.title+' — '+r.status;select.appendChild(o);});if(current){current=records.find(function(r){return r.uuid===current.uuid;})||current;select.value=current.uuid;}catalogue();}
-        async function action(type,extra,saveFolder){var data=Object.assign({action:type,revision:current.revision},extra||{});var result=await api('/'+current.uuid+'/action',data);if(type==='export'){el('sbs-af-package').href=result.package.url;el('sbs-af-package').setAttribute('download',result.package.filename);if(saveFolder){try{var savedName=await savePackageInFolder(saveFolder,result.package);el('sbs-af-package').hidden=true;message('Package saved to the chosen folder as '+savedName+'. No Drive save or catalogue update.');}catch(error){el('sbs-af-package').hidden=false;message('The package was built but folder saving failed. Use Download local package to save it through your browser instead. '+error.message,true);}}else{el('sbs-af-package').hidden=false;message('Local package ready: '+result.package.filename+'. Use Download local package to save it through your browser. No Drive save or catalogue update.');}}else{current=result;await refresh();render();message(type==='approve'?'Local finishing version approved. SB production and Drive remain unchanged.':'Local stage '+type+' complete.');}}
+        async function pollReplicate(){
+            message('AI upscale is processing on Replicate. The untouched original remains unchanged.');
+            var attempts=0;
+            while(current&&current.pending&&current.pending.replicate_prediction_id&&attempts<60){
+                await new Promise(function(resolve){window.setTimeout(resolve,2000);});
+                var poll=await api('/'+current.uuid+'/action',{action:'poll',revision:current.revision});
+                current=poll;render();attempts++;
+                if(current.processing_error){message(current.processing_error,true);return;}
+                if(current.pending&&current.pending.replicate_prediction_id){message('AI upscale is still processing. The original remains unchanged.');}
+            }
+            if(current&&current.pending&&current.pending.replicate_prediction_id){message('Replicate is still processing. Do not run another upscale. You can cancel the current stage after this check stops.');}
+            else if(current&&!current.processing_error){await refresh();render();message('AI upscale finished. Compare the candidate with the untouched original before approval.');}
+        }
+        async function action(type,extra,saveFolder){
+            var data=Object.assign({action:type,revision:current.revision},extra||{});
+            var result=await api('/'+current.uuid+'/action',data);
+            if(type==='export'){
+                el('sbs-af-package').href=result.package.url;el('sbs-af-package').setAttribute('download',result.package.filename);
+                if(saveFolder){try{var savedName=await savePackageInFolder(saveFolder,result.package);el('sbs-af-package').hidden=true;message('Package saved to the chosen folder as '+savedName+'. No Drive save or catalogue update.');}catch(error){el('sbs-af-package').hidden=false;message('The package was built but folder saving failed. Use Download local package to save it through your browser instead. '+error.message,true);}}
+                else{el('sbs-af-package').hidden=false;message('Local package ready: '+result.package.filename+'. Use Download local package to save it through your browser. No Drive save or catalogue update.');}
+                return;
+            }
+            current=result;render();
+            if(type==='run'&&current.pending&&current.pending.replicate_prediction_id){await pollReplicate();}
+            else{
+                await refresh();render();
+                message(type==='approve'?'Local finishing version approved. SB production and Drive remain unchanged.':'Stage '+type+' complete.');
+            }
+        }
         el('sbs-af-file').addEventListener('change',function(){chooseFile(this);});
         el('sbs-af-gallery-file').addEventListener('change',function(){chooseFile(this);});
         el('sbs-af-upload').addEventListener('submit',function(event){event.preventDefault();var submitter=event.submitter||this.querySelector('button[type=submit]'),uploaded=null;uploadMessage('Saving the untouched original in private Studio storage…');operation(async function(){var f=selectedFile||el('sbs-af-file').files[0]||el('sbs-af-gallery-file').files[0];if(!f)throw new Error('Choose one image using Photos / Gallery or Files / My Files first.');if(f.size>20*1024*1024)throw new Error('This file is '+fileSize(f.size)+'. The limit is 20 MB. Choose a smaller copy; your original file will not be changed.');var data=new FormData();data.append('file',f);data.append('title',el('sbs-af-name').value);current=await api('/upload',data);uploaded=current;await refresh();render();selectedFile=null;el('sbs-af-upload').reset();var saved='Saved successfully: “'+current.title+'”. Workspace '+current.uuid+'. The original is unchanged; no AF number was allocated.';message(saved);uploadMessage(saved,'success');},'Uploading original to private Studio storage…',submitter,function(error){if(uploaded){var saved='Original saved successfully: “'+uploaded.title+'”. Workspace '+uploaded.uuid+'. The workspace list did not refresh: '+error.message+' Do not upload it again; press Refresh workspaces.';uploadMessage(saved,'success');}else{uploadMessage('Upload not confirmed: '+error.message,'error');}});});
@@ -99,10 +180,11 @@
         ['run','cancel','approve'].forEach(function(type){el('sbs-af-'+type).addEventListener('click',function(){var button=this;operation(function(){return action(type,type==='approve'?{checks:checks()}:{});},type==='run'?'Running local stage. The original remains untouched…':'Processing '+type+'…',button);});});
         el('sbs-af-export').addEventListener('click',function(){var button=this;if(busy||exportPickerOpen||!current||!current.approval)return;choosePackageFolder().then(function(folder){if(folder===undefined)return;operation(function(){return action('export',{filename:el('sbs-af-package-name').value},folder);},folder?'Building ZIP and saving to the chosen folder…':'Building approved local package…',button);});});
         el('sbs-af-versions').addEventListener('change',function(){var uuid=this.value,button=this;if(uuid)operation(function(){return action('select',{version:uuid});},'Selecting version; new approval will be required…',button);});
-        el('sbs-af-resume').addEventListener('change',function(){var uuid=this.value,button=this;if(!uuid||busy)return;operation(async function(){current=await api('/'+uuid);render();message('Workspace resumed from private storage.');},'Loading workspace…',button);});
+        el('sbs-af-resume').addEventListener('change',function(){var uuid=this.value,button=this;if(!uuid||busy)return;operation(async function(){current=await api('/'+uuid);render();if(current.pending&&current.pending.replicate_prediction_id){message('Resumed the existing Replicate upscale. Checking its status; do not queue another request.');await pollReplicate();}else{message('Workspace resumed from private storage.');}},'Loading workspace…',button);});
         el('sbs-af-refresh').addEventListener('click',function(){var button=this;operation(async function(){await refresh();render();message('Local workspaces refreshed.');},'Refreshing workspaces…',button);});
         document.querySelectorAll('[data-af-check]').forEach(function(n){n.addEventListener('change',controls);});
-        el('sbs-af-zoom').addEventListener('change',function(){var width=Number(this.value)*100+'%';['sbs-af-original','sbs-af-candidate'].forEach(function(id){el(id).style.width=width;});});
+        el('sbs-af-zoom').addEventListener('change',function(){var width=Number(this.value)*100+'%';['sbs-af-original','sbs-af-candidate'].forEach(function(id){el(id).style.width=width;});document.querySelectorAll('[data-af-proof-image]').forEach(function(img){img.style.width=width;});});
+        ['sbs-af-width','sbs-af-height'].forEach(function(id){el(id).addEventListener('input',refreshPrintStatus);});
         // Scroll together for aligned comparison at matching relative image coordinates.
         var syncing=false;document.querySelectorAll('.sbs-af-viewport').forEach(function(view){view.addEventListener('scroll',function(){if(syncing)return;syncing=true;document.querySelectorAll('.sbs-af-viewport').forEach(function(other){if(other!==view){other.scrollLeft=view.scrollLeft;other.scrollTop=view.scrollTop;}});requestAnimationFrame(function(){syncing=false;});});});
         el('sbs-af-proof').addEventListener('change',function(){el('sbs-af-compare').setAttribute('data-proof',this.value);});

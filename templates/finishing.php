@@ -15,15 +15,15 @@
             <button id="sbs-af-refresh" class="sbs-button" type="button">Refresh workspaces</button>
         </section>
         <section class="sbs-card"><h2>2. Choose a stage</h2>
-            <label for="sbs-af-method">Processing option<select id="sbs-af-method"><option value="inspect">Inspect — exact byte copy, no image changes</option><option value="resize">Fit down to print box — preserve aspect ratio, no crop</option><option disabled>Conservative AI upscale — adapter pending</option><option disabled>Sharpen / denoise / edge cleaning — preservation validation pending</option><option disabled>Background removal — deliberate background protection pending</option></select></label>
+            <label for="sbs-af-method">Processing option<select id="sbs-af-method"><option value="inspect">Inspect — exact byte copy, no image changes</option><option value="resize">Fit down to print box — preserve aspect ratio, no crop</option><option value="upscale">AI upscale — Replicate Real-ESRGAN (automatic 2× or 4×)</option><option disabled>Sharpen / denoise / edge cleaning — preservation validation pending</option><option disabled>Background removal — deliberate background protection pending</option></select></label>
             <div class="sbs-grid two"><label for="sbs-af-width">Print width (inches)<input id="sbs-af-width" type="number" min="1" max="30" step="0.25" value="15"></label><label for="sbs-af-height">Print height (inches)<input id="sbs-af-height" type="number" min="1" max="30" step="0.25" value="18"></label></div>
-            <p>300 PPI target; 4500 × 5400 pixels at 15 × 18 inches. Fit down never enlarges or distorts. Source detail and colour must be reviewed. Local processing uses no paid provider.</p>
+            <p>300 PPI is a pixel-dimension target, not proof of print quality. Fit down never enlarges or distorts. Inspect and Fit down stay local. AI upscale sends the original to Replicate, uses your configured credits, and saves its result as a separate candidate; the original stays unchanged. Review text, faces, texture, transparency and all proof backgrounds.</p>
             <label for="sbs-af-notes">Correction notes for this version<textarea id="sbs-af-notes" rows="4" maxlength="6000" spellcheck="true" autocapitalize="sentences" placeholder="Dictate details to check. Notes are recorded; they do not instruct AI or redraw this image."></textarea></label>
-            <p id="sbs-af-stage-help">1. Choose the processing option and press “Queue selected stage.” 2. When it is queued, press “Run queued local stage.” You can cancel before running.</p>
+            <p id="sbs-af-stage-help">1. Choose the processing option and press “Queue selected stage.” 2. Press “Run queued stage.” For AI upscale, Studio checks progress and saves the finished result locally. The untouched original is retained.</p>
             <button id="sbs-af-prepare" class="sbs-button" type="button" disabled>1. Queue selected stage</button>
             <p class="sbs-af-then" aria-hidden="true">Then ↓</p>
-            <button id="sbs-af-run" class="sbs-button primary" type="button" disabled>2. Run queued local stage</button>
-            <button id="sbs-af-cancel" class="sbs-button" type="button" disabled>Cancel queued stage</button>
+            <button id="sbs-af-run" class="sbs-button primary" type="button" disabled>2. Run queued stage</button>
+            <button id="sbs-af-cancel" class="sbs-button" type="button" disabled>Cancel queued stage or upscale</button>
             <p>Cancel is available before running. A running local server operation finishes as a separate version; the original is retained. Retry by queuing the stage again.</p>
         </section>
     </div>
@@ -35,6 +35,17 @@
         <p id="sbs-af-zoom-help">Zoom changes only how large the preview appears. It does not upscale or change the image.</p>
         <p id="sbs-af-proof-help">Choose Light, inspect the candidate, then choose Dark and inspect it again. This changes the preview background only.</p>
         <div class="sbs-af-compare" id="sbs-af-compare"><figure><figcaption>Untouched original</figcaption><div class="sbs-af-viewport" tabindex="0" aria-label="Original image — scroll when magnified"><img id="sbs-af-original" alt="" hidden></div></figure><figure><figcaption>Selected candidate</figcaption><div class="sbs-af-viewport" tabindex="0" aria-label="Candidate image — scroll when magnified"><img id="sbs-af-candidate" alt="" hidden></div><a id="sbs-af-candidate-download" class="sbs-button" hidden download>Download selected candidate</a></figure></div>
+        <section id="sbs-af-print-proof" class="sbs-af-print-proof" aria-labelledby="sbs-af-print-proof-title" hidden>
+            <h3 id="sbs-af-print-proof-title">Four-colour print check</h3>
+            <p id="sbs-af-print-proof-help">The same artwork is previewed on solid black, white, red and navy blue backgrounds. These are screen proofs only, not a guarantee of the printed result. Use the comparison zoom to inspect detail.</p>
+            <p id="sbs-af-print-status" role="status" aria-live="polite" aria-atomic="true">Select artwork to run the pixel-size check.</p>
+            <div class="sbs-af-proof-grid" role="group" aria-label="Four-colour proof backgrounds, in order: black, white, red, navy blue">
+                <figure><figcaption>1. BLACK</figcaption><div class="sbs-af-proof-swatch" data-proof-color="black"><img data-af-proof-image="black" alt="" hidden></div></figure>
+                <figure><figcaption>2. WHITE</figcaption><div class="sbs-af-proof-swatch" data-proof-color="white"><img data-af-proof-image="white" alt="" hidden></div></figure>
+                <figure><figcaption>3. RED</figcaption><div class="sbs-af-proof-swatch" data-proof-color="red"><img data-af-proof-image="red" alt="" hidden></div></figure>
+                <figure><figcaption>4. NAVY BLUE</figcaption><div class="sbs-af-proof-swatch" data-proof-color="navy"><img data-af-proof-image="navy" alt="" hidden></div></figure>
+            </div>
+        </section>
         <div id="sbs-af-progress" role="status" aria-live="polite" aria-atomic="true">No operation running.</div>
         <progress id="sbs-af-progress-bar" aria-label="Local finishing operation" hidden></progress>
         <div id="sbs-af-qa"></div>
@@ -42,7 +53,7 @@
             <label><input type="checkbox" data-af-check="identity"> I checked face, character identity, composition, stars and fur against the original.</label>
             <label><input type="checkbox" data-af-check="lettering"> I checked all wording, lettering and small details.</label>
             <label><input type="checkbox" data-af-check="texture"> I checked alpha edges, halos, deliberate backgrounds, halftone and distress.</label>
-            <label><input type="checkbox" data-af-check="garments"> I inspected the candidate on both Light and Dark backgrounds and at the intended print size.</label>
+            <label><input type="checkbox" data-af-check="garments"> I inspected the candidate on BLACK, WHITE, RED and NAVY BLUE proof backgrounds and at the intended print size.</label>
             <label><input type="checkbox" data-af-check="warnings"> I reviewed the quality warnings and accept any unresolved limitations for this local candidate.</label>
         </fieldset>
         <button id="sbs-af-approve" class="sbs-button primary" type="button" disabled>Approve this local finishing version</button>

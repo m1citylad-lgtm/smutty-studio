@@ -75,12 +75,12 @@ final class SBS_Finishing
     {
         if(!is_array($input)){return self::error('options','Invalid processing options.');}
         $method=$input['method']??'inspect';
-        if(!in_array($method,array('inspect','resize','sharpen'),true)){return self::error('method','This stage is not available locally. No AI or background removal was run.');}
+        if(!in_array($method,array('inspect','resize','sharpen','upscale'),true)){return self::error('method','This stage is not available. No image was changed.');} if($method==='upscale'&&!SBS_Replicate::is_configured()){return self::error('replicate_not_configured','Add your Replicate API token in Studio Settings before using AI upscale. No image was sent or changed.',503);}
         $width=$input['width']??15; $height=$input['height']??18;
         if(!is_numeric($width)||!is_numeric($height)||!is_finite((float)$width)||!is_finite((float)$height)||$width<1||$width>30||$height<1||$height>30){return self::error('size','Choose print dimensions from 1 to 30 inches.');}
         $notes=$input['notes']??'';
         if(!is_string($notes)||strlen($notes)>12000){return self::error('notes','Keep correction notes within 12000 bytes.');}
-        return array('method'=>$method,'width'=>(float)$width,'height'=>(float)$height,'ppi'=>300,'notes'=>sanitize_textarea_field($notes),'preserve_texture'=>true,'generative_redraw'=>false,'estimated_provider_cost'=>0);
+        return array('method'=>$method,'width'=>(float)$width,'height'=>(float)$height,'ppi'=>300,'notes'=>sanitize_textarea_field($notes),'preserve_texture'=>true,'generative_redraw'=>false,'provider'=>$method==='upscale'?'Replicate':null,'model'=>$method==='upscale'?'nightmareai/real-esrgan':null,'estimated_provider_cost'=>$method==='upscale'?(float)get_option('sbs_replicate_cost_per_image','0.002'):0);
     }
     public static function inspect($asset,$options)
     {
@@ -129,11 +129,20 @@ final class SBS_Finishing
                 $r['pending']=$o;$r['status']='Queued';$r['approval']=null;$r['next_action']='Run queued local stage or cancel';
             } elseif($action==='cancel'){
                 if(empty($r['pending'])){return self::error('state','No queued stage to cancel.');}
-                unset($r['pending']);$r['status']=$r['current_version']?'Awaiting Review':'Awaiting Finishing';$r['next_action']='Review or retry a stage';
+                if(!empty($r['pending']['replicate_prediction_id'])){$canceled=SBS_Replicate::cancel($r['pending']['replicate_prediction_id']);if(is_wp_error($canceled)){return $canceled;}}
+                unset($r['pending']);$r['processing_error']=null;$r['status']=$r['current_version']?'Awaiting Review':'Awaiting Finishing';$r['next_action']='Review or retry a stage';
             } elseif($action==='run'){
-                if(empty($r['pending'])){return self::error('state','Queue a local stage first.');}
-                $v=self::process($r,$r['pending']);if(is_wp_error($v)){return $v;}
-                $r['versions'][]=$v;$r['current_version']=$v['uuid'];$r['approval']=null;unset($r['pending']);$r['status']='Awaiting Review';$r['next_action']='Compare original and candidate; complete human review';
+                if(empty($r['pending'])){return self::error('state','Queue a stage first.');}
+                if($r['pending']['method']==='upscale'){$r=self::start_upscale($r);if(is_wp_error($r)){return $r;}}
+                else{$v=self::process($r,$r['pending']);if(is_wp_error($v)){return $v;}$r['versions'][]=$v;$r['current_version']=$v['uuid'];$r['approval']=null;unset($r['pending']);$r['status']='Awaiting Review';$r['next_action']='Compare original and candidate; complete human review';}
+            } elseif($action==='poll'){
+                if(empty($r['pending']['replicate_prediction_id'])){return self::error('state','No Replicate upscale is running.');}
+                $prediction=SBS_Replicate::poll($r['pending']['replicate_prediction_id']);if(is_wp_error($prediction)){return $prediction;}
+                $remote_status=$prediction['status']??'';
+                if(in_array($remote_status,array('succeeded','successful'),true)){$v=self::replicate_version($r,$r['pending'],$prediction);if(is_wp_error($v)){return $v;}$r['versions'][]=$v;$r['current_version']=$v['uuid'];$r['approval']=null;unset($r['pending']);$r['status']='Awaiting Review';$r['next_action']='Compare original and AI-upscaled candidate; complete human review';$r['processing_error']=null;}
+                elseif(in_array($remote_status,array('failed','canceled'),true)){$r['processing_error']='Replicate upscale '.$remote_status.(!empty($prediction['error'])?': '.sanitize_text_field((string)$prediction['error']):'.').' The original is unchanged. You can retry or choose another stage.';unset($r['pending']);$r['status']=$r['current_version']?'Awaiting Review':'Awaiting Finishing';$r['next_action']='Review the existing version or retry a stage';}
+                else{$r['status']='AI upscale processing on Replicate';$r['next_action']='Wait for the Replicate result; the original remains unchanged';}
+
             } elseif($action==='select'){
                 $uuid=$request->get_param('version');$found=false;foreach($r['versions'] as $v){if($v['uuid']===$uuid){$found=true;}}
                 if(!$found){return self::error('version','Version not found.');}
@@ -151,6 +160,40 @@ final class SBS_Finishing
             $r['revision']++;$r['updated_at']=gmdate('c');$r['audit'][]=array('at'=>gmdate('c'),'action'=>$action);
             return self::write($path,$r);
         } finally {flock($lock,LOCK_UN);fclose($lock);}
+    }
+    private static function start_upscale($r)
+    {
+        if(!self::intact($r['original'])){return self::error('integrity','Original checksum mismatch. Processing refused.',409);}
+        $target=$r['pending']??array();$pw=(float)($target['width']??15);$ph=(float)($target['height']??18);$ppi=min((float)($r['original_qa']['width']??0)/$pw,(float)($r['original_qa']['height']??0)/$ph);
+        if($ppi>=300){return self::error('upscale_not_needed','This artwork already meets the 300 PPI pixel-dimension target at the selected print size. Use Inspect; no Replicate credits were used.',409);}
+        $dimensions=@getimagesize(SBS_Storage::absolute_path($r['original']));$pixels=$dimensions?(int)$dimensions[0]*(int)$dimensions[1]:0;
+        $scale=$ppi>=150?2:4;
+        if($pixels*$scale*$scale>40000000&&$scale===4&&$pixels*4<=40000000){$scale=2;}
+        if(!$pixels||$pixels*$scale*$scale>40000000){return self::error('upscale_size','This image would exceed Studio’s 40-million-pixel candidate limit at the safe upscale size. No Replicate request was sent.',413);}
+        $prediction=SBS_Replicate::submit($r['original'],$scale);if(is_wp_error($prediction)){return $prediction;}
+        $status=$prediction['status']??'';
+        $r['pending']['scale']=$scale;$r['pending']['provider']='Replicate';$r['pending']['model']='nightmareai/real-esrgan';$r['pending']['estimated_provider_cost']=(float)get_option('sbs_replicate_cost_per_image','0.002');
+        if(in_array($status,array('succeeded','successful'),true)){$v=self::replicate_version($r,$r['pending'],$prediction);if(is_wp_error($v)){return $v;}$r['versions'][]=$v;$r['current_version']=$v['uuid'];$r['approval']=null;unset($r['pending']);$r['status']='Awaiting Review';$r['next_action']='Compare original and AI-upscaled candidate; complete human review';$r['processing_error']=null;return $r;}
+        if(in_array($status,array('starting','processing','queued'),true)&&!empty($prediction['id'])){$r['pending']['replicate_prediction_id']=sanitize_text_field($prediction['id']);$r['status']='AI upscale processing on Replicate';$r['next_action']='Wait for the Replicate result; the original remains unchanged';$r['processing_error']=null;return $r;}
+        return self::error('replicate_failed','Replicate did not start the upscale successfully. The original is unchanged. Check Replicate usage before retrying.',502);
+    }
+    private static function replicate_version($r,$options,$prediction)
+    {
+        $url=$prediction['output']??null;if(is_array($url)){$url=reset($url);}
+        if(!is_string($url)||$url===''){return self::error('replicate_output','Replicate completed without an image output. The original is unchanged.',502);}
+        $bytes=SBS_Replicate::fetch_output($url);if(is_wp_error($bytes)){return $bytes;}
+        if(!function_exists('getimagesizefromstring')){return self::error('image','This server cannot validate the Replicate image output. The original is unchanged.',503);}
+        $size=@getimagesizefromstring($bytes);$allowed=array('image/png','image/jpeg','image/webp');
+        if(!$size||!in_array($size['mime']??'', $allowed, true)||(int)$size[0]*(int)$size[1]>40000000){return self::error('replicate_image','Replicate output is not a supported image within Studio’s 40-million-pixel limit. The original is unchanged.',422);}
+        $original_size=@getimagesize(SBS_Storage::absolute_path($r['original']));
+        if(!$original_size||($size[0]<=$original_size[0]&&$size[1]<=$original_size[1])){return self::error('replicate_dimensions','Replicate output did not increase either image dimension. No candidate was saved.',422);}
+        $ext=$size['mime']==='image/jpeg'?'jpg':($size['mime']==='image/webp'?'webp':'png');
+        $asset=SBS_Storage::store_bytes($bytes,'candidate-upscaled.'.$ext,$size['mime'],'finishing',0,'finishing_candidate',$r['title']);if(is_wp_error($asset)){return $asset;}
+        $options['provider']='Replicate';$options['model']='nightmareai/real-esrgan';$options['model_version']=get_option('sbs_replicate_model_version',SBS_Replicate::DEFAULT_VERSION);$options['scale']=(int)($options['scale']??4);$options['estimated_provider_cost']=(float)get_option('sbs_replicate_cost_per_image','0.002');
+        $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
+        if(preg_match('/transparency|partial alpha/i',(string)($r['original_qa']['alpha']??''))&&!preg_match('/transparency|partial alpha/i',(string)$qa['alpha'])){$qa['warnings'][]='The original contains sampled transparency but it was not detected in the AI candidate; inspect alpha edges before approval.';}
+        $duration=isset($prediction['metrics']['predict_time'])?(float)$prediction['metrics']['predict_time']:null;
+        return array('uuid'=>wp_generate_uuid4(),'number'=>count($r['versions'])+1,'asset'=>$asset,'options'=>$options,'qa'=>$qa,'created_at'=>gmdate('c'),'provider_result'=>array('status'=>'succeeded','prediction_id'=>sanitize_text_field((string)($prediction['id']??'')),'predict_time'=>$duration),'comparison'=>array('byte_identical'=>hash_equals($r['original']['sha256'],$asset['sha256']),'structural_detection'=>'Not run — human review required','text_face_detection'=>'Not run — human review required'));
     }
     public static function current($r){foreach($r['versions'] as $v){if($v['uuid']===$r['current_version']){return $v;}}return null;}
     private static function intact($asset){$path=SBS_Storage::absolute_path($asset);return is_file($path)&&hash_equals($asset['sha256'],hash_file('sha256',$path));}

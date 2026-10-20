@@ -14,8 +14,8 @@ const studio = read('assets/js/studio.js');
 const backend = read('includes/class-sbs-finishing.php');
 const plugin = read('smutty-bear-studio.php');
 
-assert.match(plugin, /Version: 0\.2\.53/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.53'\)/);
+assert.match(plugin, /Version: 0\.2\.54/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.54'\)/);
 
 // The two choices intentionally call separate Android/browser file pickers.
 assert.match(template, /id="sbs-af-file"[^>]*type="file"[^>]*accept="\.png,\.jpg,\.jpeg,\.webp,application\/octet-stream"/);
@@ -30,7 +30,7 @@ assert.match(css, /fieldset label\{[^}]*grid-template-columns:28px minmax\(0,1fr
 assert.match(css, /@media\(max-width:750px\)\{\.sbs-af-compare\{grid-template-columns:minmax\(0,1fr\)/);
 
 assert.match(template, /1\. Queue selected stage/);
-assert.match(template, /2\. Run queued local stage/);
+assert.match(template, /2\. Run queued stage/);
 assert.match(template, /Then ↓/);
 assert.match(finishing, /20\*1024\*1024/);
 assert.match(finishing, /selectedFile=null;input\.value='';var warning='This file is '/);
@@ -61,7 +61,18 @@ assert.match(template, /Artwork title <span class="sbs-af-required">Required<\/s
 assert.match(template, /Comparison zoom \(display only\)/);
 assert.match(template, /does not upscale or change the image/);
 assert.match(template, /Choose Light, inspect the candidate, then choose Dark/);
-assert.match(template, /data-af-check="garments"[^>]*> I inspected the candidate on both Light and Dark backgrounds/);
+assert.match(template, /data-af-check="garments"[^>]*> I inspected the candidate on BLACK, WHITE, RED and NAVY BLUE proof backgrounds/);
+assert.match(template, /id="sbs-af-print-proof"[^>]*hidden/);
+assert.match(template, /Four-colour proof backgrounds, in order: black, white, red, navy blue/);
+assert.ok(template.indexOf('data-proof-color="black"') < template.indexOf('data-proof-color="white"'));
+assert.ok(template.indexOf('data-proof-color="white"') < template.indexOf('data-proof-color="red"'));
+assert.ok(template.indexOf('data-proof-color="red"') < template.indexOf('data-proof-color="navy"'));
+assert.match(finishing, /function refreshPrintStatus/);
+assert.match(finishing, /Pixel-size check: .*300 PPI dimension target/);
+assert.match(finishing, /below the 300 PPI dimension target/);
+assert.match(finishing, /canvas\.toBlob/);
+assert.match(finishing, /This check does not add detail or upscale the image/);
+assert.match(css, /grid-auto-flow:column;grid-auto-columns:minmax\(82vw,1fr\);overflow-x:auto/);
 assert.match(css, /\.sbs-af-review-controls\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
 assert.doesNotMatch(finishing, /sbs-af-(ideas|sb|original-download|show-sb|sb-catalogue)/);
 assert.match(finishing, /data\.append\('title',el\('sbs-af-name'\)\.value\)/);
@@ -80,3 +91,19 @@ assert.match(finishing, /Download local package to save it through your browser/
 
 assert.match(finishing, /Choose a folder for the ZIP/);
 assert.match(finishing, /response\.body\.pipeTo/);
+
+// Replicate upscale is explicitly supported by the existing adapter and remains a separate review candidate.
+assert.match(template, /value="upscale"[^>]*>AI upscale — Replicate Real-ESRGAN/);
+assert.match(backend, /SBS_Replicate::is_configured\(\)/);
+assert.match(backend, /SBS_Replicate::submit\(\$r\['original'\],\$scale\)/);
+assert.match(backend, /SBS_Replicate::poll\(/);
+assert.match(backend, /SBS_Replicate::cancel\(/);
+assert.match(backend, /nightmareai\/real-esrgan/);
+assert.match(read('includes/class-sbs-replicate.php'), /'face_enhance' => false/);
+assert.match(backend, /40-million-pixel candidate limit/);
+assert.match(backend, /original is unchanged/);
+assert.match(finishing, /Do not run another upscale/);
+
+assert.match(backend, /\$r\['original_qa'\]\['width'\].*\$pw/);
+assert.match(finishing, /sbs-af-prepare'\)\.disabled=busy\|\|!current\|\|!!current\.pending/);
+assert.match(finishing, /sbs-af-run'\)\.disabled=busy\|\|!current\|\|!current\.pending\|\|!!current\.pending\.replicate_prediction_id/);
