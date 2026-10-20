@@ -35,7 +35,7 @@
         function fileSize(size){return (size/(1024*1024)).toFixed(2)+' MB';}
         function choosePackageFolder(){
             if(!window.isSecureContext||typeof window.showDirectoryPicker!=='function')return Promise.resolve(null);
-            exportPickerOpen=true;controls();
+            exportPickerOpen=true;controls();message('Choose a folder for the ZIP. Select Downloads to use the Smutty Studio ZIP files folder.');
             var picker;
             try{picker=window.showDirectoryPicker({id:'sbs-local-finishing-packages',mode:'readwrite',startIn:'downloads'});}catch(error){picker=Promise.reject(error);}
             return picker.then(async function(folder){
@@ -61,7 +61,7 @@
             if(!response.ok)throw new Error('The package was built, but the ZIP could not be read for saving.');
             var handle=await folder.getFileHandle(filename,{create:true});
             var writable=await handle.createWritable();
-            try{await writable.write(await response.blob());await writable.close();}
+            try{if(response.body&&typeof response.body.pipeTo==='function'){await response.body.pipeTo(writable);}else{await writable.write(await response.blob());await writable.close();}}
             catch(error){try{await writable.abort();}catch(ignore){}throw new Error('The package was built, but it could not be written to the chosen folder.');}
             return filename;
         }
