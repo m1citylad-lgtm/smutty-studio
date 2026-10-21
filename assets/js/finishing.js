@@ -157,20 +157,27 @@
             var status=el('sbs-af-readiness'),text=el('sbs-af-handoff-text'),copy=el('sbs-af-copy-handoff');
             if(!current||!version){status.dataset.state='fail';status.textContent='FAIL — select a candidate before handoff.';text.value='Upload artwork and select a finishing candidate first.';copy.disabled=true;return;}
             copy.disabled=false;
-            var q=version.qa||{},geometry=version.comparison&&version.comparison.geometry||{},review=version.ai_review||null;
+            var q=version.qa||{},sourceQA=current.original_qa||{},geometry=version.comparison&&version.comparison.geometry||{},review=version.ai_review||null;
+            if((!isFinite(Number(geometry.width_scale))||!isFinite(Number(geometry.height_scale)))&&Number(sourceQA.width)>0&&Number(sourceQA.height)>0&&Number(q.width)>0&&Number(q.height)>0){
+                var sx=Number(q.width)/Number(sourceQA.width),sy=Number(q.height)/Number(sourceQA.height),mismatch=Math.abs(sx-sy)/Math.max(sx,sy)*100;
+                geometry={status:mismatch<=0.2?'proportional':'review',width_scale:sx,height_scale:sy,nonuniform_scale_percent:mismatch,message:mismatch<=0.2?'Original and candidate dimensions changed proportionally. This cannot detect local warping.':'Original and candidate dimensions changed by different proportions; inspect for stretch or crop.'};
+            }
             var ppi=Number(q.effective_ppi),width=Number(version.options&&version.options.width),height=Number(version.options&&version.options.height);
             var flags=[];
-            if(!isFinite(ppi)||ppi<300){flags.push('PPI is below the 300 target or could not be verified.');}
+            var suggested=isFinite(Number(q.width))&&isFinite(Number(q.height))?(Number(q.width)/300).toFixed(2)+' × '+(Number(q.height)/300).toFixed(2)+' inches':'not available';
+            if(!isFinite(ppi)||ppi<300){flags.push('PPI is '+(isFinite(ppi)?ppi.toFixed(1):'unverified')+'; 300 target. Suggested maximum: '+suggested+' at 300 PPI.');}
             if(geometry.status!=='proportional'){flags.push('Image proportions need review.');}
-            if(geometry.transparency_sample_matches!==true){flags.push('Transparency samples differ or could not be matched.');}
+            var sourceAlpha=String(sourceQA.alpha||'Unknown'),candidateAlpha=String(q.alpha||'Unknown');
+            var alphaClass=function(value){if(/unknown|unverified|could not/i.test(value))return 'unknown';if(/partial|semi-transparent/i.test(value))return 'partial';if(/opaque|no transparency/i.test(value))return 'opaque';if(/transparent/i.test(value))return 'transparent';return 'unknown';};
+            var alphaMatches=typeof geometry.transparency_sample_matches==='boolean'?geometry.transparency_sample_matches:(alphaClass(sourceAlpha)!=='unknown'&&alphaClass(sourceAlpha)===alphaClass(candidateAlpha));
+            if(!alphaMatches){flags.push('Transparency samples differ or could not be matched.');}
             if(!review){flags.push('AI comparison has not been run.');}
             else if(review.overall!=='clear'){flags.push('AI comparison needs review ('+(review.overall||'unknown')+').');}
             else if((review.findings||[]).some(function(f){return f.severity==='review'||f.severity==='concern';})){flags.push('AI comparison returned areas to inspect.');}
             if(!Object.values(checks()).every(Boolean)&&!(current.approval&&current.approval.version===version.uuid&&Object.values(current.approval.checks||{}).every(Boolean))){flags.push('Human review checklist is incomplete.');}
             status.dataset.state=flags.length?'review':'pass';
             status.textContent=flags.length?'REVIEW — '+flags.length+' item'+(flags.length===1?'':'s')+' need attention.':'PASS — digital checks clear; print quality is not guaranteed.';
-            var suggested=isFinite(Number(q.width))&&isFinite(Number(q.height))?Number(q.width)/300+' × '+Number(q.height)/300+' inches at 300 PPI':'not available';
-            var lines=['SMUTTY STUDIO — CHATGPT ARTWORK HANDOFF','Artwork: '+(current.title||'Untitled'),'Candidate: version '+(version.number||'?')+' ('+(q.width||'?')+' × '+(q.height||'?')+' px, '+(q.mime||'unknown format')+')','Print size: '+(isFinite(width)&&isFinite(height)?width+' × '+height+' inches':'not set'),'Effective resolution: '+(isFinite(ppi)?ppi.toFixed(1)+' PPI':'not verified')+'; 300 PPI target. Suggested maximum at 300 PPI: '+suggested,'Candidate transparency: '+(q.alpha||'not verified'),'Proportions: '+(geometry.message||'not verified'),'Transparency comparison: '+(geometry.transparency_sample_matches===true?'sampled status matches':geometry.transparency_sample_matches===false?'sampled status differs':'not verified'),'AI comparison: '+(review?((review.overall||'unknown')+' — '+(review.summary||'No summary')):'not run'),'Readiness: '+(flags.length?'REVIEW':'PASS')];
+            var lines=['SMUTTY STUDIO — CHATGPT ARTWORK HANDOFF','Artwork: '+(current.title||'Untitled'),'Original: '+(sourceQA.width||'?')+' × '+(sourceQA.height||'?')+' px','Candidate: version '+(version.number||'?')+' — '+(q.width||'?')+' × '+(q.height||'?')+' px, '+(q.mime||'unknown format'),'Print size: '+(isFinite(width)&&isFinite(height)?width+' × '+height+' inches':'not set'),'Effective resolution: '+(isFinite(ppi)?ppi.toFixed(1)+' PPI':'not verified')+'; target 300 PPI. Suggested maximum: '+suggested,'Transparency: '+sourceAlpha+' → '+candidateAlpha+'; sampled status '+(alphaMatches?'matches':'differs / unknown'),'Proportions: '+(geometry.message||'not verified'),'AI comparison: '+(review?((review.overall||'unknown')+' — '+(review.summary||'No summary')):'not run'),'Readiness: '+(flags.length?'REVIEW':'PASS')];
             if(flags.length){lines.push('Items to check:');flags.forEach(function(flag,index){lines.push((index+1)+'. '+flag);});}
             if(review&&Array.isArray(review.findings)&&review.findings.length){lines.push('AI findings:');review.findings.forEach(function(f,index){lines.push((index+1)+'. '+(f.area||'Area')+' — '+(f.issue||'Inspect this area')+' Action: '+(f.action||'Review manually'));});}
             lines.push('Please compare the attached original/ and candidate/ files. Inspect the flagged areas, fine detail, lettering, face, edge halos, transparency and garment-colour proofs. Do not alter the original. Recommend a correction only if needed; describe any change before making it. This report is advisory and does not certify printer output.');

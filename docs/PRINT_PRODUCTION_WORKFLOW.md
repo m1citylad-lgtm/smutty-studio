@@ -84,3 +84,7 @@
 - The report asks ChatGPT to compare the untouched original and candidate, preserve the original and recommend any correction before making changes. It is advisory; it cannot certify printer output.
 - This release does not automatically repair image defects. Pixel-level halo detection, provider-specific garment profiles and supplier print simulation remain future work.
 - Validation: `node --check assets/js/finishing.js` and `node tools/test-finishing.cjs`.
+
+## Release 0.2.61 — complete handoff dimensions for older workspaces (21 October 2026)
+- Calculate proportional scaling and transparency comparison from stored original/candidate image details when older saved versions do not have a geometry report.
+- Include both original and candidate pixel dimensions in the ChatGPT handoff and round suggested 300 PPI print dimensions to two decimal places.

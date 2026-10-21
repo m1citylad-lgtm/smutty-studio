@@ -14,8 +14,8 @@ const studio = read('assets/js/studio.js');
 const backend = read('includes/class-sbs-finishing.php');
 const plugin = read('smutty-bear-studio.php');
 
-assert.match(plugin, /Version: 0\.2\.60/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.60'\)/);
+assert.match(plugin, /Version: 0\.2\.61/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.61'\)/);
 
 // The two choices intentionally call separate Android/browser file pickers.
 assert.match(template, /id="sbs-af-file"[^>]*type="file"[^>]*accept="\.png,\.jpg,\.jpeg,\.webp,application\/octet-stream"/);
@@ -129,6 +129,9 @@ assert.match(read('includes/class-sbs-openai.php'), /review_finishing_artwork/);
 assert.match(read('includes/class-sbs-openai.php'), /You only report observations; you never edit or generate images/);
 assert.match(finishing, /function renderAiReview/);
 assert.match(finishing, /function renderHandoff\(version\)/);
+assert.match(finishing, /var sx=Number\(q\.width\)\/Number\(sourceQA\.width\),sy=Number\(q\.height\)\/Number\(sourceQA\.height\)/);
+assert.match(finishing, /Suggested maximum: '\+suggested/);
+assert.match(finishing, /Original: '\+\(sourceQA\.width\|\|'\?'\)/);
 assert.match(finishing, /PASS — digital checks clear; print quality is not guaranteed/);
 assert.match(finishing, /REVIEW — .*need attention/);
 assert.match(finishing, /SMUTTY STUDIO — CHATGPT ARTWORK HANDOFF/);
