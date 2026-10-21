@@ -147,6 +147,13 @@ final class SBS_Finishing
                 $uuid=$request->get_param('version');$found=false;foreach($r['versions'] as $v){if($v['uuid']===$uuid){$found=true;}}
                 if(!$found){return self::error('version','Version not found.');}
                 $r['current_version']=$uuid;$r['approval']=null;unset($r['pending']);$r['status']='Awaiting Review';$r['next_action']='Review this version again';
+            } elseif($action==='ai_review'){
+                $v=self::current($r);
+                if(!$v||$r['status']!=='Awaiting Review'){return self::error('state','Run or select a finishing candidate before requesting an AI comparison.');}
+                if(!self::intact($r['original'])||!self::intact($v['asset'])){return self::error('integrity','Asset checksum mismatch. AI review refused.',409);}
+                $report=SBS_OpenAI::review_finishing_artwork($r['original']['id'],$v['asset']['id'],$r['title']);
+                if(is_wp_error($report)){return $report;}
+                foreach($r['versions'] as &$reviewed_version){if($reviewed_version['uuid']===$v['uuid']){$reviewed_version['ai_review']=$report;break;}}unset($reviewed_version);
             } elseif($action==='approve'){
                 if($r['status']!=='Awaiting Review'){return self::error('state','Run or select a candidate first.');}
                 $checks=$request->get_param('checks');
@@ -193,9 +200,17 @@ final class SBS_Finishing
         $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
         if(preg_match('/transparency|partial alpha/i',(string)($r['original_qa']['alpha']??''))&&!preg_match('/transparency|partial alpha/i',(string)$qa['alpha'])){$qa['warnings'][]='The original contains sampled transparency but it was not detected in the AI candidate; inspect alpha edges before approval.';}
         $duration=isset($prediction['metrics']['predict_time'])?(float)$prediction['metrics']['predict_time']:null;
-        return array('uuid'=>wp_generate_uuid4(),'number'=>count($r['versions'])+1,'asset'=>$asset,'options'=>$options,'qa'=>$qa,'created_at'=>gmdate('c'),'provider_result'=>array('status'=>'succeeded','prediction_id'=>sanitize_text_field((string)($prediction['id']??'')),'predict_time'=>$duration),'comparison'=>array('byte_identical'=>hash_equals($r['original']['sha256'],$asset['sha256']),'structural_detection'=>'Not run — human review required','text_face_detection'=>'Not run — human review required'));
+        return array('uuid'=>wp_generate_uuid4(),'number'=>count($r['versions'])+1,'asset'=>$asset,'options'=>$options,'qa'=>$qa,'created_at'=>gmdate('c'),'provider_result'=>array('status'=>'succeeded','prediction_id'=>sanitize_text_field((string)($prediction['id']??'')),'predict_time'=>$duration),'comparison'=>array('byte_identical'=>hash_equals($r['original']['sha256'],$asset['sha256']),'geometry'=>self::geometry_report($r['original'],$asset,$r['original_qa'],$qa),'structural_detection'=>'Not run — human review required','text_face_detection'=>'Not run — human review required'));
     }
     public static function current($r){foreach($r['versions'] as $v){if($v['uuid']===$r['current_version']){return $v;}}return null;}
+    private static function geometry_report($original,$candidate,$original_qa,$candidate_qa)
+    {
+        $a=@getimagesize(SBS_Storage::absolute_path($original));$b=@getimagesize(SBS_Storage::absolute_path($candidate));
+        if(!$a||!$b){return array('status'=>'unable','message'=>'Image dimensions could not be compared.');}
+        $sx=$b[0]/max(1,$a[0]);$sy=$b[1]/max(1,$a[1]);$mismatch=abs($sx-$sy)/max($sx,$sy)*100;
+        $alpha_match=preg_match('/transparency|partial alpha/i',(string)($original_qa['alpha']??''))===preg_match('/transparency|partial alpha/i',(string)($candidate_qa['alpha']??''));
+        return array('status'=>$mismatch<=0.2?'proportional':'review','original_width'=>(int)$a[0],'original_height'=>(int)$a[1],'candidate_width'=>(int)$b[0],'candidate_height'=>(int)$b[1],'width_scale'=>round($sx,5),'height_scale'=>round($sy,5),'nonuniform_scale_percent'=>round($mismatch,3),'transparency_sample_matches'=>$alpha_match,'message'=>$mismatch<=0.2?'Pixel dimensions changed proportionally; this does not detect local warping or prove image quality.':'Width and height changed by different proportions; inspect for possible stretch or crop.');
+    }
     private static function intact($asset){$path=SBS_Storage::absolute_path($asset);return is_file($path)&&hash_equals($asset['sha256'],hash_file('sha256',$path));}
     private static function process($r,$options)
     {
@@ -235,7 +250,7 @@ final class SBS_Finishing
         }
         $asset=SBS_Storage::store_bytes($bytes,$name,$mime,'finishing',0,'finishing_candidate',$r['title']);if(is_wp_error($asset)){return $asset;}
         $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
-        return array('uuid'=>wp_generate_uuid4(),'number'=>count($r['versions'])+1,'asset'=>$asset,'options'=>$options,'qa'=>$qa,'created_at'=>gmdate('c'),'comparison'=>array('byte_identical'=>hash_equals($r['original']['sha256'],$asset['sha256']),'structural_detection'=>'Not run — human review required','text_face_detection'=>'Not run — human review required'));
+        return array('uuid'=>wp_generate_uuid4(),'number'=>count($r['versions'])+1,'asset'=>$asset,'options'=>$options,'qa'=>$qa,'created_at'=>gmdate('c'),'comparison'=>array('byte_identical'=>hash_equals($r['original']['sha256'],$asset['sha256']),'geometry'=>self::geometry_report($r['original'],$asset,$r['original_qa'],$qa),'structural_detection'=>'Not run — human review required','text_face_detection'=>'Not run — human review required'));
     }
     private static function package_filename($title,$requested,$version)
     {

@@ -14,8 +14,8 @@ const studio = read('assets/js/studio.js');
 const backend = read('includes/class-sbs-finishing.php');
 const plugin = read('smutty-bear-studio.php');
 
-assert.match(plugin, /Version: 0\.2\.56/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.56'\)/);
+assert.match(plugin, /Version: 0\.2\.57/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.57'\)/);
 
 // The two choices intentionally call separate Android/browser file pickers.
 assert.match(template, /id="sbs-af-file"[^>]*type="file"[^>]*accept="\.png,\.jpg,\.jpeg,\.webp,application\/octet-stream"/);
@@ -117,3 +117,16 @@ assert.match(finishing, /Do not run another upscale/);
 assert.match(backend, /\$r\['original_qa'\]\['width'\].*\$pw/);
 assert.match(finishing, /sbs-af-prepare'\)\.disabled=busy\|\|!current\|\|!!current\.pending/);
 assert.match(finishing, /sbs-af-run'\)\.disabled=busy\|\|!current\|\|!current\.pending\|\|!!current\.pending\.replicate_prediction_id/);
+assert.match(template, /Run AI comparison \(sends both images to OpenAI\)/);
+assert.match(template, /never changes artwork/);
+assert.match(backend, /\$action==='ai_review'/);
+assert.match(backend, /geometry_report\(\$r\['original'\],\$asset,\$r\['original_qa'\],\$qa\)/);
+assert.match(backend, /nonuniform_scale_percent/);
+assert.match(backend, /transparency_sample_matches/);
+assert.match(read('includes/class-sbs-openai.php'), /review_finishing_artwork/);
+assert.match(read('includes/class-sbs-openai.php'), /You only report observations; you never edit or generate images/);
+assert.match(finishing, /function renderAiReview/);
+assert.match(finishing, /Focus check: '\+finding\.action/);
+assert.match(finishing, /Sending the untouched original and candidate to OpenAI/);
+assert.match(backend, /geometry'=>self::geometry_report/);
+assert.match(finishing, /AI visual comparison: /);

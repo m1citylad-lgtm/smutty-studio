@@ -25,6 +25,7 @@
             el('sbs-af-cancel').disabled=busy||!current||!current.pending;
             el('sbs-af-approve').disabled=busy||!canApprove(current)||!Object.values(checks()).every(Boolean);
             el('sbs-af-export').disabled=busy||exportPickerOpen||!current||!current.approval;
+            el('sbs-af-ai-review-run').disabled=busy||!current||!current.current_version;
             el('sbs-af-versions').disabled=busy;el('sbs-af-resume').disabled=busy;
             document.querySelectorAll('#sbs-af-upload input,#sbs-af-upload button').forEach(function(n){n.disabled=busy;});
             document.querySelectorAll('[data-af-open]').forEach(function(n){n.disabled=busy;});
@@ -139,6 +140,16 @@
         document.addEventListener('keydown',function(event){if(!viewer.hidden&&event.key==='Escape'){event.preventDefault();closeProofViewer();}});
         viewerImage.addEventListener('load',resetViewer);
         function friendlyName(title){return (title||'Artwork').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[\u2018\u2019']/g,'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,110)||'Artwork';}
+        function renderAiReview(version){
+            var section=el('sbs-af-ai-review'),button=el('sbs-af-ai-review-run'),report=el('sbs-af-ai-review-report');
+            section.hidden=!version;button.disabled=busy||!version;report.replaceChildren();
+            if(!version)return;
+            if(!version.ai_review){var prompt=document.createElement('p');prompt.textContent='No AI comparison has been run for this candidate.';report.appendChild(prompt);return;}
+            var result=version.ai_review,summary=document.createElement('p');summary.textContent='AI review: '+(result.overall==='clear'?'No obvious issue spotted':result.overall==='unable'?'Unable to assess reliably':'Review the findings below')+'. '+result.summary;report.appendChild(summary);
+            var method=document.createElement('p');method.textContent='Advisory only; model '+result.model+'; '+result.reviewed_at+'. Image pixels and approval rules were not changed.';report.appendChild(method);
+            if(!result.findings.length){var none=document.createElement('p');none.textContent='No specific areas were returned. This is not a print-quality guarantee.';report.appendChild(none);return;}
+            result.findings.forEach(function(finding){var article=document.createElement('article');article.dataset.severity=finding.severity;var heading=document.createElement('h4');heading.textContent=(finding.severity==='concern'?'Possible concern — ':finding.severity==='review'?'Please inspect — ':'Note — ')+finding.area;article.appendChild(heading);var issue=document.createElement('p');issue.textContent=finding.issue;article.appendChild(issue);var next=document.createElement('p');next.textContent='Focus check: '+finding.action;article.appendChild(next);report.appendChild(article);});
+        }
         function render(){
             resetChecks();var nameField=el('sbs-af-package-name');var workspaceKey=current?current.uuid:'';if(nameField.dataset.workspace!==workspaceKey){nameField.value=current?friendlyName(current.title)+'-local-finishing.zip':'';nameField.dataset.workspace=workspaceKey;}var v=current&&current.versions.find(function(v){return v.uuid===current.current_version;});
             image('sbs-af-original',current&&current.original,'Untouched original: '+(current?current.title:''));image('sbs-af-candidate',v&&v.asset,'Candidate version '+(v?v.number:''));
@@ -150,10 +161,12 @@
             el('sbs-af-versions').value=current?current.current_version||'':'';
             var qa=el('sbs-af-qa');qa.replaceChildren();
             if(current){var q=v?v.qa:current.original_qa,p=document.createElement('p');p.textContent=q.width+' × '+q.height+' px; '+q.mime+'; '+q.alpha+(v?'; effective '+q.effective_ppi+' PPI at '+v.options.width+' × '+v.options.height+' inches.':'.');qa.appendChild(p);
-                var integrity=document.createElement('p');integrity.textContent=v?(v.comparison.byte_identical?'Candidate is byte-identical to original.':'Pixels have changed. Aligned side-by-side human comparison required.')+' Automated structural/text/face detection: not run.':'Original SHA-256: '+current.original.sha256;qa.appendChild(integrity);
+                var integrity=document.createElement('p');integrity.textContent=v?(v.comparison.byte_identical?'Candidate is byte-identical to original.':'Pixels have changed. Aligned side-by-side human comparison required.')+' AI visual comparison: '+(v.ai_review?'completed; see advisory report below.':'not run.'):'Original SHA-256: '+current.original.sha256;qa.appendChild(integrity);
+                if(v&&v.comparison.geometry){var geometry=v.comparison.geometry,geometryLine=document.createElement('p');geometryLine.textContent='Automatic geometry check: '+geometry.message+(geometry.nonuniform_scale_percent!==undefined?' Width scale '+geometry.width_scale+'×; height scale '+geometry.height_scale+'×; difference '+geometry.nonuniform_scale_percent+'%.':'')+(geometry.transparency_sample_matches!==undefined?(' Sampled transparency signal '+(geometry.transparency_sample_matches?'matches':'differs')+' between original and candidate.'): '');qa.appendChild(geometryLine);}
                 var list=document.createElement('ul');q.warnings.forEach(function(w){var item=document.createElement('li');item.textContent=w;list.appendChild(item);});qa.appendChild(list);renderPrintProof(q,v?v.asset:current.original,!!v);
                 if(v&&v.options.notes){var notes=document.createElement('p');notes.textContent='Recorded review notes: '+v.options.notes;qa.appendChild(notes);}
             }
+            renderAiReview(v);
             controls();
         }
         function catalogue(){
@@ -188,13 +201,14 @@
             if(type==='run'&&current.pending&&current.pending.replicate_prediction_id){await pollReplicate();}
             else{
                 await refresh();render();
-                message(type==='approve'?'Local finishing version approved. SB production and Drive remain unchanged.':'Stage '+type+' complete.');
+                message(type==='approve'?'Local finishing version approved. SB production and Drive remain unchanged.':type==='ai_review'?'AI comparison saved. Check its advisory findings alongside the original, candidate and garment proofs.':'Stage '+type+' complete.');
             }
         }
         el('sbs-af-file').addEventListener('change',function(){chooseFile(this);});
         el('sbs-af-gallery-file').addEventListener('change',function(){chooseFile(this);});
         el('sbs-af-upload').addEventListener('submit',function(event){event.preventDefault();var submitter=event.submitter||this.querySelector('button[type=submit]'),uploaded=null;uploadMessage('Saving the untouched original in private Studio storage…');operation(async function(){var f=selectedFile||el('sbs-af-file').files[0]||el('sbs-af-gallery-file').files[0];if(!f)throw new Error('Choose one image using Photos / Gallery or Files / My Files first.');if(f.size>20*1024*1024)throw new Error('This file is '+fileSize(f.size)+'. The limit is 20 MB. Choose a smaller copy; your original file will not be changed.');var data=new FormData();data.append('file',f);data.append('title',el('sbs-af-name').value);current=await api('/upload',data);uploaded=current;await refresh();render();selectedFile=null;el('sbs-af-upload').reset();var saved='Saved successfully: “'+current.title+'”. Workspace '+current.uuid+'. The original is unchanged; no AF number was allocated.';message(saved);uploadMessage(saved,'success');},'Uploading original to private Studio storage…',submitter,function(error){if(uploaded){var saved='Original saved successfully: “'+uploaded.title+'”. Workspace '+uploaded.uuid+'. The workspace list did not refresh: '+error.message+' Do not upload it again; press Refresh workspaces.';uploadMessage(saved,'success');}else{uploadMessage('Upload not confirmed: '+error.message,'error');}});});
         el('sbs-af-prepare').addEventListener('click',function(){var button=this;operation(function(){return action('prepare',{options:{method:el('sbs-af-method').value,width:Number(el('sbs-af-width').value),height:Number(el('sbs-af-height').value),notes:el('sbs-af-notes').value}});},'Queueing selected stage…',button);});
+        el('sbs-af-ai-review-run').addEventListener('click',function(){var button=this;operation(function(){return action('ai_review');},'Sending the untouched original and candidate to OpenAI for comparison. This may use your OpenAI API credits…',button);});
         ['run','cancel','approve'].forEach(function(type){el('sbs-af-'+type).addEventListener('click',function(){var button=this;operation(function(){return action(type,type==='approve'?{checks:checks()}:{});},type==='run'?'Running local stage. The original remains untouched…':'Processing '+type+'…',button);});});
         el('sbs-af-export').addEventListener('click',function(){var button=this;if(busy||exportPickerOpen||!current||!current.approval)return;choosePackageFolder().then(function(folder){if(folder===undefined)return;operation(function(){return action('export',{filename:el('sbs-af-package-name').value},folder);},folder?'Building ZIP and saving to the chosen folder…':'Building approved local package…',button);});});
         el('sbs-af-versions').addEventListener('change',function(){var uuid=this.value,button=this;if(uuid)operation(function(){return action('select',{version:uuid});},'Selecting version; new approval will be required…',button);});

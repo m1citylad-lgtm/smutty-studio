@@ -54,3 +54,11 @@
 ## Next publication request — remove proof-viewer information buttons (21 October 2026)
 - Non-urgent: remove the round black “i” information buttons shown beside the garment-colour swatches in the full-screen Artwork Finishing proof viewer (as shown in the user's screenshot).
 - Keep the 12 colour swatches, selected-colour highlight, horizontal scrolling, Reset and separate Close control. This request applies to the proof viewer toolbar only.
+
+## Release 0.2.57 — Artwork Finishing quality checks (21 October 2026)
+- Candidate versions now include an automatic dimension comparison. It reports original and candidate sizes, horizontal and vertical scale, and flags materially non-uniform scaling / aspect-ratio changes. It cannot detect local warping or crops that preserve the same aspect ratio, and does not prove sharpness.
+- The same report compares the existing sampled alpha/transparency signal from original and candidate. Sampling is a warning aid, not a pixel-by-pixel halo detector.
+- Added a user-triggered AI comparison of the untouched original and selected candidate. The report focuses on line detail, lettering, faces/anatomy, halos/ringing, visible transparency edges and unintended colour spill, while allowing intentional vintage grain, distress and softness. Findings name the area and what to inspect.
+- Before starting, the interface says both images will be sent to OpenAI and may use the configured model's API credits. This review only returns text; it does not generate or alter artwork, use Replicate, or change local approval/production rules. It is advisory and can miss defects; human review and garment proofs remain required.
+- No AI comparison was run as part of this release validation, so no image API credits were used.
+- Validation: JavaScript syntax and `node tools/test-finishing.cjs`. PHP lint is also required in the release workflow; it could not be run in the local environment because PHP CLI is unavailable.

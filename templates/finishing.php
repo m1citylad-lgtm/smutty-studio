@@ -57,6 +57,12 @@
         <div id="sbs-af-progress" role="status" aria-live="polite" aria-atomic="true">No operation running.</div>
         <progress id="sbs-af-progress-bar" aria-label="Local finishing operation" hidden></progress>
         <div id="sbs-af-qa"></div>
+        <section id="sbs-af-ai-review" class="sbs-af-ai-review" aria-labelledby="sbs-af-ai-review-title" hidden>
+            <h3 id="sbs-af-ai-review-title">AI quality check</h3>
+            <p>Optional visual comparison of the untouched original and selected candidate. Both images are sent to OpenAI using your configured model and may use your OpenAI API credits. The review only reports possible issues; it never changes artwork and does not replace your checks.</p>
+            <button id="sbs-af-ai-review-run" class="sbs-button" type="button">Run AI comparison (sends both images to OpenAI)</button>
+            <div id="sbs-af-ai-review-report" class="sbs-af-ai-review-report" aria-live="polite"></div>
+        </section>
         <fieldset id="sbs-af-checks"><legend>Human review of this candidate</legend>
             <label><input type="checkbox" data-af-check="identity"> I checked face, character identity, composition, stars and fur against the original.</label>
             <label><input type="checkbox" data-af-check="lettering"> I checked all wording, lettering and small details.</label>
