@@ -49,3 +49,7 @@
 - Switching garment colours changes only the viewer background and retains the zoom and pan position. The toolbar does not label colours visibly; assistive labels remain available.
 - Viewer presentation does not edit artwork, transparency, candidate data, generated files or production approval rules. No image generation/upscaling calls are used.
 - Validation: JavaScript syntax and `node tools/test-finishing.cjs`; GitHub release workflow also runs the full repository regression suite. Live installation and Android pinch/pan verification remain deployment acceptance checks.
+
+## Next publication request — remove proof-viewer information buttons (21 October 2026)
+- Non-urgent: remove the round black “i” information buttons shown beside the garment-colour swatches in the full-screen Artwork Finishing proof viewer (as shown in the user's screenshot).
+- Keep the 12 colour swatches, selected-colour highlight, horizontal scrolling, Reset and separate Close control. This request applies to the proof viewer toolbar only.
