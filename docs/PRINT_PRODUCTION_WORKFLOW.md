@@ -62,3 +62,8 @@
 - Before starting, the interface says both images will be sent to OpenAI and may use the configured model's API credits. This review only returns text; it does not generate or alter artwork, use Replicate, or change local approval/production rules. It is advisory and can miss defects; human review and garment proofs remain required.
 - No AI comparison was run as part of this release validation, so no image API credits were used.
 - Validation: JavaScript syntax and `node tools/test-finishing.cjs`. PHP lint is also required in the release workflow; it could not be run in the local environment because PHP CLI is unavailable.
+
+## Release 0.2.58 — clearer numbered finishing review points (21 October 2026)
+- Group automatic warnings, geometry/transparency notes and recorded notes under a prominent “Warnings and points to check” heading in Artwork Finishing.
+- Present these points as numbered items in high-contrast yellow text. Present AI review findings as a separate numbered yellow list with severity accents.
+- Keep the information as visible text; no voice or spoken settings are added.

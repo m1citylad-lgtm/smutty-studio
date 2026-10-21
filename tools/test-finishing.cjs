@@ -14,8 +14,8 @@ const studio = read('assets/js/studio.js');
 const backend = read('includes/class-sbs-finishing.php');
 const plugin = read('smutty-bear-studio.php');
 
-assert.match(plugin, /Version: 0\.2\.57/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.57'\)/);
+assert.match(plugin, /Version: 0\.2\.58/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.58'\)/);
 
 // The two choices intentionally call separate Android/browser file pickers.
 assert.match(template, /id="sbs-af-file"[^>]*type="file"[^>]*accept="\.png,\.jpg,\.jpeg,\.webp,application\/octet-stream"/);
@@ -130,3 +130,7 @@ assert.match(finishing, /Focus check: '\+finding\.action/);
 assert.match(finishing, /Sending the untouched original and candidate to OpenAI/);
 assert.match(backend, /geometry'=>self::geometry_report/);
 assert.match(finishing, /AI visual comparison: /);
+assert.match(finishing, /Warnings and points to check/);
+assert.match(finishing, /className='sbs-af-review-points'/);
+assert.match(finishing, /className='sbs-af-review-points sbs-af-ai-findings'/);
+assert.match(css, /\.sbs-af-review-points\{[^}]*color:#ffe08a/);
