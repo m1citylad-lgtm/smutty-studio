@@ -51,9 +51,8 @@
 - Validation: JavaScript syntax and `node tools/test-finishing.cjs`; GitHub release workflow also runs the full repository regression suite. Live installation and Android pinch/pan verification remain deployment acceptance checks.
 - Owner acceptance update (21 October 2026): the user tested the live garment-colour proof check on the Android tablet, including close-up inspection on red. They report the image looks as expected and there is no unintended colour bleed-through. The supplied zoomed screenshots show lettering, face and edge detail at close range.
 
-## Next publication request — remove proof-viewer information buttons (21 October 2026)
-- Non-urgent: remove the round black “i” information buttons shown beside the garment-colour swatches in the full-screen Artwork Finishing proof viewer (as shown in the user's screenshot).
-- Keep the 12 colour swatches, selected-colour highlight, horizontal scrolling, Reset and separate Close control. This request applies to the proof viewer toolbar only.
+## Proof-viewer information buttons — implemented in 0.2.59 (21 October 2026)
+- Removed the round black “i” buttons from the garment proof panels and full-screen proof viewer. The 12 colour swatches, selected-colour highlight, horizontal scrolling, Reset and separate Close control remain.
 
 ## Release 0.2.57 — Artwork Finishing quality checks (21 October 2026)
 - Candidate versions now include an automatic dimension comparison. It reports original and candidate sizes, horizontal and vertical scale, and flags materially non-uniform scaling / aspect-ratio changes. It cannot detect local warping or crops that preserve the same aspect ratio, and does not prove sharpness.
@@ -67,3 +66,8 @@
 - Group automatic warnings, geometry/transparency notes and recorded notes under a prominent “Warnings and points to check” heading in Artwork Finishing.
 - Present these points as numbered items in high-contrast yellow text. Present AI review findings as a separate numbered yellow list with severity accents.
 - Keep the information as visible text; no voice or spoken settings are added.
+
+## Release 0.2.59 — proof controls and print-size warning (21 October 2026)
+- Remove automatically injected black information buttons from the garment proof panels and full-screen proof viewer so they do not crowd colour selection controls.
+- When a print size is below 300 PPI, highlight the warning in red and show the proportional maximum print dimensions that reach 300 PPI using the candidate's actual pixel dimensions.
+- Explain that both width and height must shrink together to preserve proportions, and that a smaller print size raises the PPI value but does not create image detail.

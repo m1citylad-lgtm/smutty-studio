@@ -70,15 +70,15 @@
         function image(id,asset,alt){var img=el(id);img.hidden=!asset;if(asset){img.src=asset.url;img.alt=alt;}else{img.removeAttribute('src');img.alt='';}}
         function refreshPrintStatus(){
             var q=activePrintQA,status=el('sbs-af-print-status');
-            if(!q){status.textContent='HOLD — no image data is available for the print-size check.';status.dataset.state='review';return;}
+            if(!q){status.textContent='HOLD — no image data is available for the print-size check.';status.dataset.state='warning';return;}
             var width=Number(el('sbs-af-width').value),height=Number(el('sbs-af-height').value);
-            if(!isFinite(width)||!isFinite(height)||width<=0||height<=0){status.textContent='HOLD — enter a valid print width and height.';status.dataset.state='review';return;}
+            if(!isFinite(width)||!isFinite(height)||width<=0||height<=0){status.textContent='HOLD — enter a valid print width and height.';status.dataset.state='warning';return;}
             var ppi=Math.min(Number(q.width)/width,Number(q.height)/height);
             var size=width+' × '+height+' inches';
-            status.dataset.state='review';
-            status.textContent=ppi>=300
-                ?'Pixel-size check: '+ppi.toFixed(1)+' PPI at '+size+'; meets the 300 PPI dimension target. This does not prove source detail or print quality. Review all four proofs.'
-                :'REVIEW: '+ppi.toFixed(1)+' PPI at '+size+'; below the 300 PPI dimension target. This check does not add detail or upscale the image. Review the four proofs and consider a separately validated upscale.';
+            if(ppi>=300){status.dataset.state='ok';status.textContent='Pixel-size check: '+ppi.toFixed(1)+' PPI at '+size+'; meets the 300 PPI dimension target. This does not prove source detail or print quality. Review all four proofs.';return;}
+            var suggestedWidth=Number(q.width)/300,suggestedHeight=Number(q.height)/300;
+            status.dataset.state='warning';
+            status.textContent='RED — REVIEW: '+ppi.toFixed(1)+' PPI at '+size+'; below the 300 PPI dimension target. Suggested maximum size to reach 300 PPI while preserving proportions: '+suggestedWidth.toFixed(2)+' × '+suggestedHeight.toFixed(2)+' inches. Reduce width and height together; reducing width alone may stretch the artwork. A smaller print size raises the PPI figure but does not add image detail. Review the four proofs.';
         }
         function renderPrintProof(q,asset,isCandidate){
             var section=el('sbs-af-print-proof');

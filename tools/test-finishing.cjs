@@ -14,8 +14,8 @@ const studio = read('assets/js/studio.js');
 const backend = read('includes/class-sbs-finishing.php');
 const plugin = read('smutty-bear-studio.php');
 
-assert.match(plugin, /Version: 0\.2\.58/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.58'\)/);
+assert.match(plugin, /Version: 0\.2\.59/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.59'\)/);
 
 // The two choices intentionally call separate Android/browser file pickers.
 assert.match(template, /id="sbs-af-file"[^>]*type="file"[^>]*accept="\.png,\.jpg,\.jpeg,\.webp,application\/octet-stream"/);
@@ -51,7 +51,7 @@ assert.match(finishing, /googleControls\(\).*googleBusy\|\|!googleState\.configu
 assert.match(settingsTemplate, /id="sbs-google-status" role="status" aria-live="polite" aria-atomic="true"/);
 assert.match(theme, /select option:checked/);
 assert.match(theme, /background: #101827;\s+color: #fff3d4;/);
-assert.match(studio, /if \(button\.closest\('\.sbs-primary-tabs'\)\) \{ return; \}/);
+assert.match(studio, /if \(button\.closest\('\.sbs-primary-tabs,\.sbs-af-proof-viewer,\.sbs-af-proof-grid'\)\) \{ return; \}/);
 assert.match(studio, /button\.textContent = 'Processing…'/);
 assert.match(theme, /\[aria-busy="true"\]::before/);
 
@@ -81,7 +81,7 @@ assert.match(finishing, /function refreshPrintStatus/);
 assert.match(finishing, /Pixel-size check: .*300 PPI dimension target/);
 assert.match(finishing, /below the 300 PPI dimension target/);
 assert.match(finishing, /canvas\.toBlob/);
-assert.match(finishing, /This check does not add detail or upscale the image/);
+assert.match(finishing, /A smaller print size raises the PPI figure but does not add image detail/);
 assert.match(css, /grid-auto-flow:column;grid-auto-columns:minmax\(82vw,1fr\);overflow-x:auto/);
 assert.match(css, /\.sbs-af-review-controls\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
 assert.doesNotMatch(finishing, /sbs-af-(ideas|sb|original-download|show-sb|sb-catalogue)/);
@@ -134,3 +134,8 @@ assert.match(finishing, /Warnings and points to check/);
 assert.match(finishing, /className='sbs-af-review-points'/);
 assert.match(finishing, /className='sbs-af-review-points sbs-af-ai-findings'/);
 assert.match(css, /\.sbs-af-review-points\{[^}]*color:#ffe08a/);
+assert.match(studio, /button\.closest\('\.sbs-primary-tabs,\.sbs-af-proof-viewer,\.sbs-af-proof-grid'\)/);
+assert.match(finishing, /Suggested maximum size to reach 300 PPI while preserving proportions/);
+assert.match(finishing, /var suggestedWidth=Number\(q\.width\)\/300,suggestedHeight=Number\(q\.height\)\/300/);
+assert.match(css, /#sbs-af-print-status\[data-state="warning"\][^{]*\{[^}]*background:#641b24[^}]*color:#fff/);
+assert.match(css, /#sbs-af-print-status\[data-state="warning"\][^{]*\{[^}]*border:3px solid #ff6b6b/);

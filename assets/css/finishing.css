@@ -47,7 +47,8 @@
 .sbs-af-proof-swatch[data-proof-color="navy"]{background:#1f2639}
 .sbs-af-proof-swatch img{display:block;width:100%;height:auto;max-width:none;flex:0 0 auto}
 #sbs-af-print-status{padding:.8rem 1rem;border:2px solid #eac56c;border-radius:8px;background:#17182b;color:#fff3d7}
-#sbs-af-print-status[data-state="review"]{border-color:#ffb09c}
+#sbs-af-print-status[data-state="warning"]{border:3px solid #ff6b6b;background:#641b24;color:#fff;font-weight:800}
+#sbs-af-print-status[data-state="ok"]{border-color:#eac56c;background:#17182b;color:#fff3d7}
 @media(max-width:750px){.sbs-af-proof-grid{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(82vw,1fr);overflow-x:auto;padding:.25rem;scroll-snap-type:x mandatory;overscroll-behavior-x:contain}.sbs-af-proof-grid figure{scroll-snap-align:start}.sbs-af-proof-swatch{height:72vw;max-height:320px}}
 
 /* Screen-only garment proofs. The viewer loads the actual asset URL directly. */
