@@ -72,12 +72,6 @@
 - When a print size is below 300 PPI, highlight the warning in red and show the proportional maximum print dimensions that reach 300 PPI using the candidate's actual pixel dimensions.
 - Explain that both width and height must shrink together to preserve proportions, and that a smaller print size raises the PPI value but does not create image detail.
 
-## Next update request — concise accessible text and print warning (21 October 2026)
-- Make text boxes, paragraphs, statuses and warnings across Smutty Studio clear, concise and basic. Show only the key fact, problem or action; avoid long explanations.
-- Replace the large red print-warning box with a small, high-contrast red dot or flag beside the concise print details.
-- Show the actual PPI and the proportional print dimensions needed to reach 300 PPI. Keep these key facts easy to locate and read on a tablet.
-- No automated voice or spoken settings are requested.
-
 ## Release 0.2.60 — readiness status and ChatGPT handoff (21 October 2026)
 - Added a final Artwork Finishing readiness panel before local approval and package download. It reports FAIL when no candidate is selected, REVIEW when checks or human review remain, and PASS only when the available pixel-size, geometry, sampled transparency, AI review and human checklist checks are clear.
 - Added a copyable ChatGPT handoff with the original/candidate dimensions, print size and PPI, suggested maximum size for 300 PPI, transparency and geometry results, AI findings and the review points to inspect.
@@ -89,9 +83,11 @@
 - Calculate proportional scaling and transparency comparison from stored original/candidate image details when older saved versions do not have a geometry report.
 - Include both original and candidate pixel dimensions in the ChatGPT handoff and round suggested 300 PPI print dimensions to two decimal places.
 
-
-## Next update request — numbered actions and completion ticks (21 October 2026)
-- Number one-time action buttons in the order they should be pressed.
-- After a one-time action succeeds, show a clear tick and disable that button so it cannot be repeated accidentally.
-- Leave repeatable actions unnumbered or without a completion tick where appropriate; do not mark them complete after one press.
-- Show a clear outcome for actions that fail or do not complete. For example, after pressing “Run AI comparison”, update the status from “not run” only after a successful result; if it fails, show a short error and what to try next.
+## Release 0.2.62 — concise print warning and action feedback (21 October 2026)
+- Replaced the large red print-warning panel with a compact PPI line and a small red dot. It shows the measured PPI, 300 PPI target and proportional maximum print dimensions.
+- Shortened Artwork Finishing instructions and numbered its main actions in order.
+- Show a tick for the queued stage, completed stage and local approval. Repeatable checks and package downloads remain repeatable.
+- Added status beside the AI comparison button: it reports progress, completion or the error returned by the server. “Not run” changes only when a saved AI report is returned.
+- AI comparison remains optional and may use OpenAI API credits. It does not edit the artwork.
+- No AI comparison or other image processing was run during implementation validation.
+- Validation: JavaScript syntax and finishing tests; repository regression suite and live installation remain deployment checks.
