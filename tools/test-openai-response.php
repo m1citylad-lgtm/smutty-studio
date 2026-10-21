@@ -6,15 +6,19 @@ function get_option($key,$fallback) { return $fallback; }
 function sanitize_text_field($value) { return (string)$value; }
 function wp_json_encode($value) { return json_encode($value); }
 function home_url($path) { return 'https://example.invalid' . $path; }
-function is_wp_error($value) { return false; }
+class WP_Error { private $code; private $message; public function __construct($code='error',$message='Error') { $this->code=$code; $this->message=$message; } public function get_error_code() { return $this->code; } public function get_error_message() { return $this->message; } }
+function is_wp_error($value) { return $value instanceof WP_Error; }
 $captured_requests = array();
-function wp_remote_request($url,$args) { global $captured_requests; $captured_requests[]=array('url'=>$url,'args'=>$args); return array('body'=>'{"id":"resp_test","status":"queued"}'); }
+function wp_remote_request($url,$args) { global $captured_requests,$mock_response_body; $captured_requests[]=array('url'=>$url,'args'=>$args); return array('body'=>isset($mock_response_body)?$mock_response_body:'{"id":"resp_test","status":"queued"}'); }
 function wp_remote_retrieve_body($response) { return $response['body']; }
 function wp_remote_retrieve_response_code($response) { return 200; }
 function wp_remote_retrieve_header($response,$key) { return ''; }
 
 function sanitize_textarea_field($value) { return trim(strip_tags($value)); }
 require __DIR__ . '/../includes/class-sbs-openai.php';
+class SBS_Storage {
+    public static function data_url($asset_id) { return 'data:image/png;base64,' . base64_encode('unchanged-image-' . (int)$asset_id); }
+}
 function check($condition, $message) { if (!$condition) { throw new Exception($message); } }
 $image = array('type'=>'image_generation_call', 'result'=>base64_encode('original PNG bytes'));
 $refusal = array('type'=>'message', 'content'=>array(array('type'=>'refusal', 'refusal'=>'Cannot edit this image.')));
@@ -49,3 +53,16 @@ foreach (array('generate','edit') as $action) {
     check(!isset($payload['moderation']), 'Image setting placed on the wrong API object');
 }
 echo "PASS: generation and edit requests explicitly use low image moderation, preserving quality, size and transparency\n";
+
+// Large finishing reviews use exact image bytes as data URLs, bypassing the
+// provider's 32 MB file-URL limit without editing or resizing either asset.
+$mock_response_body=json_encode(array('output_text'=>json_encode(array('summary'=>'Reviewed','overall'=>'review','findings'=>array()))));
+$review=SBS_OpenAI::review_finishing_artwork(101,202,'Large PNG review');
+check(!is_wp_error($review) && $review['summary']==='Reviewed', 'Full-resolution AI review did not parse');
+$request=end($captured_requests);
+$payload=json_decode($request['args']['body'],true);
+$review_content=$payload['input'][0]['content'];
+check($review_content[1]['type']==='input_image' && $review_content[1]['image_url']==='data:image/png;base64,' . base64_encode('unchanged-image-101'), 'Original was not sent as an unchanged data URL');
+check($review_content[2]['type']==='input_image' && $review_content[2]['image_url']==='data:image/png;base64,' . base64_encode('unchanged-image-202'), 'Candidate was not sent as an unchanged data URL');
+check(!isset($review_content[1]['file_id']) && !isset($review_content[2]['file_id']), 'Large review still uses file URLs');
+echo "PASS: finishing comparison sends both unchanged full-resolution assets as data URLs\n";

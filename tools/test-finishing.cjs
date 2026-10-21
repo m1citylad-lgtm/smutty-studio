@@ -14,8 +14,12 @@ const studio = read('assets/js/studio.js');
 const backend = read('includes/class-sbs-finishing.php');
 const plugin = read('smutty-bear-studio.php');
 
-assert.match(plugin, /Version: 0\.2\.62/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.62'\)/);
+assert.match(plugin, /Version: 0\.2\.63/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.63'\)/);
+const openai = read('includes/class-sbs-openai.php');
+assert.match(openai, /finishing_review_input\(\(int\) \$original_asset_id\)/);
+assert.match(openai, /finishing_review_input\(\(int\) \$candidate_asset_id\)/);
+assert.match(openai, /'image_url' => \$data_url, 'detail' => 'high'/);
 
 // The two choices intentionally call separate Android/browser file pickers.
 assert.match(template, /id="sbs-af-file"[^>]*type="file"[^>]*accept="\.png,\.jpg,\.jpeg,\.webp,application\/octet-stream"/);

@@ -92,6 +92,12 @@
 - No AI comparison or other image processing was run during implementation validation.
 - Validation: JavaScript syntax and finishing tests; repository regression suite and live installation remain deployment checks.
 
+## Release 0.2.63 — full-resolution AI comparison for large artwork
+- Send the untouched original and candidate directly to the Responses API as base64 data URLs. This avoids the provider's 32 MB per-file URL failure without resizing, recompressing or changing either stored artwork.
+- OpenAI documents data URL image inputs and a 512 MB total request payload. Very large total requests can still be limited by the web host's available PHP memory.
+- AI comparison remains optional and may use API credits. This implementation does not run an image-generation or upscaling service.
+- Validation: regression test checks that both unchanged image byte streams are sent as data URLs. Full provider review and live UI verification remain release acceptance checks; no user artwork is submitted during automated tests.
+
 ## Next update request — plain-language review for remaining tabs (21 October 2026)
 - Simplify long text in Characters, Freestyle, Artwork Catalogue, Usage and Settings.
 - Keep essential safety, privacy, credit and workflow warnings, but use short sentences and show the key action first.
