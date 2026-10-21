@@ -88,3 +88,10 @@
 ## Release 0.2.61 — complete handoff dimensions for older workspaces (21 October 2026)
 - Calculate proportional scaling and transparency comparison from stored original/candidate image details when older saved versions do not have a geometry report.
 - Include both original and candidate pixel dimensions in the ChatGPT handoff and round suggested 300 PPI print dimensions to two decimal places.
+
+
+## Next update request — numbered actions and completion ticks (21 October 2026)
+- Number one-time action buttons in the order they should be pressed.
+- After a one-time action succeeds, show a clear tick and disable that button so it cannot be repeated accidentally.
+- Leave repeatable actions unnumbered or without a completion tick where appropriate; do not mark them complete after one press.
+- Show a clear outcome for actions that fail or do not complete. For example, after pressing “Run AI comparison”, update the status from “not run” only after a successful result; if it fails, show a short error and what to try next.
