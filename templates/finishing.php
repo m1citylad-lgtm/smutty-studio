@@ -70,6 +70,12 @@
             <label><input type="checkbox" data-af-check="garments"> I inspected the candidate on all 12 garment-colour proof backgrounds and at the intended print size.</label>
             <label><input type="checkbox" data-af-check="warnings"> I reviewed the quality warnings and accept any unresolved limitations for this local candidate.</label>
         </fieldset>
+        <section id="sbs-af-handoff" class="sbs-af-handoff" aria-labelledby="sbs-af-handoff-title">
+            <h3 id="sbs-af-handoff-title">Final checks and ChatGPT handoff</h3>
+            <p id="sbs-af-readiness" role="status" aria-live="polite" aria-atomic="true" data-state="review">REVIEW — select a candidate to check readiness.</p>
+            <label for="sbs-af-handoff-text">Copy this with the ZIP when asking ChatGPT to review the artwork<textarea id="sbs-af-handoff-text" rows="9" readonly spellcheck="false"></textarea></label>
+            <button id="sbs-af-copy-handoff" class="sbs-button" type="button" disabled>Copy ChatGPT handoff</button>
+        </section>
         <button id="sbs-af-approve" class="sbs-button primary" type="button" disabled>Approve this local finishing version</button>
         <label for="sbs-af-package-name">ZIP download filename (editable)<input id="sbs-af-package-name" type="text" maxlength="150" autocomplete="off" aria-describedby="sbs-af-package-name-help"></label>
         <p id="sbs-af-package-name-help">Suggested from the artwork title. You may change it before building the ZIP. Studio adds a version and date to prevent confusing duplicate downloads.</p>

@@ -153,6 +153,29 @@
             result.findings.forEach(function(finding){var item=document.createElement('li');item.dataset.severity=finding.severity;var heading=document.createElement('strong');heading.textContent=(finding.severity==='concern'?'Possible concern — ':finding.severity==='review'?'Please inspect — ':'Note — ')+finding.area;item.appendChild(heading);var issue=document.createElement('p');issue.textContent=finding.issue;item.appendChild(issue);var next=document.createElement('p');next.textContent='Focus check: '+finding.action;item.appendChild(next);findingsList.appendChild(item);});
             report.appendChild(findingsList);
         }
+        function renderHandoff(version){
+            var status=el('sbs-af-readiness'),text=el('sbs-af-handoff-text'),copy=el('sbs-af-copy-handoff');
+            if(!current||!version){status.dataset.state='fail';status.textContent='FAIL — select a candidate before handoff.';text.value='Upload artwork and select a finishing candidate first.';copy.disabled=true;return;}
+            copy.disabled=false;
+            var q=version.qa||{},geometry=version.comparison&&version.comparison.geometry||{},review=version.ai_review||null;
+            var ppi=Number(q.effective_ppi),width=Number(version.options&&version.options.width),height=Number(version.options&&version.options.height);
+            var flags=[];
+            if(!isFinite(ppi)||ppi<300){flags.push('PPI is below the 300 target or could not be verified.');}
+            if(geometry.status!=='proportional'){flags.push('Image proportions need review.');}
+            if(geometry.transparency_sample_matches!==true){flags.push('Transparency samples differ or could not be matched.');}
+            if(!review){flags.push('AI comparison has not been run.');}
+            else if(review.overall!=='clear'){flags.push('AI comparison needs review ('+(review.overall||'unknown')+').');}
+            else if((review.findings||[]).some(function(f){return f.severity==='review'||f.severity==='concern';})){flags.push('AI comparison returned areas to inspect.');}
+            if(!Object.values(checks()).every(Boolean)&&!(current.approval&&current.approval.version===version.uuid&&Object.values(current.approval.checks||{}).every(Boolean))){flags.push('Human review checklist is incomplete.');}
+            status.dataset.state=flags.length?'review':'pass';
+            status.textContent=flags.length?'REVIEW — '+flags.length+' item'+(flags.length===1?'':'s')+' need attention.':'PASS — digital checks clear; print quality is not guaranteed.';
+            var suggested=isFinite(Number(q.width))&&isFinite(Number(q.height))?Number(q.width)/300+' × '+Number(q.height)/300+' inches at 300 PPI':'not available';
+            var lines=['SMUTTY STUDIO — CHATGPT ARTWORK HANDOFF','Artwork: '+(current.title||'Untitled'),'Candidate: version '+(version.number||'?')+' ('+(q.width||'?')+' × '+(q.height||'?')+' px, '+(q.mime||'unknown format')+')','Print size: '+(isFinite(width)&&isFinite(height)?width+' × '+height+' inches':'not set'),'Effective resolution: '+(isFinite(ppi)?ppi.toFixed(1)+' PPI':'not verified')+'; 300 PPI target. Suggested maximum at 300 PPI: '+suggested,'Candidate transparency: '+(q.alpha||'not verified'),'Proportions: '+(geometry.message||'not verified'),'Transparency comparison: '+(geometry.transparency_sample_matches===true?'sampled status matches':geometry.transparency_sample_matches===false?'sampled status differs':'not verified'),'AI comparison: '+(review?((review.overall||'unknown')+' — '+(review.summary||'No summary')):'not run'),'Readiness: '+(flags.length?'REVIEW':'PASS')];
+            if(flags.length){lines.push('Items to check:');flags.forEach(function(flag,index){lines.push((index+1)+'. '+flag);});}
+            if(review&&Array.isArray(review.findings)&&review.findings.length){lines.push('AI findings:');review.findings.forEach(function(f,index){lines.push((index+1)+'. '+(f.area||'Area')+' — '+(f.issue||'Inspect this area')+' Action: '+(f.action||'Review manually'));});}
+            lines.push('Please compare the attached original/ and candidate/ files. Inspect the flagged areas, fine detail, lettering, face, edge halos, transparency and garment-colour proofs. Do not alter the original. Recommend a correction only if needed; describe any change before making it. This report is advisory and does not certify printer output.');
+            text.value=lines.join('\n');
+        }
         function render(){
             resetChecks();var nameField=el('sbs-af-package-name');var workspaceKey=current?current.uuid:'';if(nameField.dataset.workspace!==workspaceKey){nameField.value=current?friendlyName(current.title)+'-local-finishing.zip':'';nameField.dataset.workspace=workspaceKey;}var v=current&&current.versions.find(function(v){return v.uuid===current.current_version;});
             image('sbs-af-original',current&&current.original,'Untouched original: '+(current?current.title:''));image('sbs-af-candidate',v&&v.asset,'Candidate version '+(v?v.number:''));
@@ -172,7 +195,7 @@
                 if(v&&v.options.notes){var notes=document.createElement('li');notes.textContent='Recorded review note: '+v.options.notes;points.appendChild(notes);}
                 qa.appendChild(points);renderPrintProof(q,v?v.asset:current.original,!!v);
             }
-            renderAiReview(v);
+            renderAiReview(v);renderHandoff(v);
             controls();
         }
         function catalogue(){
@@ -221,6 +244,8 @@
         el('sbs-af-resume').addEventListener('change',function(){var uuid=this.value,button=this;if(!uuid||busy)return;operation(async function(){current=await api('/'+uuid);render();if(current.pending&&current.pending.replicate_prediction_id){message('Resumed the existing Replicate upscale. Checking its status; do not queue another request.');await pollReplicate();}else{message('Workspace resumed from private storage.');}},'Loading workspace…',button);});
         el('sbs-af-refresh').addEventListener('click',function(){var button=this;operation(async function(){await refresh();render();message('Local workspaces refreshed.');},'Refreshing workspaces…',button);});
         document.querySelectorAll('[data-af-check]').forEach(function(n){n.addEventListener('change',controls);});
+        document.querySelectorAll('[data-af-check]').forEach(function(n){n.addEventListener('change',function(){renderHandoff(current&&current.versions.find(function(v){return v.uuid===current.current_version;}));});});
+        el('sbs-af-copy-handoff').addEventListener('click',async function(){var field=el('sbs-af-handoff-text');try{await navigator.clipboard.writeText(field.value);message('ChatGPT handoff copied. Attach the Studio ZIP when you paste it into ChatGPT.');}catch(error){field.focus();field.select();message('Select and copy the highlighted handoff text, then attach the Studio ZIP in ChatGPT.',true);}});
         el('sbs-af-zoom').addEventListener('change',function(){var width=Number(this.value)*100+'%';['sbs-af-original','sbs-af-candidate'].forEach(function(id){el(id).style.width=width;});document.querySelectorAll('[data-af-proof-image]').forEach(function(img){img.style.width=width;});});
         ['sbs-af-width','sbs-af-height'].forEach(function(id){el(id).addEventListener('input',refreshPrintStatus);});
         // Scroll together for aligned comparison at matching relative image coordinates.

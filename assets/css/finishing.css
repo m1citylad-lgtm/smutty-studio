@@ -89,3 +89,10 @@
 .sbs-af-ai-findings li[data-severity="concern"]{border-left-color:#ff806b}
 .sbs-af-ai-findings p{margin:.35rem 0;color:#ffe08a}
 @media(max-width:480px){.sbs-af-proof-stage{bottom:calc(64px + env(safe-area-inset-bottom))}.sbs-af-proof-toolbar{gap:5px}.sbs-af .sbs-af-colour{flex-basis:44px;width:44px;height:44px;min-height:44px}.sbs-af-proof-reset{min-height:42px!important;padding:0 10px}}
+
+.sbs-af-handoff{margin:1rem 0;padding:1rem;border:1px solid #d5b65b;border-radius:10px;background:#101d35;color:#fff}
+.sbs-af-handoff h3{margin-top:0;color:#ffe08a}
+#sbs-af-readiness{padding:.8rem 1rem;border-left:6px solid #f2c14e;background:#172b49;color:#fff3d7;font-weight:800}
+#sbs-af-readiness[data-state="pass"]{border-left-color:#55d68b}
+#sbs-af-readiness[data-state="fail"]{border-left-color:#ff6b6b}
+#sbs-af-handoff-text{width:100%;min-height:13rem;padding:.85rem;border:2px solid #aebbd0;border-radius:6px;background:#0b1220;color:#fff;font:inherit;line-height:1.5;white-space:pre-wrap}

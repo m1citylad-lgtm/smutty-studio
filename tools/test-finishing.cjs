@@ -14,8 +14,8 @@ const studio = read('assets/js/studio.js');
 const backend = read('includes/class-sbs-finishing.php');
 const plugin = read('smutty-bear-studio.php');
 
-assert.match(plugin, /Version: 0\.2\.59/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.59'\)/);
+assert.match(plugin, /Version: 0\.2\.60/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.60'\)/);
 
 // The two choices intentionally call separate Android/browser file pickers.
 assert.match(template, /id="sbs-af-file"[^>]*type="file"[^>]*accept="\.png,\.jpg,\.jpeg,\.webp,application\/octet-stream"/);
@@ -63,6 +63,8 @@ assert.match(template, /does not upscale or change the image/);
 assert.match(template, /Choose Light, inspect the candidate, then choose Dark/);
 assert.match(template, /data-af-check="garments"[^>]*> I inspected the candidate on all 12 garment-colour proof backgrounds/);
 assert.match(template, /id="sbs-af-print-proof"[^>]*hidden/);
+assert.match(template, /id="sbs-af-handoff"/);
+assert.match(template, /Copy ChatGPT handoff/);
 assert.match(template, /Garment-colour proof backgrounds/);
 assert.match(template, /id="sbs-af-proof-viewer"[^>]*aria-modal="true"/);
 assert.match(template, /id="sbs-af-proof-reset"/);
@@ -126,6 +128,12 @@ assert.match(backend, /transparency_sample_matches/);
 assert.match(read('includes/class-sbs-openai.php'), /review_finishing_artwork/);
 assert.match(read('includes/class-sbs-openai.php'), /You only report observations; you never edit or generate images/);
 assert.match(finishing, /function renderAiReview/);
+assert.match(finishing, /function renderHandoff\(version\)/);
+assert.match(finishing, /PASS — digital checks clear; print quality is not guaranteed/);
+assert.match(finishing, /REVIEW — .*need attention/);
+assert.match(finishing, /SMUTTY STUDIO — CHATGPT ARTWORK HANDOFF/);
+assert.match(finishing, /navigator\.clipboard\.writeText/);
+assert.match(finishing, /Please compare the attached original\/ and candidate\//);
 assert.match(finishing, /Focus check: '\+finding\.action/);
 assert.match(finishing, /Sending the untouched original and candidate to OpenAI/);
 assert.match(backend, /geometry'=>self::geometry_report/);

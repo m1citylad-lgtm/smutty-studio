@@ -77,3 +77,10 @@
 - Replace the large red print-warning box with a small, high-contrast red dot or flag beside the concise print details.
 - Show the actual PPI and the proportional print dimensions needed to reach 300 PPI. Keep these key facts easy to locate and read on a tablet.
 - No automated voice or spoken settings are requested.
+
+## Release 0.2.60 — readiness status and ChatGPT handoff (21 October 2026)
+- Added a final Artwork Finishing readiness panel before local approval and package download. It reports FAIL when no candidate is selected, REVIEW when checks or human review remain, and PASS only when the available pixel-size, geometry, sampled transparency, AI review and human checklist checks are clear.
+- Added a copyable ChatGPT handoff with the original/candidate dimensions, print size and PPI, suggested maximum size for 300 PPI, transparency and geometry results, AI findings and the review points to inspect.
+- The report asks ChatGPT to compare the untouched original and candidate, preserve the original and recommend any correction before making changes. It is advisory; it cannot certify printer output.
+- This release does not automatically repair image defects. Pixel-level halo detection, provider-specific garment profiles and supplier print simulation remain future work.
+- Validation: `node --check assets/js/finishing.js` and `node tools/test-finishing.cjs`.
