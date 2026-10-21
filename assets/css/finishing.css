@@ -46,9 +46,13 @@
 .sbs-af-proof-swatch[data-proof-color="red"]{background:#bb2f2e}
 .sbs-af-proof-swatch[data-proof-color="navy"]{background:#1f2639}
 .sbs-af-proof-swatch img{display:block;width:100%;height:auto;max-width:none;flex:0 0 auto}
-#sbs-af-print-status{padding:.8rem 1rem;border:2px solid #eac56c;border-radius:8px;background:#17182b;color:#fff3d7}
-#sbs-af-print-status[data-state="warning"]{border:3px solid #ff6b6b;background:#641b24;color:#fff;font-weight:800}
-#sbs-af-print-status[data-state="ok"]{border-color:#eac56c;background:#17182b;color:#fff3d7}
+#sbs-af-print-status{padding:.2rem 0;border:0;background:transparent;color:#fff3d7;font-weight:700}
+#sbs-af-print-status::before{content:"";display:inline-block;width:.62em;height:.62em;margin-right:.55em;border-radius:50%;vertical-align:.02em;background:#eac56c}
+#sbs-af-print-status[data-state="warning"]::before{background:#ff5a5f;box-shadow:0 0 0 2px #fff3d7}
+#sbs-af-print-status[data-state="ok"]::before{background:#55d68b}
+#sbs-af-ai-status{min-height:1.5em;color:#ffe08a;font-weight:700}
+#sbs-af-ai-status[data-state="error"]{color:#ffb09c}
+#sbs-af-ai-status[data-state="success"]{color:#9de0af}
 @media(max-width:750px){.sbs-af-proof-grid{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(82vw,1fr);overflow-x:auto;padding:.25rem;scroll-snap-type:x mandatory;overscroll-behavior-x:contain}.sbs-af-proof-grid figure{scroll-snap-align:start}.sbs-af-proof-swatch{height:72vw;max-height:320px}}
 
 /* Screen-only garment proofs. The viewer loads the actual asset URL directly. */
