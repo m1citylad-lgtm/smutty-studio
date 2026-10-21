@@ -85,9 +85,14 @@
 
 ## Release 0.2.62 — concise print warning and action feedback (21 October 2026)
 - Replaced the large red print-warning panel with a compact PPI line and a small red dot. It shows the measured PPI, 300 PPI target and proportional maximum print dimensions.
-- Shortened Artwork Finishing instructions and numbered its main actions in order.
+- Shortened Artwork Finishing instructions and numbered its main actions in order. A plain-language review of other Studio tabs remains outstanding.
 - Show a tick for the queued stage, completed stage and local approval. Repeatable checks and package downloads remain repeatable.
 - Added status beside the AI comparison button: it reports progress, completion or the error returned by the server. “Not run” changes only when a saved AI report is returned.
 - AI comparison remains optional and may use OpenAI API credits. It does not edit the artwork.
 - No AI comparison or other image processing was run during implementation validation.
 - Validation: JavaScript syntax and finishing tests; repository regression suite and live installation remain deployment checks.
+
+## Next update request — plain-language review for remaining tabs (21 October 2026)
+- Simplify long text in Characters, Freestyle, Artwork Catalogue, Usage and Settings.
+- Keep essential safety, privacy, credit and workflow warnings, but use short sentences and show the key action first.
+- No voice or spoken settings are requested.
