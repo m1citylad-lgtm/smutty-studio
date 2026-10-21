@@ -14,8 +14,8 @@ const studio = read('assets/js/studio.js');
 const backend = read('includes/class-sbs-finishing.php');
 const plugin = read('smutty-bear-studio.php');
 
-assert.match(plugin, /Version: 0\.2\.55/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.55'\)/);
+assert.match(plugin, /Version: 0\.2\.56/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.56'\)/);
 
 // The two choices intentionally call separate Android/browser file pickers.
 assert.match(template, /id="sbs-af-file"[^>]*type="file"[^>]*accept="\.png,\.jpg,\.jpeg,\.webp,application\/octet-stream"/);
@@ -61,9 +61,19 @@ assert.match(template, /Artwork title <span class="sbs-af-required">Required<\/s
 assert.match(template, /Comparison zoom \(display only\)/);
 assert.match(template, /does not upscale or change the image/);
 assert.match(template, /Choose Light, inspect the candidate, then choose Dark/);
-assert.match(template, /data-af-check="garments"[^>]*> I inspected the candidate on BLACK, WHITE, RED and NAVY BLUE proof backgrounds/);
+assert.match(template, /data-af-check="garments"[^>]*> I inspected the candidate on all 12 garment-colour proof backgrounds/);
 assert.match(template, /id="sbs-af-print-proof"[^>]*hidden/);
-assert.match(template, /Four-colour proof backgrounds, in order: black, white, red, navy blue/);
+assert.match(template, /Garment-colour proof backgrounds/);
+assert.match(template, /id="sbs-af-proof-viewer"[^>]*aria-modal="true"/);
+assert.match(template, /id="sbs-af-proof-reset"/);
+assert.match(template, /id="sbs-af-proof-close"/);
+assert.equal((template.match(/data-viewer-color=/g) || []).length, 12);
+assert.match(finishing, /viewerImage\.src=activeProofAssetUrl/);
+assert.match(finishing, /pointerdown/);
+assert.match(finishing, /pointermove/);
+assert.match(finishing, /function resetViewer/);
+assert.match(css, /overflow-x:auto/);
+assert.match(css, /touch-action:none/);
 assert.ok(template.indexOf('data-proof-color="black"') < template.indexOf('data-proof-color="white"'));
 assert.ok(template.indexOf('data-proof-color="white"') < template.indexOf('data-proof-color="red"'));
 assert.ok(template.indexOf('data-proof-color="red"') < template.indexOf('data-proof-color="navy"'));

@@ -43,8 +43,9 @@
 - Export regression checks: run `node tools/test-export.cjs` from the repository root.
 - Publishing requires a new version in both declarations in smutty-bear-studio.php; publishing to GitHub is followed by a verified install through Studio Updates and a live check.
 
-## Next release request — full-screen proof inspection (20 October 2026)
-- Make each black, white, red and navy proof image tappable/clickable to open a full-screen viewer.
-- Provide accessible zoom-in and zoom-out controls (plus pinch zoom where supported), and a clear close/back action.
-- Keep the selected proof background visible behind transparent pixels; never alter the artwork or exported package.
-- Verify on the user's Android tablet at magnified display size. Check that edge halos, unwanted colour show-through and transparency defects can be inspected before approval.
+## Release 0.2.56 — full-screen garment proof viewer (21 October 2026)
+- Artwork Finishing now shows 12 garment-colour proofs in the requested order. Tapping a proof opens a full-screen viewer that loads the actual original/candidate asset directly; the small proof thumbnails remain previews only.
+- Pinch zoom and one-finger panning use touch pointer events. Reset restores fit-to-screen; Close exits. The colour toolbar has square swatches, a selected gold border, horizontal scrolling and a persistent Reset button.
+- Switching garment colours changes only the viewer background and retains the zoom and pan position. The toolbar does not label colours visibly; assistive labels remain available.
+- Viewer presentation does not edit artwork, transparency, candidate data, generated files or production approval rules. No image generation/upscaling calls are used.
+- Validation: JavaScript syntax and `node tools/test-finishing.cjs`; GitHub release workflow also runs the full repository regression suite. Live installation and Android pinch/pan verification remain deployment acceptance checks.

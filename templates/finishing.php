@@ -36,14 +36,22 @@
         <p id="sbs-af-proof-help">Choose Light, inspect the candidate, then choose Dark and inspect it again. This changes the preview background only.</p>
         <div class="sbs-af-compare" id="sbs-af-compare"><figure><figcaption>Untouched original</figcaption><div class="sbs-af-viewport" tabindex="0" aria-label="Original image — scroll when magnified"><img id="sbs-af-original" alt="" hidden></div></figure><figure><figcaption>Selected candidate</figcaption><div class="sbs-af-viewport" tabindex="0" aria-label="Candidate image — scroll when magnified"><img id="sbs-af-candidate" alt="" hidden></div><a id="sbs-af-candidate-download" class="sbs-button" hidden download>Download selected candidate</a></figure></div>
         <section id="sbs-af-print-proof" class="sbs-af-print-proof" aria-labelledby="sbs-af-print-proof-title" hidden>
-            <h3 id="sbs-af-print-proof-title">Four-colour print check</h3>
-            <p id="sbs-af-print-proof-help">The same artwork is previewed on solid black, white, red and navy blue backgrounds. These are screen proofs only, not a guarantee of the printed result. Use the comparison zoom to inspect detail.</p>
+            <h3 id="sbs-af-print-proof-title">Garment-colour print check</h3>
+            <p id="sbs-af-print-proof-help">Select any proof image to inspect the full-resolution candidate on that garment colour. These are screen proofs only, not a guarantee of the printed result.</p>
             <p id="sbs-af-print-status" role="status" aria-live="polite" aria-atomic="true">Select artwork to run the pixel-size check.</p>
-            <div class="sbs-af-proof-grid" role="group" aria-label="Four-colour proof backgrounds, in order: black, white, red, navy blue">
-                <figure><figcaption>1. BLACK</figcaption><div class="sbs-af-proof-swatch" data-proof-color="black"><img data-af-proof-image="black" alt="" hidden></div></figure>
-                <figure><figcaption>2. WHITE</figcaption><div class="sbs-af-proof-swatch" data-proof-color="white"><img data-af-proof-image="white" alt="" hidden></div></figure>
-                <figure><figcaption>3. RED</figcaption><div class="sbs-af-proof-swatch" data-proof-color="red"><img data-af-proof-image="red" alt="" hidden></div></figure>
-                <figure><figcaption>4. NAVY BLUE</figcaption><div class="sbs-af-proof-swatch" data-proof-color="navy"><img data-af-proof-image="navy" alt="" hidden></div></figure>
+            <div class="sbs-af-proof-grid" role="group" aria-label="Garment-colour proof backgrounds">
+                <figure><figcaption>1. BLACK</figcaption><button type="button" class="sbs-af-proof-swatch" data-proof-color="black" aria-label="Inspect artwork on black"><img data-af-proof-image="black" alt="" hidden></button></figure>
+                <figure><figcaption>2. WHITE</figcaption><button type="button" class="sbs-af-proof-swatch" data-proof-color="white" aria-label="Inspect artwork on white"><img data-af-proof-image="white" alt="" hidden></button></figure>
+                <figure><figcaption>3. RED</figcaption><button type="button" class="sbs-af-proof-swatch" data-proof-color="red" aria-label="Inspect artwork on red"><img data-af-proof-image="red" alt="" hidden></button></figure>
+                <figure><figcaption>4. NAVY</figcaption><button type="button" class="sbs-af-proof-swatch" data-proof-color="navy" aria-label="Inspect artwork on navy"><img data-af-proof-image="navy" alt="" hidden></button></figure>
+                <figure><figcaption>5. YELLOW</figcaption><button type="button" class="sbs-af-proof-swatch" data-proof-color="yellow" aria-label="Inspect artwork on yellow"><img data-af-proof-image="yellow" alt="" hidden></button></figure>
+                <figure><figcaption>6. ORANGE</figcaption><button type="button" class="sbs-af-proof-swatch" data-proof-color="orange" aria-label="Inspect artwork on orange"><img data-af-proof-image="orange" alt="" hidden></button></figure>
+                <figure><figcaption>7. LIGHT GREEN</figcaption><button type="button" class="sbs-af-proof-swatch" data-proof-color="light-green" aria-label="Inspect artwork on light green"><img data-af-proof-image="light-green" alt="" hidden></button></figure>
+                <figure><figcaption>8. DARK GREEN</figcaption><button type="button" class="sbs-af-proof-swatch" data-proof-color="dark-green" aria-label="Inspect artwork on dark green"><img data-af-proof-image="dark-green" alt="" hidden></button></figure>
+                <figure><figcaption>9. PALE BLUE</figcaption><button type="button" class="sbs-af-proof-swatch" data-proof-color="pale-blue" aria-label="Inspect artwork on pale blue"><img data-af-proof-image="pale-blue" alt="" hidden></button></figure>
+                <figure><figcaption>10. LIGHT GREY</figcaption><button type="button" class="sbs-af-proof-swatch" data-proof-color="light-grey" aria-label="Inspect artwork on light grey"><img data-af-proof-image="light-grey" alt="" hidden></button></figure>
+                <figure><figcaption>11. DARK GREY</figcaption><button type="button" class="sbs-af-proof-swatch" data-proof-color="dark-grey" aria-label="Inspect artwork on dark grey"><img data-af-proof-image="dark-grey" alt="" hidden></button></figure>
+                <figure><figcaption>12. BROWN</figcaption><button type="button" class="sbs-af-proof-swatch" data-proof-color="brown" aria-label="Inspect artwork on brown"><img data-af-proof-image="brown" alt="" hidden></button></figure>
             </div>
         </section>
         <div id="sbs-af-progress" role="status" aria-live="polite" aria-atomic="true">No operation running.</div>
@@ -53,7 +61,7 @@
             <label><input type="checkbox" data-af-check="identity"> I checked face, character identity, composition, stars and fur against the original.</label>
             <label><input type="checkbox" data-af-check="lettering"> I checked all wording, lettering and small details.</label>
             <label><input type="checkbox" data-af-check="texture"> I checked alpha edges, halos, deliberate backgrounds, halftone and distress.</label>
-            <label><input type="checkbox" data-af-check="garments"> I inspected the candidate on BLACK, WHITE, RED and NAVY BLUE proof backgrounds and at the intended print size.</label>
+            <label><input type="checkbox" data-af-check="garments"> I inspected the candidate on all 12 garment-colour proof backgrounds and at the intended print size.</label>
             <label><input type="checkbox" data-af-check="warnings"> I reviewed the quality warnings and accept any unresolved limitations for this local candidate.</label>
         </fieldset>
         <button id="sbs-af-approve" class="sbs-button primary" type="button" disabled>Approve this local finishing version</button>
@@ -63,6 +71,27 @@
         <a id="sbs-af-package" class="sbs-button" hidden download>Download local package</a>
         <p id="sbs-af-package-help">The ZIP contains the untouched original, candidate, metadata, checksums and report; it is not a final production master. On Android Chrome, choose Downloads to save inside “Smutty Studio ZIP files” (created if needed), or choose an existing folder. If folder access is unavailable, use the browser download link.</p>
     </section>
+    <div id="sbs-af-proof-viewer" class="sbs-af-proof-viewer" hidden aria-modal="true" role="dialog" aria-label="Full-screen garment proof viewer">
+        <button id="sbs-af-proof-close" class="sbs-af-proof-close" type="button" aria-label="Close proof viewer">×</button>
+        <div id="sbs-af-proof-stage" class="sbs-af-proof-stage"><img id="sbs-af-proof-large" alt="Full-resolution artwork proof"></div>
+        <div class="sbs-af-proof-toolbar" role="toolbar" aria-label="Garment colours and reset">
+            <div class="sbs-af-proof-colours" id="sbs-af-proof-colours" aria-label="Garment colour selection">
+                <button type="button" class="sbs-af-colour" data-viewer-color="black" aria-label="Black" title="Black"></button>
+                <button type="button" class="sbs-af-colour" data-viewer-color="white" aria-label="White" title="White"></button>
+                <button type="button" class="sbs-af-colour" data-viewer-color="red" aria-label="Red" title="Red"></button>
+                <button type="button" class="sbs-af-colour" data-viewer-color="navy" aria-label="Navy" title="Navy"></button>
+                <button type="button" class="sbs-af-colour" data-viewer-color="yellow" aria-label="Yellow" title="Yellow"></button>
+                <button type="button" class="sbs-af-colour" data-viewer-color="orange" aria-label="Orange" title="Orange"></button>
+                <button type="button" class="sbs-af-colour" data-viewer-color="light-green" aria-label="Light green" title="Light green"></button>
+                <button type="button" class="sbs-af-colour" data-viewer-color="dark-green" aria-label="Dark green" title="Dark green"></button>
+                <button type="button" class="sbs-af-colour" data-viewer-color="pale-blue" aria-label="Pale blue" title="Pale blue"></button>
+                <button type="button" class="sbs-af-colour" data-viewer-color="light-grey" aria-label="Light grey" title="Light grey"></button>
+                <button type="button" class="sbs-af-colour" data-viewer-color="dark-grey" aria-label="Dark grey" title="Dark grey"></button>
+                <button type="button" class="sbs-af-colour" data-viewer-color="brown" aria-label="Brown" title="Brown"></button>
+            </div>
+            <button id="sbs-af-proof-reset" type="button" class="sbs-af-proof-reset">Reset</button>
+        </div>
+    </div>
 </section>
 <section class="sbs-panel sbs-af" data-panel="catalogue" aria-labelledby="sbs-af-catalogue-title">
     <h1 id="sbs-af-catalogue-title">Artwork Catalogue</h1>

@@ -70,3 +70,7 @@ The top-level **Settings** tab contains Studio access/password, OpenAI and Repli
 ### Artwork Finishing test workspace (v0.2.47)
 
 The Artwork Finishing tab supports separate Photos/Gallery and Files/My Files choices, private local intake, a clear file-size limit warning, image inspection, conservative fit-down resizing, side-by-side review and local approval. Review checkboxes stay beside readable text at narrow widths; actions show progress and a saved result. The two local processing steps are numbered. The top navigation no longer inserts information buttons between tabs. This remains a local test workspace: Google Drive selection/storage, permanent AF numbering, and catalogue writes are not active. Local approval does not approve SB production. The original upload remains unchanged.
+
+### Full-screen garment proof viewer (v0.2.56)
+
+Artwork Finishing includes 12 colour proof backgrounds and a full-screen viewer that opens the original or candidate asset directly for detailed inspection. Pinch zoom, one-finger panning, Reset, Close and a horizontally scrollable colour toolbar are supported. Viewer colour changes affect only the display background. See [Print Production Workflow](docs/PRINT_PRODUCTION_WORKFLOW.md).
