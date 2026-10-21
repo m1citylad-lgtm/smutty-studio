@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 36889)
-Total output lines: 1275
-
 (function () {
     'use strict';
 
@@ -373,7 +370,527 @@ Total output lines: 1275
             box.querySelectorAll('[data-development-job]').forEach(function (node) {
                 var uuid = node.getAttribute('data-development-job');
                 var job = state.developmentJobs[uuid];
-           …16889 tokens truncated…Project.uuid : ''); fontData.append('role', 'canvas_font'); fontData.append('label', family);
+                if (!job) { return; }
+                var holder = document.createElement('div');
+                holder.innerHTML = developmentProgressMarkup([job], 'This image', 'status-only');
+                var update = holder.querySelector('[data-development-job]');
+                if (update) { node.innerHTML = update.innerHTML; }
+                node.querySelectorAll('[data-cancel-job]').forEach(function (button) { button.addEventListener('click', function () { api('jobs/' + uuid, { method:'DELETE' }).then(function (updated) { state.developmentJobs[uuid]=updated; renderDevelopment(); }).catch(handleError); }); });
+            });
+            return;
+        }
+        developmentRenderPending = false;
+        renderDevelopmentContents();
+    }
+    function renderDevelopmentContents() {
+        var box = el('sbs-development-root');
+        if (!box) { return; }
+        var pack = state.selectedPack;
+        if (!pack) { box.innerHTML = '<p class="sbs-muted">Choose a character above or create a new character.</p>'; return; }
+        var projects = developmentProjects(), project = activeDevelopmentProject(), identity = pack.identity || {};
+        var briefReady = String(pack.description || '').trim().length >= 10 || !!String(identity.summary || '').trim() || !!(identity.locked_traits || []).length;
+        var seedUuid = project && project.concept ? project.concept.selected_seed_uuid || '' : '';
+        var seed = project ? (project.generations || []).find(function (generation) { return generation.uuid === seedUuid; }) : null;
+        var approvedGenerationExists = approvalProjects().some(function (approvalProject) { return (approvalProject.generations || []).some(function (generation) { return generation.uuid === identity.approved_test_generation_uuid; }); });
+        var visualReady = hasVisualIdentityReference(), approvalReady = !!(identity.tests_approved && identity.approved_test_generation_uuid && approvedGenerationExists && acceptedApprovalAsset(identity.approved_test_generation_uuid));
+        var progress = [
+            { number: '1', label: 'Brief ready', done: briefReady },
+            { number: '2.1', label: 'Visual seed chosen', done: !!seed },
+            { number: '2.2', label: 'References accepted', done: visualReady },
+            { number: '2.3', label: 'Approval sheet accepted', done: approvalReady }
+        ].map(function (step, index) { return '<li class="' + (step.done ? 'done' : '') + '"><span>' + esc(step.number) + '</span>' + esc(step.label) + '</li>'; }).join('');
+        var sessionOptions = projects.map(function (item, index) { return '<option value="' + esc(item.uuid) + '" ' + (project && item.uuid === project.uuid ? 'selected' : '') + '>' + esc(item.title) + ' · run ' + (projects.length - index) + '</option>'; }).join('');
+        var toolbar = '<div class="sbs-development-toolbar"><div><p class="sbs-kicker">CHARACTER-BUILDING PROGRESS</p><ol class="sbs-development-progress">' + progress + '</ol></div><div class="sbs-development-session">' + (projects.length ? '<label>Development history<select id="sbs-development-session">' + sessionOptions + '</select></label>' : '') + '</div></div>';
+        var startButton = '<button id="sbs-start-development" class="sbs-button primary" ' + (briefReady ? '' : 'disabled title="Complete the Description first"') + '>' + (projects.length ? 'Start new concept round' : 'Generate four concepts') + '</button>';
+        if (!project) {
+            box.innerHTML = toolbar + '<article class="sbs-card sbs-development-empty"><span aria-hidden="true">&#127912;</span><h2 class="sbs-stage-heading"><span class="sbs-stage-number">2.1</span> Generate and choose a look</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Generate concepts from the saved brief, then select and accept a visual seed.</p><p>Save a useful Description, then generate four deliberately separate concept directions. Nothing becomes an official reference until you select, review and accept it.</p><div class="sbs-section-actions">' + startButton + '</div>' + developmentProgressMarkup([], 'Concepts', 'concepts') + '</article><section class="sbs-development-section"><h2 class="sbs-stage-heading"><span class="sbs-stage-number">2.2</span> Build the reference set</h2><p class="sbs-stage-decision"><strong>Decision:</strong> After choosing a visual seed, generate and accept the reference views that define the character.</p><p class="sbs-muted">Reference generation controls appear here after the first concept round. Existing authorised references can also be uploaded in 3. Reference.</p></section>' + approvalSectionMarkup(identity, visualReady);
+            bindDevelopmentActions(null);
+            return;
+        }
+        var conceptGenerations = (project.generations || []).filter(function (generation) { return generation.purpose === 'development_concept' || generation.purpose === 'development_concept_refinement'; });
+        var conceptCards = conceptGenerations.map(function (generation) {
+            var selected = generation.uuid === seedUuid, acceptedMaster = acceptedDevelopmentAsset('master_reference', generation.uuid);
+            return '<article class="sbs-development-concept ' + (selected ? 'selected' : '') + '"><button type="button" class="sbs-image-zoom" data-zoom-image="' + esc(generation.asset_url) + '" data-zoom-caption="Visual development concept"><img src="' + esc(generation.asset_url) + '" alt="Character concept"></button><footer><span>' + (generation.purpose === 'development_concept_refinement' ? 'Refined concept' : 'Initial concept') + '</span><div class="sbs-creation-actions"><button type="button" class="sbs-select-creation sbs-select-seed ' + (selected ? 'is-selected' : '') + '" data-select-seed="' + esc(generation.uuid) + '" ' + (selected ? 'disabled' : '') + '>' + (selected ? '&#10003; Visual seed' : 'Select visual seed') + '</button><button type="button" class="sbs-remove-creation" data-delete-generation="' + esc(generation.uuid) + '" ' + (acceptedMaster ? 'disabled title="Remove the accepted Master reference first"' : '') + '><span aria-hidden="true">&#128465;</span> Remove</button>' + (selected ? '<button id="sbs-accept-master" class="sbs-button accent"' + (acceptedMaster ? ' disabled' : '') + '>' + (acceptedMaster ? 'Accepted Master reference' : 'Accept seed as Master reference') + '</button>' : '') + '</div>' + imageCorrectionMarkup(generation, 'Concept candidate', developmentJobRows(project)) + '</footer></article>';
+        }).join('');
+        var conceptSection = '<section class="sbs-development-section"><h2 class="sbs-stage-heading"><span class="sbs-stage-number">2.1</span> Choose the look</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Select a visual seed, correct if needed, then explicitly accept the Master reference.</p><div class="sbs-development-concepts">' + (conceptCards || '<p class="sbs-muted">Concepts will appear here.</p>') + '</div><div class="sbs-section-actions">' + startButton + '</div>' + developmentProgressMarkup(developmentJobRows(project).filter(function (job) { return developmentPurpose(job) === 'development_concept' && !job.payload.parent_id; }), 'Concepts', 'concepts') + '</section>';
+        var slotSections = developmentRoles.map(function (slot) {
+            var results = (project.generations || []).filter(function (generation) { return generation.purpose === slot.purpose; });
+            var resultCards = results.map(function (generation) {
+                var accepted = acceptedDevelopmentAsset(slot.role, generation.uuid);
+                return '<article class="sbs-development-result ' + (accepted ? 'accepted' : '') + '"><button type="button" class="sbs-image-zoom" data-zoom-image="' + esc(generation.asset_url) + '" data-zoom-caption="' + esc(slot.title) + '"><img src="' + esc(generation.asset_url) + '" alt="' + esc(slot.title) + '"></button><div><button type="button" class="sbs-button sbs-accept-development" data-accept-development="' + esc(generation.uuid) + '" data-reference-role="' + esc(slot.role) + '" ' + (accepted ? 'disabled' : '') + '>' + (accepted ? '&#10003; Accepted' : 'Accept this result') + '</button><button type="button" class="sbs-remove-creation" data-delete-generation="' + esc(generation.uuid) + '" ' + (accepted ? 'disabled title="Remove the accepted Reference asset first"' : 'title="Remove this development result"') + '><span aria-hidden="true">&#128465;</span></button></div>' + imageCorrectionMarkup(generation, slot.title, developmentJobRows(project)) + '</article>';
+            }).join('');
+            return '<article class="sbs-development-slot"><header><span class="sbs-development-slot-icon" aria-hidden="true">' + slot.icon + '</span><div><h3>' + esc(slot.title) + '</h3><p>' + esc(slot.description) + '</p></div></header><div class="sbs-development-results">' + (resultCards || '<p class="sbs-muted">No result generated yet.</p>') + '</div><div class="sbs-section-actions"><button type="button" class="sbs-button" data-generate-development-role="' + esc(slot.role) + '" ' + (seed ? '' : 'disabled') + '>' + (results.length ? 'Regenerate' : 'Generate') + '</button></div>' + developmentProgressMarkup(developmentJobRows(project).filter(function (job) { return developmentPurpose(job) === slot.purpose && Number(job.payload.parent_id) === Number(seed && seed.id); }), slot.title, slot.role) + '</article>';
+        }).join('');
+        var missingRoles = developmentRoles.filter(function (slot) { return !(project.generations || []).some(function (generation) { return generation.purpose === slot.purpose; }); }).map(function (slot) { return slot.role; });
+        var referencesSection = '<section class="sbs-development-section"><div class="sbs-inline-heading"><div><h2 class="sbs-stage-heading"><span class="sbs-stage-number">2.2</span> Build the reference set</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Generate missing views, inspect each result and accept the suitable references.</p></div></div><div class="sbs-development-slots">' + slotSections + '</div><div class="sbs-section-actions"><button id="sbs-generate-missing-references" class="sbs-button primary" data-missing-roles="' + esc(missingRoles.join(',')) + '" ' + (seed && missingRoles.length ? '' : 'disabled') + '>Generate all missing</button></div>' + developmentProgressMarkup([], 'Reference set submission', 'references') + '</section>';
+        var approvalSection = approvalSectionMarkup(identity, visualReady);
+        box.innerHTML = toolbar + conceptSection + referencesSection + approvalSection;
+        bindDevelopmentActions(project);
+    }
+    function bindDevelopmentActions(project) {
+        var box = el('sbs-development-root');
+        if (!box) { return; }
+        if (el('sbs-development-session')) { el('sbs-development-session').addEventListener('change', function () { state.developmentProjectUuid = this.value; renderDevelopment(); }); }
+        if (el('sbs-start-development')) { el('sbs-start-development').addEventListener('click', startDevelopment); }
+        box.querySelectorAll('[data-select-seed]').forEach(function (button) { button.addEventListener('click', function () { selectDevelopmentSeed(project, button.getAttribute('data-select-seed'), button); }); });
+        if (el('sbs-refine-development')) { el('sbs-refine-development').addEventListener('click', function () { refineDevelopment(project, this); }); }
+        if (el('sbs-accept-master')) { el('sbs-accept-master').addEventListener('click', function () { acceptDevelopment(project.concept.selected_seed_uuid, 'master_reference', this); }); }
+        box.querySelectorAll('[data-generate-development-role]').forEach(function (button) { button.addEventListener('click', function () { generateDevelopmentReferences(project, [button.getAttribute('data-generate-development-role')], button); }); });
+        if (el('sbs-generate-missing-references')) { el('sbs-generate-missing-references').addEventListener('click', function () { generateDevelopmentReferences(project, (this.getAttribute('data-missing-roles') || '').split(',').filter(Boolean), this); }); }
+        box.querySelectorAll('[data-accept-development]').forEach(function (button) { button.addEventListener('click', function () { acceptDevelopment(button.getAttribute('data-accept-development'), button.getAttribute('data-reference-role'), button); }); });
+        if (el('sbs-generate-approval')) { el('sbs-generate-approval').addEventListener('click', function () { generateApprovalSheet(this); }); }
+        box.querySelectorAll('[data-accept-approval]').forEach(function (button) { button.addEventListener('click', function () { acceptApprovalSheet(button.getAttribute('data-accept-approval'), button); }); });
+        box.querySelectorAll('[data-delete-approval-project]').forEach(function (button) { button.addEventListener('click', function () { deleteApprovalSheet(button.getAttribute('data-delete-approval-project'), button.getAttribute('data-approval-generation'), button.getAttribute('data-accepted-asset'), button.getAttribute('data-approval-current') === '1', button); }); });
+        box.querySelectorAll('[data-cancel-job]').forEach(function (button) { button.addEventListener('click', function () { api('jobs/' + button.getAttribute('data-cancel-job'), { method: 'DELETE' }).then(function (job) { state.developmentJobs[job.uuid] = job; renderDevelopment(); }).catch(handleError); }); });
+        box.querySelectorAll('[data-correction-key]').forEach(function (input) { input.addEventListener('input', function () { saveCorrectionDraft(input.getAttribute('data-correction-key'), input.value); }); input.addEventListener('blur', function () { setTimeout(function () { if (developmentRenderPending) { renderDevelopment(); } }, 0); }); });
+        box.querySelectorAll('[data-correct-development]').forEach(function (button) { button.addEventListener('click', function () { correctDevelopmentImage(button.getAttribute('data-correct-development')); }); });
+        box.querySelectorAll('[data-clear-correction]').forEach(function (button) { button.addEventListener('click', function () { var input=el(button.getAttribute('data-clear-correction')); saveCorrectionDraft(input.getAttribute('data-correction-key'), ''); input.value=''; input.focus(); }); });
+        bindCreationActions(box);
+    }
+    function startDevelopment() {
+        if (!state.selectedPack) { return; }
+        submitDevelopment('concepts', 'packs/' + state.selectedPack.uuid + '/development', {}, function (data) { replaceProject(data.project); state.developmentProjectUuid = data.project.uuid; showMessage('Four visual concepts are being generated.'); });
+    }
+    function selectDevelopmentSeed(project, uuid, button) {
+        buttonBusy(button, true);
+        api('projects/' + project.uuid + '/development', { method: 'PATCH', body: JSON.stringify({ selected_seed_uuid: uuid }) }).then(function (updated) { replaceProject(updated); renderDevelopment(); showMessage('Visual seed selected.'); }).catch(handleError).finally(function () { buttonBusy(button, false); });
+    }
+    function refineDevelopment(project, button) {
+        var instruction = el('sbs-development-refinement').value.trim();
+        if (!instruction) { showMessage('Describe the refinement first.', true); return; }
+        buttonBusy(button, true);
+        post('projects/' + project.uuid + '/development/refine', { generation_uuid: project.concept.selected_seed_uuid, instruction: instruction }).then(function (data) { trackJobs(data.jobs || []); showMessage('The refined concept is being generated.'); }).catch(handleError).finally(function () { buttonBusy(button, false); });
+    }
+    function generateDevelopmentReferences(project, roles, button) {
+        if (!roles.length || !project) { return; }
+        var scope = roles.length === 1 ? roles[0] : 'references';
+        submitDevelopment(scope, 'projects/' + project.uuid + '/development/references', { roles: roles }, function (data) { showMessage(data.errors && Object.keys(data.errors).length ? 'Some reference jobs could not be started.' : 'Reference generation started.', !!(data.errors && Object.keys(data.errors).length)); });
+    }
+    function acceptDevelopment(generationUuid, role, button) {
+        if (!state.selectedPack) { return; }
+        buttonBusy(button, true);
+        post('packs/' + state.selectedPack.uuid + '/development/accept', { generation_uuid: generationUuid, role: role, replace_existing: true }).then(function (pack) { replacePack(pack); showMessage(role === 'master_reference' ? 'Visual seed accepted as the Master reference.' : 'Generated reference accepted.'); }).catch(handleError).finally(function () { buttonBusy(button, false); });
+    }
+    function generateApprovalSheet(button) {
+        if (!state.selectedPack) { return; }
+        submitDevelopment('approval', 'packs/' + state.selectedPack.uuid + '/test', {}, function () { showMessage('The approval sheet is being generated in this section.'); });
+    }
+    function acceptApprovalSheet(generationUuid, button) {
+        if (!state.selectedPack) { return; }
+        buttonBusy(button, true);
+        post('packs/' + state.selectedPack.uuid + '/approve-tests', { generation_uuid: generationUuid }).then(function (pack) { replacePack(pack); showMessage('This approval sheet is now the current accepted checkpoint.'); }).catch(handleError).finally(function () { buttonBusy(button, false); });
+    }
+    function deleteApprovalSheet(projectUuid, generationUuid, acceptedAssetUuid, approvalCurrent, button) {
+        if (!state.selectedPack) { return; }
+        var hasStoredReference = !!acceptedAssetUuid;
+        var warning = approvalCurrent ? 'Delete the currently accepted approval sheet? Its Generated reference will also be removed and character approval will no longer be current. This cannot be undone.' : hasStoredReference ? 'Delete this previously accepted approval sheet and its stored Generated reference? This cannot be undone.' : 'Delete this approval-sheet candidate? This cannot be undone.';
+        if (!window.confirm(warning)) { return; }
+        buttonBusy(button, true);
+        var operation = hasStoredReference ? remove('packs/' + state.selectedPack.uuid + '/assets/' + acceptedAssetUuid).then(function () { return remove('projects/' + projectUuid); }) : remove('projects/' + projectUuid);
+        operation.then(function () {
+            delete state.developmentJobs[generationUuid];
+            return loadBootstrap();
+        }).then(function () { showMessage(approvalCurrent ? 'Accepted sheet removed; choose another current sheet or generate a new one.' : 'Approval-sheet candidate deleted.'); }).catch(handleError).finally(function () { buttonBusy(button, false); });
+    }
+
+    function bindCharacters() {
+        el('sbs-new-pack').addEventListener('click', function () {
+            var name = window.prompt('Character name'); if (!name) { return; }
+            var description = window.prompt('Describe the adult character, personality and visual style') || '';
+            post('packs', { name: name, description: description }).then(function (pack) { state.packs.unshift(pack); selectPack(pack.uuid); activateTab('characters'); }).catch(handleError);
+        });
+        el('sbs-current-pack').addEventListener('change', function () { selectPack(this.value); });
+        el('sbs-fork-pack').addEventListener('click', function () {
+            if (!state.selectedPack) { return; }
+            var button = this; buttonBusy(button, true);
+            post('packs/' + state.selectedPack.uuid + '/fork').then(function (pack) { replacePack(pack); activateTab('characters'); showMessage('New editable character version created.'); }).catch(handleError).finally(function () { buttonBusy(button, false); renderCharacterContext(); });
+        });
+    }
+
+    function bindCreate() {
+        el('sbs-ideas-button').addEventListener('click', function () {
+            var button = this, pack = state.selectedPack ? state.selectedPack.uuid : '', idea = el('sbs-idea').value.trim();
+            if (!pack || !idea) { showMessage('Choose a character and enter a rough idea.', true); return; }
+            buttonBusy(button, true);
+            post('concepts', { pack_uuid: pack, idea: idea }).then(function (data) { renderConcepts(data.concepts || []); }).catch(handleError).finally(function () { buttonBusy(button, false); });
+        });
+        el('sbs-generate').addEventListener('click', generateDrafts);
+        el('sbs-scene-prompt').addEventListener('input', updatePromptPreview);
+    }
+    function renderConcepts(concepts) {
+        var box = el('sbs-concepts');
+        box.innerHTML = concepts.map(function (concept, index) { return '<article class="sbs-concept" data-concept="' + index + '"><h3>' + esc(concept.title) + '</h3><p>' + esc(concept.joke) + '</p><small>' + esc(concept.composition) + '</small></article>'; }).join('');
+        box.querySelectorAll('[data-concept]').forEach(function (card) { card.addEventListener('click', function () { state.concept = concepts[Number(card.getAttribute('data-concept'))]; el('sbs-scene-prompt').value = state.concept.scene_prompt || ''; el('sbs-project-title').value = state.concept.title || ''; box.querySelectorAll('.sbs-concept').forEach(function (item) { item.classList.toggle('selected', item === card); }); updatePromptPreview(); }); });
+    }
+    function updatePromptPreview() {
+        var pack = state.selectedPack, scene = el('sbs-scene-prompt').value.trim(), identity = pack && pack.identity ? pack.identity : {};
+        var traits = (identity.locked_traits || []).map(function (trait) { return '- ' + trait; }).join('\n');
+        var exclusions = (identity.exclusions || []).map(function (item) { return '- ' + item; }).join('\n');
+        el('sbs-effective-prompt').textContent = 'CURRENT CHARACTER IDENTITY — MUST PRESERVE:\n' + (traits || '- Add character traits in Character setup') + '\n\nEDITABLE SCENE REQUEST:\n' + (scene || '[Enter or choose a scene]') + '\n\nHOUSE TONE:\nClearly adult, cheeky, confident and bawdy. Strong innuendo is welcome; no visible genitals or depicted sex acts.\n\nDO NOT USE:\n' + exclusions;
+    }
+    function generateDrafts() {
+        var packUuid = state.selectedPack ? state.selectedPack.uuid : '', prompt = el('sbs-scene-prompt').value.trim(), title = el('sbs-project-title').value.trim() || 'Untitled project';
+        if (!packUuid || !prompt) { showMessage('Choose a character and enter a scene prompt.', true); return; }
+        var button = el('sbs-generate'); buttonBusy(button, true);
+        post('projects', { pack_uuid: packUuid, title: title, concept: state.concept || {} }).then(function (created) {
+            state.activeProject = created;
+            return post('jobs/generate', { project_uuid: created.uuid, prompt: prompt, count: 4, quality: 'medium', size: el('sbs-size').value, background: el('sbs-background').value });
+        }).then(function (data) {
+            el('sbs-effective-prompt').textContent = data.effective_prompt || '';
+            trackJobs(data.jobs || []);
+        }).catch(handleError).finally(function () { buttonBusy(button, false); });
+    }
+
+    function trackJobs(jobs) {
+        var ordinary = [];
+        (jobs || []).forEach(function (job) {
+            if (freestyle && freestyle.isJob(job)) { freestyle.onJob(job); } else if (isDevelopmentPurpose(developmentPurpose(job))) { state.developmentJobs[job.uuid] = job; } else { ordinary.push(job); }
+        });
+        if (ordinary.length) { renderLiveJobs(ordinary); }
+        renderDevelopment();
+        if (freestyle) { freestyle.render(); }
+        pollJobs(jobs || []);
+    }
+    function renderLiveJobs(jobs) {
+        var box = el('sbs-live-jobs');
+        jobs = jobs.filter(function (job) { return !(freestyle && freestyle.isJob(job)) && !isDevelopmentPurpose(developmentPurpose(job)) && (!job.pack_uuid || !state.selectedPack || job.pack_uuid === state.selectedPack.uuid); });
+        jobs.forEach(function (job) {
+            var current = box.querySelector('[data-job="' + job.uuid + '"]');
+            if (!current) { current = document.createElement('article'); current.className = 'sbs-job'; current.setAttribute('data-job', job.uuid); box.prepend(current); }
+            if (job.status === 'completed' && job.result && job.result.asset_url) {
+                current.innerHTML = '<div class="sbs-job-result"><button type="button" class="sbs-image-zoom" data-zoom-image="' + esc(job.result.asset_url) + '" data-zoom-caption="Completed Idea Room result"><img src="' + esc(job.result.asset_url) + '" alt="Generated draft"></button><div class="sbs-creation-meta"><p>Completed · click image to enlarge</p>' + (job.result.generation_uuid ? '<button type="button" class="sbs-remove-creation" data-delete-generation="' + esc(job.result.generation_uuid) + '" title="Remove this image"><span aria-hidden="true">🗑</span> Remove</button>' : '') + '</div></div>';
+            } else if (job.status === 'completed') {
+                current.innerHTML = '<div><strong>Completed</strong><p>The resulting artwork has been removed.</p></div>';
+            } else if (job.status === 'failed' || job.status === 'blocked') {
+                current.innerHTML = '<div><strong>' + esc(job.status) + '</strong><p>' + esc((job.error && job.error.message) || 'The provider did not complete this request.') + '</p></div>';
+            } else {
+                current.innerHTML = '<div style="width:100%"><span class="sbs-spinner"></span><p>' + esc(job.status) + '</p><div class="sbs-progress"><span style="width:' + Number(job.progress || 5) + '%"></span></div><button class="sbs-button ghost" data-cancel-job="' + esc(job.uuid) + '">Cancel</button></div>';
+            }
+        });
+        box.querySelectorAll('[data-cancel-job]').forEach(function (button) { button.addEventListener('click', function () { api('jobs/' + button.getAttribute('data-cancel-job'), { method: 'DELETE' }).then(function (job) { renderLiveJobs([job]); }).catch(handleError); }); });
+        bindCreationActions(box);
+    }
+    function refreshFreestyleProject(job) {
+        var p=state.projects.find(function(p){return job.payload&&p.id===Number(job.payload.project_id);});
+        if(!p)return Promise.resolve();
+        return api('projects/'+p.uuid).then(function(updated){replaceProject(updated);if(state.activeProject&&state.activeProject.uuid===updated.uuid)state.activeProject=updated;if(freestyle)freestyle.render();}).catch(handleError);
+    }
+    function pollJobs(jobs) {
+        var pending = jobs.filter(function (job) { return !['completed', 'failed', 'blocked', 'cancelled'].includes(job.status); });
+        if (!pending.length) { if(freestyle&&jobs.some(function(job){return freestyle.isJob(job);})){jobs.filter(function(job){return freestyle.isJob(job);}).forEach(refreshFreestyleProject);}else{refreshProjects();} return; }
+        pending.forEach(function (job) {
+            if (state.polling[job.uuid]) { return; }
+            state.polling[job.uuid] = true;
+            (function tick(current) {
+                setTimeout(function () {
+                    api('jobs/' + current.uuid).catch(function (error) { return (isDevelopmentPurpose(developmentPurpose(current)) || (freestyle && freestyle.isJob(current))) ? Object.assign({}, current, { poll_error: error.message }) : { uuid: current.uuid, status: 'failed', error: { message: error.message } }; }).then(function (updated) {
+                        if (freestyle && freestyle.isJob(updated)) { freestyle.onJob(updated); freestyle.render(); } else if (isDevelopmentPurpose(developmentPurpose(updated))) { state.developmentJobs[updated.uuid] = updated; renderDevelopment(); } else { renderLiveJobs([updated]); }
+                        if (['completed', 'failed', 'blocked', 'cancelled'].includes(updated.status)) { delete state.polling[updated.uuid]; if(freestyle&&freestyle.isJob(updated)){refreshFreestyleProject(updated);}else{refreshProjects();} } else { tick(updated); }
+                    });
+                }, 2500);
+            })(job);
+        });
+    }
+
+    function renderProjects() {
+        var list = el('sbs-project-list'), projects = characterProjects();
+        if (!projects.length) { state.activeProject = null; state.selectedGeneration = null; list.innerHTML = '<p class="sbs-muted">No creations for this character yet.</p>'; el('sbs-project-detail').innerHTML = '<p class="sbs-muted">Generate the first set in Idea Room.</p>'; return; }
+        if (!state.activeProject || !projects.some(function (project) { return project.uuid === state.activeProject.uuid; })) { state.activeProject = projects[0]; state.selectedGeneration = null; }
+        list.innerHTML = projects.map(function (project) { var itemCount = (project.generations || []).length + (project.designs || []).length; return '<article class="sbs-project-card ' + (state.activeProject && project.uuid === state.activeProject.uuid ? 'active' : '') + '" data-project="' + esc(project.uuid) + '"><button type="button" class="sbs-project-delete" data-delete-project="' + esc(project.uuid) + '" title="Delete creation set" aria-label="Delete creation set">🗑</button><h3>' + esc(project.title) + '</h3><small>v' + esc(project.pack_version || '') + ' · ' + itemCount + ' creation' + (itemCount === 1 ? '' : 's') + '</small></article>'; }).join('');
+        list.querySelectorAll('[data-project]').forEach(function (card) { card.addEventListener('click', function () { var next = state.projects.find(function (item) { return item.uuid === card.getAttribute('data-project'); }); if (!state.activeProject || !next || state.activeProject.uuid !== next.uuid) { resetCanvasProject(); } state.activeProject = next; state.selectedGeneration = null; renderProjects(); renderProjectDetail(); renderCanvasOptions(); }); });
+        list.querySelectorAll('[data-delete-project]').forEach(function (button) { button.addEventListener('click', function (event) { event.stopPropagation(); deleteProjectSet(button.getAttribute('data-delete-project')); }); });
+        renderProjectDetail();
+    }
+    function characterProjects() { return state.selectedPack ? state.projects.filter(function (project) { return project.pack_uuid === state.selectedPack.uuid && (!project.concept || ['character_pack_test', 'character_visual_development'].indexOf(project.concept.type) < 0 && (project.concept.type !== 'freestyle' || project.concept.merch_ready)); }) : []; }
+    function deleteProjectSet(uuid) {
+        var project = state.projects.find(function (item) { return item.uuid === uuid; });
+        if (!project || !window.confirm('Delete “' + project.title + '” and all of its generated images, canvas designs and uploaded project assets? This cannot be undone.')) { return; }
+        remove('projects/' + uuid).then(function () {
+            state.projects = state.projects.filter(function (item) { return item.uuid !== uuid; });
+            if (state.activeProject && state.activeProject.uuid === uuid) { state.activeProject = null; state.selectedGeneration = null; state.canvasUuid = ''; }
+            renderProjects(); renderCanvasOptions(); showMessage('Creation set deleted.');
+        }).catch(handleError);
+    }
+    function renderProjectDetail() {
+        var project = state.activeProject, box = el('sbs-project-detail');
+        if (!project) { return; }
+        var generationCards = (project.generations || []).map(function (generation) {
+            var caption = generation.action + ' · ' + generation.quality + ' · ' + project.title, selected = state.selectedGeneration && state.selectedGeneration.uuid === generation.uuid;
+            return '<article class="sbs-generation ' + (selected ? 'selected' : '') + '" data-generation="' + esc(generation.uuid) + '"><button type="button" class="sbs-image-zoom" data-zoom-image="' + esc(generation.asset_url) + '" data-zoom-caption="' + esc(caption) + '"><img src="' + esc(generation.asset_url) + '" alt=""></button><footer><span>' + esc(generation.action) + ' · ' + esc(generation.quality) + '<br>' + money(generation.cost_estimate) + '</span><div class="sbs-creation-actions"><button type="button" class="sbs-select-creation ' + (selected ? 'is-selected' : '') + '" data-select-generation="' + esc(generation.uuid) + '" aria-pressed="' + (selected ? 'true' : 'false') + '" ' + (selected ? 'disabled' : '') + '>' + (selected ? '✓ Selected for refinement' : 'Select for refinement') + '</button><button type="button" class="sbs-remove-creation" data-delete-generation="' + esc(generation.uuid) + '" title="Remove this image"><span aria-hidden="true">🗑</span> Remove</button></div></footer></article>';
+        }).join('');
+        var designCards = (project.designs || []).filter(function (design) { return design.preview_url; }).map(function (design) {
+            return '<article class="sbs-generation sbs-saved-design"><button type="button" class="sbs-image-zoom" data-zoom-image="' + esc(design.preview_url) + '" data-zoom-caption="' + esc(design.name + ' · saved merchandise design') + '"><img src="' + esc(design.preview_url) + '" alt=""></button><footer><span>Merch design<br>' + esc(design.updated_at) + '</span><div class="sbs-creation-actions"><button type="button" class="sbs-remove-creation" data-delete-design="' + esc(design.uuid) + '" title="Remove this saved design"><span aria-hidden="true">🗑</span> Remove</button></div></footer></article>';
+        }).join('');
+        var cards = generationCards + designCards;
+        box.innerHTML = '<h2 class="sbs-stage-heading"><span class="sbs-stage-number">5.2</span> Inspect and select a creation</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Compare the images and select one to refine or use on the canvas.</p><div class="sbs-inline-heading"><div><p class="sbs-kicker">' + esc(project.pack_name || '') + '</p><h2>' + esc(project.title) + '</h2></div><button id="sbs-open-canvas" class="sbs-button">Open in canvas</button>' + (project.concept && project.concept.type==='freestyle' ? '<button type="button" id="sbs-new-freestyle-canvas" class="sbs-button">New print layout from selected image</button>' : '') + '</div><div class="sbs-generation-grid sbs-creation-gallery">' + (cards || '<p class="sbs-muted">No completed creations yet.</p>') + '</div><div class="sbs-card" style="margin-top:18px"><h2 class="sbs-stage-heading"><span class="sbs-stage-number">5.3</span> Refine or finish the image</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Choose refinement, polish or upscale if needed; inspect the result before opening the canvas.</p><label>Refinement instruction<textarea id="sbs-refine-prompt" rows="4" placeholder="Change one thing at a time and say what must stay unchanged."></textarea></label><div class="sbs-row wrap"><button id="sbs-refine" class="sbs-button primary">Refine selected</button><button id="sbs-polish" class="sbs-button accent">High-quality polish</button><button id="sbs-upscale-2" class="sbs-button">AI upscale 2×</button><button id="sbs-upscale-4" class="sbs-button">AI upscale 4×</button></div></div>';
+        box.querySelectorAll('[data-select-generation]').forEach(function (button) { button.addEventListener('click', function () { state.selectedGeneration = project.generations.find(function (gen) { return gen.uuid === button.getAttribute('data-select-generation'); }); renderProjectDetail(); }); });
+        bindCreationActions(box);
+        el('sbs-refine').addEventListener('click', function () { refineSelected(false); });
+        el('sbs-polish').addEventListener('click', function () { refineSelected(true); });
+        el('sbs-upscale-2').addEventListener('click', function () { upscaleSelected(2); });
+        el('sbs-upscale-4').addEventListener('click', function () { upscaleSelected(4); });
+        el('sbs-open-canvas').addEventListener('click', function () { activateTab('canvas'); renderCanvasOptions(); });
+        if(el('sbs-new-freestyle-canvas'))el('sbs-new-freestyle-canvas').addEventListener('click',function(){
+            if(!state.selectedGeneration){showMessage('Select an image for the new print layout.',true);return;}
+            if(state.canvas&&!state.canvasUuid&&state.canvas.getObjects().some(function(o){return o.sbsType!=='guide';})&&!window.confirm('Start a new print layout? Save the current unsaved canvas first if you want to keep it.'))return;
+            ensureCanvas();resetCanvasProject();state.freestyleNewCanvas=true;activateTab('canvas');prepareFreestyleCanvas();
+        });
+        updateProjectActionControls();
+    }
+    function bindCreationActions(scope) {
+        scope.querySelectorAll('[data-zoom-image]').forEach(function (button) {
+            if (button.dataset.sbsBound) { return; }
+            button.dataset.sbsBound = '1';
+            button.addEventListener('click', function (event) { event.stopPropagation(); openImageModal(button.getAttribute('data-zoom-image'), button.getAttribute('data-zoom-caption') || 'Creation preview'); });
+        });
+        scope.querySelectorAll('[data-delete-generation]').forEach(function (button) {
+            if (button.dataset.sbsBound) { return; }
+            button.dataset.sbsBound = '1';
+            button.addEventListener('click', function (event) { event.stopPropagation(); deleteGeneration(button.getAttribute('data-delete-generation'), button.closest('[data-job]')); });
+        });
+        scope.querySelectorAll('[data-delete-design]').forEach(function (button) {
+            if (button.dataset.sbsBound) { return; }
+            button.dataset.sbsBound = '1';
+            button.addEventListener('click', function (event) { event.stopPropagation(); deleteDesign(button.getAttribute('data-delete-design')); });
+        });
+    }
+    function openImageModal(url, caption) {
+        var modal = el('sbs-image-modal');
+        el('sbs-image-modal-image').src = url;
+        el('sbs-image-modal-caption').textContent = caption || '';
+        if (typeof modal.showModal === 'function') { modal.showModal(); } else { modal.setAttribute('open', 'open'); }
+    }
+    function closeImageModal() {
+        var modal = el('sbs-image-modal');
+        if (typeof modal.close === 'function' && modal.open) { modal.close(); } else { modal.removeAttribute('open'); }
+        el('sbs-image-modal-image').src = '';
+    }
+    function bindImageModal() {
+        var modal = el('sbs-image-modal');
+        el('sbs-image-modal-close').addEventListener('click', closeImageModal);
+        modal.addEventListener('click', function (event) { if (event.target === modal) { closeImageModal(); } });
+        modal.addEventListener('close', function () { el('sbs-image-modal-image').src = ''; });
+    }
+    function bindGuide() {
+        var dialog = el('sbs-guide-dialog'), openButton = el('sbs-guide-open'), closeButton = el('sbs-guide-close');
+        if (!dialog || !openButton || !closeButton) { return; }
+        function closeGuide() { if (typeof dialog.close === 'function' && dialog.open) { dialog.close(); } else { dialog.removeAttribute('open'); } }
+        openButton.addEventListener('click', function () { if (typeof dialog.showModal === 'function') { dialog.showModal(); } else { dialog.setAttribute('open', 'open'); } });
+        closeButton.addEventListener('click', closeGuide);
+        dialog.addEventListener('click', function (event) { if (event.target === dialog) { closeGuide(); } });
+    }
+    function deleteGeneration(uuid, liveCard) {
+        if (!uuid || !window.confirm('Delete this image from the project? Usage history will be retained, but the image file cannot be recovered.')) { return; }
+        remove('generations/' + uuid).then(function () {
+            if (state.selectedGeneration && state.selectedGeneration.uuid === uuid) { state.selectedGeneration = null; }
+            if (liveCard) { liveCard.remove(); }
+            return refreshProjects();
+        }).then(function () { showMessage('Image removed from the project.'); }).catch(handleError);
+    }
+    function deleteDesign(uuid) {
+        if (!uuid || !window.confirm('Delete this saved merchandise design? The editable design and its preview cannot be recovered.')) { return; }
+        remove('canvases/' + uuid).then(function () {
+            if (state.canvasUuid === uuid) { state.canvasUuid = ''; }
+            return refreshProjects();
+        }).then(function () { showMessage('Saved design removed from the project.'); }).catch(handleError);
+    }
+    function updateProjectActionControls() {
+        var hasSelection = !!state.selectedGeneration;
+        ['sbs-refine', 'sbs-polish', 'sbs-upscale-2', 'sbs-upscale-4'].forEach(function (id) { if (el(id)) { el(id).disabled = !hasSelection; } });
+        if (el('sbs-upscale-2')) { el('sbs-upscale-2').disabled = !hasSelection || !state.providers.replicate; }
+        if (el('sbs-upscale-4')) { el('sbs-upscale-4').disabled = !hasSelection || !state.providers.replicate; }
+    }
+    function refineSelected(polish) {
+        if (!state.selectedGeneration) { showMessage('Select an image first.', true); return; }
+        var instruction = el('sbs-refine-prompt').value.trim();
+        if (!instruction) { instruction = polish ? 'Polish this exact image for premium merchandise printing. Preserve the character identity, scene, composition, palette and joke. Improve linework, texture, edge quality and finish only.' : ''; }
+        if (!instruction) { showMessage('Enter a refinement instruction.', true); return; }
+        if(state.activeProject.concept && state.activeProject.concept.type==='freestyle'){
+            post('freestyle',{project_uuid:state.activeProject.uuid,parent_uuid:state.selectedGeneration.uuid,instruction:instruction,settings:state.selectedGeneration.freestyle_settings||state.activeProject.concept.settings}).then(function(data){replaceProject(data.project);freestyle.open(data.project.uuid);activateTab('freestyle');trackJobs(data.jobs||[]);}).catch(handleError);return;
+        }
+        post('jobs/generate', { project_uuid: state.activeProject.uuid, parent_uuid: state.selectedGeneration.uuid, prompt: instruction, count: 1, quality: polish ? 'high' : 'medium', size: polish ? '2048x2048' : state.selectedGeneration.size, background: 'opaque' }).then(function (data) { activateTab('create'); trackJobs(data.jobs); }).catch(handleError);
+    }
+    function upscaleSelected(scale) {
+        if (!state.selectedGeneration) { showMessage('Select an image first.', true); return; }
+        if (!state.providers.replicate) { showMessage('Replicate is not configured for upscaling.', true); return; }
+        post('jobs/upscale', { generation_uuid: state.selectedGeneration.uuid, scale: scale }).then(function (job) { var p=state.projects.find(function(p){return job.payload&&p.id===Number(job.payload.project_id);});if(p&&p.concept&&p.concept.type==='freestyle'){freestyle.open(p.uuid);activateTab('freestyle');}else{activateTab('create');} trackJobs([job]); }).catch(handleError);
+    }
+    function refreshProjects() { var activeUuid = state.activeProject ? state.activeProject.uuid : '', selectedUuid = state.selectedGeneration ? state.selectedGeneration.uuid : ''; return loadBootstrap().then(function () { state.activeProject = activeUuid ? state.projects.find(function (p) { return p.uuid === activeUuid; }) || null : state.activeProject; state.selectedGeneration = state.activeProject && selectedUuid ? (state.activeProject.generations || []).find(function (generation) { return generation.uuid === selectedUuid; }) || null : null; renderProjects(); renderCanvasOptions(); }); }
+
+    function loadUsage() { api('usage').then(function (data) { state.usage = data; renderUsage(data); }).catch(handleError); }
+    function renderUsage(usage) {
+        var summary = el('sbs-usage-summary'); if (!summary) { return; }
+        summary.innerHTML = (usage.providers || []).map(function (provider) { return '<div class="sbs-metric"><span>' + esc(provider.provider) + '</span><strong>' + money(provider.estimated_cost) + '</strong><small>' + esc(provider.operations) + ' operations</small></div>'; }).join('') || '<p class="sbs-muted">No billable activity has been recorded.</p>';
+        var rows = el('sbs-usage-rows'); if (rows) { rows.innerHTML = (usage.rows || []).map(function (row) { return '<tr><td>' + esc(row.created_at) + '</td><td>' + esc((row.pack_name || 'Unassigned') + (row.pack_version ? ' · v' + row.pack_version : '')) + '</td><td>' + esc(row.provider) + '</td><td>' + esc(row.metric) + '</td><td>' + money(row.estimated_cost) + '</td></tr>'; }).join(''); }
+    }
+
+    function loadUpdates() {
+        var rootBox = el('sbs-update-root');
+        if (!rootBox) { return Promise.resolve(); }
+        rootBox.innerHTML = '<article class="sbs-card sbs-update-loading"><span class="sbs-spinner"></span><p>Checking update access…</p></article>';
+        return api('updates/status').then(function (status) { state.updateStatus = status; renderUpdates(status); return status; }).catch(handleError);
+    }
+    function updateBytes(value) {
+        var bytes = Number(value || 0), units = ['B', 'KB', 'MB', 'GB'], index = 0;
+        while (bytes >= 1024 && index < units.length - 1) { bytes /= 1024; index += 1; }
+        return (index ? bytes.toFixed(1) : Math.round(bytes)) + ' ' + units[index];
+    }
+    function renderUpdates(status) {
+        var rootBox = el('sbs-update-root');
+        if (!rootBox) { return; }
+        if (!status.configured) {
+            rootBox.innerHTML = '<article class="sbs-card sbs-update-lock-card"><span class="sbs-update-lock-icon" aria-hidden="true">&#128274;</span><div><h2>Studio access has not been configured</h2><p>A WordPress administrator must set the shared Studio password under <strong>Smutty Bear Studio → Settings</strong> before front-end updates can be used.</p></div></article>';
+            return;
+        }
+        if (!status.authorized) {
+            rootBox.innerHTML = '<article class="sbs-card sbs-update-lock-card"><span class="sbs-update-lock-icon" aria-hidden="true">&#128274;</span><div><p class="sbs-kicker">PRIVILEGED ACTION</p><h2>Reconfirm the Studio password</h2><p>For protection against an unattended Studio session, re-enter the same shared password used to enter the Studio. Update access lasts ' + esc(status.session_minutes || 15) + ' minutes and is rate-limited.</p><form id="sbs-update-unlock" class="sbs-update-unlock"><label>Studio password<input type="password" name="password" required minlength="8" autocomplete="current-password"></label><button class="sbs-button primary" type="submit">Unlock Updates</button><p class="sbs-form-message" aria-live="polite"></p></form></div></article>';
+            el('sbs-update-unlock').addEventListener('submit', unlockUpdates);
+            return;
+        }
+        var release = status.release || null;
+        var releaseMessage = status.feed_error ? '<p class="sbs-update-error">' + esc(status.feed_error) + '</p>' : !status.feed_configured ? '<p class="sbs-muted">No private update feed is configured. Signed ZIP upload remains available.</p>' : !release ? '<p class="sbs-muted">No release information is available.</p>' : '<div class="sbs-release-summary"><strong>Feed version ' + esc(release.version || 'unknown') + '</strong><span class="sbs-pill">' + (release.available ? 'Update available' : 'Current') + '</span><p>' + esc(release.release_notes || 'No release notes supplied.') + '</p><small>Requires WordPress ' + esc(release.requires_wp || '5.8.17') + '+ and PHP ' + esc(release.requires_php || '7.4') + '+.</small></div>';
+        var backupOptions = (status.backups || []).map(function (backup) { return '<option value="' + esc(backup.name) + '">' + esc(backup.name + ' · ' + updateBytes(backup.bytes)) + '</option>'; }).join('');
+        var auditRows = (status.audit || []).map(function (row) { var details = Object.keys(row.details || {}).map(function (key) { return key + ': ' + row.details[key]; }).join(', '); return '<tr><td>' + esc(row.created_at) + '</td><td>' + esc(row.action.replace(/_/g, ' ')) + '</td><td><span class="sbs-update-status ' + esc(row.status) + '">' + esc(row.status) + '</span></td><td>' + esc(details) + '</td></tr>'; }).join('');
+        rootBox.innerHTML = '<div class="sbs-update-toolbar"><div><strong>Privileged update access is unlocked</strong><span>Expires automatically after ' + esc(status.session_minutes || 15) + ' minutes.</span></div><button id="sbs-update-lock" class="sbs-button">Lock now</button></div>' + (status.health_notice ? '<div class="sbs-update-health">' + esc(status.health_notice) + '</div>' : '') + '<div class="sbs-metric-grid sbs-update-metrics"><div class="sbs-metric"><span>Installed</span><strong>v' + esc(status.installed_version) + '</strong><small>Studio plugin</small></div><div class="sbs-metric"><span>Trusted keys</span><strong>' + esc(status.trusted_key_count) + '</strong><small>Required for every release</small></div><div class="sbs-metric"><span>Runtime</span><strong>PHP ' + esc(status.php_version) + '</strong><small>WordPress ' + esc(status.wordpress_version) + '</small></div></div><div class="sbs-update-grid"><article class="sbs-card"><div class="sbs-inline-heading"><div><p class="sbs-kicker">PRIVATE FEED</p><h2>Release feed</h2></div><button id="sbs-update-check" class="sbs-button" ' + (status.feed_configured ? '' : 'disabled') + '>Check now</button></div>' + releaseMessage + '<button id="sbs-update-install-feed" class="sbs-button accent full" ' + (release && release.available ? '' : 'disabled') + '>Install verified feed release</button></article><article class="sbs-card"><p class="sbs-kicker">SIGNED PACKAGE</p><h2>Upload release ZIP</h2><p>Only packages signed by a trusted bundled key and compatible with this server can be installed.</p><form id="sbs-update-upload"><label>Signed release ZIP<input type="file" name="release_zip" accept=".zip,application/zip" required></label><button class="sbs-button primary" type="submit">Verify and install</button></form></article><article class="sbs-card"><p class="sbs-kicker">RECOVERY</p><h2>Rollback</h2><p>Restore one of the three retained verified plugin backups. Creative data and private assets remain separate.</p><form id="sbs-update-rollback"><label>Backup<select name="backup" ' + (backupOptions ? '' : 'disabled') + '>' + (backupOptions || '<option>No backups available</option>') + '</select></label><button class="sbs-button" type="submit" ' + (backupOptions ? '' : 'disabled') + '>Restore selected backup</button></form></article></div><article class="sbs-card sbs-update-audit"><h2>Recent update activity</h2><div class="sbs-table-scroll"><table class="sbs-table"><thead><tr><th>Date</th><th>Action</th><th>Status</th><th>Details</th></tr></thead><tbody>' + (auditRows || '<tr><td colspan="4">No update activity recorded yet.</td></tr>') + '</tbody></table></div></article>';
+        el('sbs-update-lock').addEventListener('click', lockUpdates);
+        el('sbs-update-check').addEventListener('click', checkUpdates);
+        el('sbs-update-install-feed').addEventListener('click', installFeedUpdate);
+        el('sbs-update-upload').addEventListener('submit', uploadStudioUpdate);
+        el('sbs-update-rollback').addEventListener('submit', rollbackStudioUpdate);
+    }
+    function unlockUpdates(event) {
+        event.preventDefault();
+        var form = event.currentTarget, button = form.querySelector('button'), message = form.querySelector('.sbs-form-message');
+        buttonBusy(button, true); message.textContent = 'Checking…';
+        post('updates/unlock', { password: form.password.value }).then(function (status) { state.updateStatus = status; renderUpdates(status); showMessage('Update controls unlocked for a short session.'); }).catch(function (error) { message.textContent = error.message; }).finally(function () { buttonBusy(button, false); });
+    }
+    function lockUpdates() {
+        var button = el('sbs-update-lock'); buttonBusy(button, true);
+        post('updates/lock').then(function (status) { state.updateStatus = status; renderUpdates(status); showMessage('Update controls locked.'); }).catch(handleError).finally(function () { buttonBusy(button, false); });
+    }
+    function checkUpdates() {
+        var button = el('sbs-update-check'); buttonBusy(button, true);
+        post('updates/check').then(function (status) { state.updateStatus = status; renderUpdates(status); showMessage(status.release && status.release.available ? 'A signed update is available.' : 'No newer signed release was found.'); }).catch(function (error) { handleError(error); loadUpdates(); }).finally(function () { buttonBusy(button, false); });
+    }
+    function installFeedUpdate() {
+        var release = state.updateStatus && state.updateStatus.release;
+        if (!release || !release.available || !window.confirm('Install signed version ' + release.version + '? The plugin will be backed up and health-checked automatically.')) { return; }
+        var button = el('sbs-update-install-feed'); buttonBusy(button, true);
+        post('updates/install-feed').then(function (result) { finishStudioUpdate('Signed version ' + result.version + ' was installed successfully. Reloading…'); }).catch(function (error) { handleError(error); loadUpdates(); }).finally(function () { buttonBusy(button, false); });
+    }
+    function uploadStudioUpdate(event) {
+        event.preventDefault();
+        var form = event.currentTarget, file = form.release_zip.files[0];
+        if (!file) { showMessage('Choose a signed release ZIP.', true); return; }
+        if (!window.confirm('Verify and install “' + file.name + '”? The existing plugin will be backed up first.')) { return; }
+        var button = form.querySelector('button'), data = new FormData(form); buttonBusy(button, true);
+        api('updates/install-upload', { method: 'POST', body: data }).then(function (result) { finishStudioUpdate('Signed version ' + result.version + ' was installed successfully. Reloading…'); }).catch(function (error) { handleError(error); loadUpdates(); }).finally(function () { buttonBusy(button, false); });
+    }
+    function rollbackStudioUpdate(event) {
+        event.preventDefault();
+        var form = event.currentTarget, backup = form.backup.value;
+        if (!backup || !window.confirm('Restore “' + backup + '”? The currently installed code will first be retained as a recovery backup.')) { return; }
+        var button = form.querySelector('button'); buttonBusy(button, true);
+        post('updates/rollback', { backup: backup }).then(function (result) { finishStudioUpdate('Rollback to version ' + result.version + ' completed. Reloading…'); }).catch(function (error) { handleError(error); loadUpdates(); }).finally(function () { buttonBusy(button, false); });
+    }
+    function finishStudioUpdate(message) {
+        showMessage(message);
+        window.setTimeout(function () { window.location.reload(); }, 1400);
+    }
+
+    function ensureCanvas() {
+        if (state.canvas || !window.fabric) { return; }
+        state.canvas = new fabric.Canvas('sbs-design-canvas', { preserveObjectStacking: true, selection: true, backgroundColor: '#ffffff' });
+        state.canvas.on('selection:created', renderLayers); state.canvas.on('selection:updated', renderLayers); state.canvas.on('selection:cleared', renderLayers);
+        state.canvas.on('object:added', captureCanvas); state.canvas.on('object:modified', captureCanvas); state.canvas.on('object:removed', captureCanvas);
+        state.canvas.on('object:moving', snapObject);
+        addGuides(); captureCanvas(); bindCanvasTools(); updatePrintReadout();
+    }
+    function bindCanvasTools() {
+        document.querySelectorAll('[data-tool]').forEach(function (button) { button.addEventListener('click', function () { canvasTool(button.getAttribute('data-tool')); }); });
+        el('sbs-add-creation').addEventListener('click', addSelectedCreation);
+        el('sbs-add-reference').addEventListener('click', addSelectedReference);
+        el('sbs-canvas-upload').addEventListener('change', canvasUpload);
+        el('sbs-object-colour').addEventListener('input', function () { var obj = state.canvas.getActiveObject(); if (obj) { if (obj.type === 'i-text' || obj.type === 'text') { obj.set('fill', this.value); } else { obj.set('fill', this.value); } state.canvas.requestRenderAll(); captureCanvas(); } });
+        el('sbs-font-family').addEventListener('change', function () { var obj = state.canvas.getActiveObject(); if (obj && (obj.type === 'i-text' || obj.type === 'text')) { obj.set('fontFamily', this.value); state.canvas.requestRenderAll(); captureCanvas(); } });
+        ['sbs-print-width', 'sbs-print-height', 'sbs-print-dpi'].forEach(function (id) { el(id).addEventListener('input', updatePrintReadout); });
+        el('sbs-transparent').addEventListener('change', function () { state.canvas.setBackgroundColor(this.checked ? null : '#ffffff', state.canvas.renderAll.bind(state.canvas)); });
+        el('sbs-guides').addEventListener('change', function () { setGuidesVisible(this.checked); });
+        el('sbs-canvas-project').addEventListener('change', function () { state.activeProject = state.projects.find(function (project) { return project.uuid === el('sbs-canvas-project').value; }); resetCanvasProject(); renderCanvasOptions(); loadProjectFonts(); loadLatestCanvas(); });
+        el('sbs-canvas-save').addEventListener('click', saveCanvas);
+        el('sbs-canvas-export').addEventListener('click', exportCanvas);
+        updateCanvasControls();
+    }
+    function renderCanvasOptions() {
+        var projectSelect = el('sbs-canvas-project'), creationSelect = el('sbs-canvas-creation'), creationGallery = el('sbs-canvas-creation-gallery'), referenceSelect = el('sbs-canvas-reference'), referenceGallery = el('sbs-canvas-reference-gallery'), projects = characterProjects(); if (!projectSelect || !creationSelect || !creationGallery || !referenceSelect || !referenceGallery) { return; }
+        var previousCreation = creationSelect.value, previousReference = referenceSelect.value;
+        projectSelect.innerHTML = projects.map(function (project) { return '<option value="' + esc(project.uuid) + '">' + esc(project.title) + '</option>'; }).join('') || '<option value="">No creations for this character</option>';
+        if (!state.activeProject || !projects.some(function (project) { return project.uuid === state.activeProject.uuid; })) { state.activeProject = projects[0] || null; }
+        if (state.activeProject) { projectSelect.value = state.activeProject.uuid; }
+        var gens = state.activeProject ? state.activeProject.generations || [] : [];
+        var designs = state.activeProject ? state.activeProject.designs || [] : [];
+        var creationItems = gens.map(function (gen) { return { value: 'generation:' + gen.uuid, url: gen.asset_url, badge: 'Image', label: gen.action + ' · ' + gen.quality }; }).concat(designs.filter(function (design) { return design.preview_url; }).map(function (design) { return { value: 'design:' + design.uuid, url: design.preview_url, badge: 'Design', label: design.name || 'Saved design' }; }));
+        var preferredCreation = state.selectedGeneration && gens.some(function (gen) { return gen.uuid === state.selectedGeneration.uuid; }) ? 'generation:' + state.selectedGeneration.uuid : previousCreation;
+        renderMediaGallery(creationSelect, creationGallery, creationItems, preferredCreation, 'This project has no completed creations.');
+        var references = state.selectedPack ? state.selectedPack.assets || [] : [];
+        var referenceItems = references.map(function (asset) { return { value: 'reference:' + asset.uuid, url: asset.url, badge: roleLabel(asset.role), label: asset.label || 'Unlabelled reference' }; });
+        renderMediaGallery(referenceSelect, referenceGallery, referenceItems, previousReference, 'This character has no reference images.');
+        updateCanvasControls();
+        loadProjectFonts();
+    }
+    function renderMediaGallery(select, gallery, items, preferred, emptyMessage) {
+        if (!items.some(function (item) { return item.value === preferred; })) { preferred = items.length ? items[0].value : ''; }
+        select.value = preferred;
+        gallery.innerHTML = items.length ? items.map(function (item) { return '<button type="button" class="sbs-media-item ' + (item.value === preferred ? 'selected' : '') + '" data-media-value="' + esc(item.value) + '" aria-pressed="' + (item.value === preferred ? 'true' : 'false') + '"><img src="' + esc(item.url) + '" alt=""><span class="sbs-media-badge">' + esc(item.badge) + '</span><strong>' + esc(item.label) + '</strong></button>'; }).join('') : '<p class="sbs-muted">' + esc(emptyMessage) + '</p>';
+        gallery.querySelectorAll('[data-media-value]').forEach(function (button) { button.addEventListener('click', function () { select.value = button.getAttribute('data-media-value'); gallery.querySelectorAll('[data-media-value]').forEach(function (item) { var selected = item === button; item.classList.toggle('selected', selected); item.setAttribute('aria-pressed', selected ? 'true' : 'false'); }); updateCanvasControls(); }); });
+    }
+    function selectedCreation() {
+        var select = el('sbs-canvas-creation'); if (!select || !select.value || !state.activeProject) { return null; }
+        var parts = select.value.split(':'), type = parts[0], uuid = parts[1];
+        if (type === 'generation') { var generation = (state.activeProject.generations || []).find(function (item) { return item.uuid === uuid; }); return generation ? { url: generation.asset_url, label: generation.action + ' · ' + generation.quality, sbsType: 'artwork', maxWidth: 700 } : null; }
+        if (type === 'design') { var design = (state.activeProject.designs || []).find(function (item) { return item.uuid === uuid; }); return design && design.preview_url ? { url: design.preview_url, label: design.name || 'Saved design', sbsType: 'saved_design', maxWidth: 700 } : null; }
+        return null;
+    }
+    function selectedReference() { var select = el('sbs-canvas-reference'); if (!select || !select.value || !state.selectedPack) { return null; } var uuid = select.value.split(':')[1]; return (state.selectedPack.assets || []).find(function (item) { return item.uuid === uuid; }) || null; }
+    function resetCanvasProject() {
+        state.canvasUuid = '';
+        if (!state.canvas) { return; }
+        state.historyLock = true;
+        el('sbs-transparent').checked=false;state.canvas.setBackgroundColor('#ffffff',state.canvas.renderAll.bind(state.canvas));
+        state.canvas.getObjects().filter(function (object) { return object.sbsType !== 'guide'; }).forEach(function (object) { state.canvas.remove(object); });
+        state.historyLock = false; state.canvas.discardActiveObject(); state.canvas.requestRenderAll(); state.history = []; state.redo = []; renderLayers(); updateCanvasControls();
+    }
+    function addSelectedCreation() { ensureCanvas(); var creation = selectedCreation(); if (!creation) { showMessage('Choose a creation first.', true); return; } addCanvasImage(creation); }
+    function addSelectedReference() { ensureCanvas(); var reference = selectedReference(); if (!reference) { showMessage('Choose a reference image first.', true); return; } addCanvasImage({ url: reference.url, label: reference.label || roleLabel(reference.role), sbsType: reference.role === 'logo' ? 'exact_asset' : 'reference_asset', maxWidth: 420, metadata: reference.metadata || {} }); }
+    function addCanvasImage(source) { fabric.Image.fromURL(source.url, function (img) { var settings = { left: 100, top: 100, name: source.label, sbsType: source.sbsType }; if (source.metadata && source.metadata.crop) { settings.cropX = Number(source.metadata.crop.x); settings.cropY = Number(source.metadata.crop.y); settings.width = Number(source.metadata.crop.width); settings.height = Number(source.metadata.crop.height); } img.set(settings); if(source.fit){img.scaleToWidth(Math.min(state.canvas.width*.8,state.canvas.height*.8*img.width/img.height));img.set({left:state.canvas.width/2,top:state.canvas.height/2,originX:'center',originY:'center'});}else{img.scaleToWidth(Math.min(source.maxWidth || 700, state.canvas.width * .8));} state.canvas.add(img).setActiveObject(img); state.canvas.requestRenderAll(); }); }
+    function canvasTool(tool) {
+        ensureCanvas(); var canvas = state.canvas, obj = canvas.getActiveObject();
+        if (tool === 'text') { var text = new fabric.IText('SMILE OUT LOUD', { left: 130, top: 120, fill: el('sbs-object-colour').value, fontFamily: el('sbs-font-family').value, fontWeight: 'bold', fontSize: 64, name: 'Text' }); canvas.add(text).setActiveObject(text); }
+        if (tool === 'rect') { var rect = new fabric.Rect({ left: 180, top: 180, width: 260, height: 160, fill: el('sbs-object-colour').value, name: 'Rectangle' }); canvas.add(rect).setActiveObject(rect); }
+        if (tool === 'circle') { var circle = new fabric.Circle({ left: 220, top: 220, radius: 100, fill: el('sbs-object-colour').value, name: 'Circle' }); canvas.add(circle).setActiveObject(circle); }
+        if (tool === 'upload') { el('sbs-canvas-upload').click(); }
+        if (tool === 'delete' && obj) { if (obj.type === 'activeSelection') { obj.getObjects().forEach(function (item) { canvas.remove(item); }); } else { canvas.remove(obj); } canvas.discardActiveObject(); }
+        if (tool === 'duplicate' && obj) { obj.clone(function (copy) { copy.set({ left: obj.left + 25, top: obj.top + 25, name: (obj.name || obj.type) + ' copy' }); canvas.add(copy).setActiveObject(copy); }); }
+        if (tool === 'front' && obj) { obj.bringToFront(); guidesToFront(); }
+        if (tool === 'back' && obj) { obj.sendToBack(); }
+        if (tool === 'lock' && obj) { var lock = !obj.lockMovementX; obj.set({ lockMovementX: lock, lockMovementY: lock, lockScalingX: lock, lockScalingY: lock, lockRotation: lock, selectable: true }); }
+        if (tool === 'hide' && obj) { obj.set('visible', false); canvas.discardActiveObject(); }
+        if (tool === 'crop-square' && obj && obj.type === 'image') { var side = Math.min(obj.width, obj.height); obj.set({ cropX: Math.max(0, (obj.width - side) / 2), cropY: Math.max(0, (obj.height - side) / 2), width: side, height: side }); }
+        if (tool === 'mask-circle' && obj && obj.type === 'image') { obj.set('clipPath', new fabric.Circle({ radius: Math.min(obj.width, obj.height) / 2, originX: 'center', originY: 'center' })); }
+        if (tool === 'mask-rect' && obj && obj.type === 'image') { obj.set('clipPath', new fabric.Rect({ width: obj.width * .8, height: obj.height * .65, rx: 24, ry: 24, originX: 'center', originY: 'center' })); }
+        if (tool === 'mask-clear' && obj) { obj.set('clipPath', null); }
+        if (tool === 'group' && obj && obj.type === 'activeSelection') { var group = obj.toGroup(); group.set('name', 'Group'); }
+        if (tool === 'ungroup' && obj && obj.type === 'group') { obj.toActiveSelection(); }
+        if (tool === 'undo') { undoCanvas(); }
+        if (tool === 'redo') { redoCanvas(); }
+        canvas.requestRenderAll(); renderLayers(); captureCanvas();
+        updateCanvasControls();
+    }
+    function canvasUpload(event) {
+        var file = event.target.files[0]; if (!file) { return; }
+        if (/font\//.test(file.type) || /\.(ttf|otf|woff2?)$/i.test(file.name)) {
+            var family = file.name.replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9 _-]/g, '');
+            var fontData = new FormData(); fontData.append('file', file); fontData.append('project_uuid', state.activeProject ? state.activeProject.uuid : ''); fontData.append('role', 'canvas_font'); fontData.append('label', family);
             api('assets', { method: 'POST', body: fontData }).then(function (asset) {
                 if (state.activeProject) { state.activeProject.assets = state.activeProject.assets || []; state.activeProject.assets.push(asset); }
                 return loadFontAsset(asset, family);
@@ -697,9 +1214,8 @@ Total output lines: 1275
         function decorate() {
             document.querySelectorAll('button:not(.sbs-info-button):not(.sbs-fs-thumbnail):not(.sbs-image-zoom):not(.sbs-modal-close):not(#sbs-explain-close)').forEach(function (button) {
                 // Keep the compact main navigation free of extra information
-                // buttons. Garment proof controls also remain icon-free so
-                // injected help buttons do not crowd the colour touch targets.
-                if (button.closest('.sbs-primary-tabs,.sbs-af-proof-viewer,.sbs-af-proof-grid')) { return; }
+                // buttons. Other controls retain their contextual help.
+                if (button.closest('.sbs-primary-tabs')) { return; }
                 if (button.dataset.sbsInfoAttached || button.closest('.sbs-explain-dialog')) { return; }
                 button.dataset.sbsInfoAttached = '1';
                 var info = document.createElement('button');

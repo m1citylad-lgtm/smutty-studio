@@ -53,6 +53,7 @@
 
 /* Screen-only garment proofs. The viewer loads the actual asset URL directly. */
 .sbs-af-proof-swatch{width:100%;padding:0;cursor:zoom-in;background-color:#111}
+.sbs-af-proof-grid .sbs-info-button,.sbs-af-proof-viewer .sbs-info-button{display:none!important}
 .sbs-af-proof-swatch[data-proof-color="black"],.sbs-af-proof-viewer[data-color="black"]{background:#000}
 .sbs-af-proof-swatch[data-proof-color="white"],.sbs-af-proof-viewer[data-color="white"]{background:#fff}
 .sbs-af-proof-swatch[data-proof-color="red"],.sbs-af-proof-viewer[data-color="red"]{background:#bb2f2e}

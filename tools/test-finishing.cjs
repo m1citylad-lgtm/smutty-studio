@@ -51,7 +51,7 @@ assert.match(finishing, /googleControls\(\).*googleBusy\|\|!googleState\.configu
 assert.match(settingsTemplate, /id="sbs-google-status" role="status" aria-live="polite" aria-atomic="true"/);
 assert.match(theme, /select option:checked/);
 assert.match(theme, /background: #101827;\s+color: #fff3d4;/);
-assert.match(studio, /if \(button\.closest\('\.sbs-primary-tabs,\.sbs-af-proof-viewer,\.sbs-af-proof-grid'\)\) \{ return; \}/);
+assert.match(studio, /if \(button\.closest\('\.sbs-primary-tabs'\)\) \{ return; \}/);
 assert.match(studio, /button\.textContent = 'Processing…'/);
 assert.match(theme, /\[aria-busy="true"\]::before/);
 
@@ -134,7 +134,7 @@ assert.match(finishing, /Warnings and points to check/);
 assert.match(finishing, /className='sbs-af-review-points'/);
 assert.match(finishing, /className='sbs-af-review-points sbs-af-ai-findings'/);
 assert.match(css, /\.sbs-af-review-points\{[^}]*color:#ffe08a/);
-assert.match(studio, /button\.closest\('\.sbs-primary-tabs,\.sbs-af-proof-viewer,\.sbs-af-proof-grid'\)/);
+assert.match(css, /\.sbs-af-proof-grid \.sbs-info-button,\.sbs-af-proof-viewer \.sbs-info-button\{display:none!important\}/);
 assert.match(finishing, /Suggested maximum size to reach 300 PPI while preserving proportions/);
 assert.match(finishing, /var suggestedWidth=Number\(q\.width\)\/300,suggestedHeight=Number\(q\.height\)\/300/);
 assert.match(css, /#sbs-af-print-status\[data-state="warning"\][^{]*\{[^}]*background:#641b24[^}]*color:#fff/);
