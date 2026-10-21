@@ -49,6 +49,7 @@
 - Switching garment colours changes only the viewer background and retains the zoom and pan position. The toolbar does not label colours visibly; assistive labels remain available.
 - Viewer presentation does not edit artwork, transparency, candidate data, generated files or production approval rules. No image generation/upscaling calls are used.
 - Validation: JavaScript syntax and `node tools/test-finishing.cjs`; GitHub release workflow also runs the full repository regression suite. Live installation and Android pinch/pan verification remain deployment acceptance checks.
+- Owner acceptance update (21 October 2026): the user tested the live garment-colour proof check on the Android tablet, including close-up inspection on red. They report the image looks as expected and there is no unintended colour bleed-through. The supplied zoomed screenshots show lettering, face and edge detail at close range.
 
 ## Next publication request — remove proof-viewer information buttons (21 October 2026)
 - Non-urgent: remove the round black “i” information buttons shown beside the garment-colour swatches in the full-screen Artwork Finishing proof viewer (as shown in the user's screenshot).
