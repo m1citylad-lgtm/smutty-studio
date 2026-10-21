@@ -71,3 +71,9 @@
 - Remove automatically injected black information buttons from the garment proof panels and full-screen proof viewer so they do not crowd colour selection controls.
 - When a print size is below 300 PPI, highlight the warning in red and show the proportional maximum print dimensions that reach 300 PPI using the candidate's actual pixel dimensions.
 - Explain that both width and height must shrink together to preserve proportions, and that a smaller print size raises the PPI value but does not create image detail.
+
+## Next update request — concise accessible text and print warning (21 October 2026)
+- Make text boxes, paragraphs, statuses and warnings across Smutty Studio clear, concise and basic. Show only the key fact, problem or action; avoid long explanations.
+- Replace the large red print-warning box with a small, high-contrast red dot or flag beside the concise print details.
+- Show the actual PPI and the proportional print dimensions needed to reach 300 PPI. Keep these key facts easy to locate and read on a tablet.
+- No automated voice or spoken settings are requested.
