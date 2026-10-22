@@ -98,6 +98,12 @@
 - AI comparison remains optional and may use API credits. This implementation does not run an image-generation or upscaling service.
 - Validation: regression test checks that both unchanged image byte streams are sent as data URLs. Full provider review and live UI verification remain release acceptance checks; no user artwork is submitted during automated tests.
 
+## Release 0.2.64 — shorter AI findings and zoom shortcut
+- Show only AI findings that need attention; omit informational notes and pass statements. Keep each item brief and numbered.
+- Add “View at 4×” beside each finding. It opens the side-by-side comparison at 4× so the user can scroll to the named area. It does not claim to locate an exact pixel region.
+- Keep the full-screen garment-colour viewer for pinch zoom and panning.
+- Validation: automated checks confirm informational findings are removed and the 4× shortcut is wired to the existing comparison zoom. No artwork is changed or sent to AI during validation.
+
 ## Next update request — plain-language review for remaining tabs (21 October 2026)
 - Simplify long text in Characters, Freestyle, Artwork Catalogue, Usage and Settings.
 - Keep essential safety, privacy, credit and workflow warnings, but use short sentences and show the key action first.
