@@ -129,6 +129,34 @@
             if(source.complete&&source.naturalWidth)drawPreview();
         }
         var viewer=el('sbs-af-proof-viewer'), viewerStage=el('sbs-af-proof-stage'), viewerImage=el('sbs-af-proof-large'), viewerScale=1, viewerX=0, viewerY=0, viewerPointers=new Map(), viewerStart=null, viewerOpener=null;
+        var aiFocus=el('sbs-af-ai-focus'), aiFocusStage=el('sbs-af-ai-focus-stage'), aiFocusImage=null, aiFocusMoveState=null, aiFocusData=null, aiFocusOpener=null, aiFocusSide='candidate';
+        function positionAiFocusImage(){
+            if(aiFocus.hidden||!aiFocusImage.complete||!aiFocusImage.naturalWidth)return;
+            var bounds=aiFocusStage.getBoundingClientRect(),base=Math.min(bounds.width/aiFocusImage.naturalWidth,bounds.height/aiFocusImage.naturalHeight),scale=base*4;
+            var width=aiFocusImage.naturalWidth*scale,height=aiFocusImage.naturalHeight*scale;
+            aiFocusImage.style.width=width+'px';aiFocusImage.style.height=height+'px';aiFocusImage.style.maxWidth='none';aiFocusImage.style.maxHeight='none';
+            requestAnimationFrame(function(){var fx=aiFocusData&&aiFocusData.focus?aiFocusData.focus.x:.5,fy=aiFocusData&&aiFocusData.focus?aiFocusData.focus.y:.5;aiFocusStage.scrollLeft=Math.max(0,Math.min(aiFocusStage.scrollWidth-aiFocusStage.clientWidth,fx*width-aiFocusStage.clientWidth/2));aiFocusStage.scrollTop=Math.max(0,Math.min(aiFocusStage.scrollHeight-aiFocusStage.clientHeight,fy*height-aiFocusStage.clientHeight/2));});
+        }
+        function setAiFocusSide(side){
+            if(!aiFocusData)return;aiFocusSide=side;var imageNode=el(side==='original'?'sbs-af-original':'sbs-af-candidate');
+            if(!imageNode||!imageNode.src)return;
+            if(aiFocusMoveState){aiFocusMoveState.parent.insertBefore(aiFocusMoveState.node,aiFocusMoveState.next&&aiFocusMoveState.next.parentNode===aiFocusMoveState.parent?aiFocusMoveState.next:null);aiFocusMoveState.node.style.cssText=aiFocusMoveState.cssText;aiFocusMoveState.node.alt=aiFocusMoveState.alt;aiFocusMoveState.node.hidden=aiFocusMoveState.hidden;aiFocusMoveState.node.onload=aiFocusMoveState.onload;aiFocusMoveState=null;}
+            aiFocusMoveState={node:imageNode,parent:imageNode.parentNode,next:imageNode.nextSibling,cssText:imageNode.style.cssText,alt:imageNode.alt,hidden:imageNode.hidden,onload:imageNode.onload};aiFocusImage=imageNode;aiFocusImage.hidden=false;
+            aiFocusImage.alt=(side==='original'?'Untouched original':'Finishing candidate')+' — enlarged view of '+aiFocusData.area;
+            el('sbs-af-ai-focus-original').setAttribute('aria-pressed',side==='original'?'true':'false');el('sbs-af-ai-focus-candidate').setAttribute('aria-pressed',side==='candidate'?'true':'false');
+            aiFocusImage.onload=positionAiFocusImage;aiFocusStage.appendChild(aiFocusImage);aiFocusStage.scrollLeft=0;aiFocusStage.scrollTop=0;
+            if(aiFocusImage.complete)positionAiFocusImage();
+        }
+        function openAiFocus(finding,opener){
+            var version=current&&current.versions.find(function(v){return v.uuid===current.current_version;});if(!current||!current.original||!version||!version.asset)return;
+            var focus=finding.focus&&isFinite(Number(finding.focus.x))&&isFinite(Number(finding.focus.y))&&Number(finding.focus.x)>=0&&Number(finding.focus.x)<=1&&Number(finding.focus.y)>=0&&Number(finding.focus.y)<=1?{x:Number(finding.focus.x),y:Number(finding.focus.y)}:null;
+            aiFocusData={area:finding.area||'Flagged area',focus:focus,original:current.original,candidate:version.asset};aiFocusOpener=opener||document.activeElement;
+            el('sbs-af-ai-focus-title').textContent=aiFocusData.area;el('sbs-af-ai-focus-note').textContent=focus?'AI-estimated location. No marker covers the artwork. View is 4×; scroll to pan.':'No AI location was saved. View starts at image centre; scroll to pan.';
+            aiFocus.hidden=false;document.body.style.overflow='hidden';setAiFocusSide('candidate');el('sbs-af-ai-focus-close').focus();
+        }
+        function closeAiFocus(){if(aiFocus.hidden)return;aiFocus.hidden=true;if(aiFocusMoveState){aiFocusMoveState.parent.insertBefore(aiFocusMoveState.node,aiFocusMoveState.next&&aiFocusMoveState.next.parentNode===aiFocusMoveState.parent?aiFocusMoveState.next:null);aiFocusMoveState.node.style.cssText=aiFocusMoveState.cssText;aiFocusMoveState.node.alt=aiFocusMoveState.alt;aiFocusMoveState.node.hidden=aiFocusMoveState.hidden;aiFocusMoveState.node.onload=aiFocusMoveState.onload;aiFocusMoveState=null;}aiFocusImage=null;aiFocusStage.scrollLeft=0;aiFocusStage.scrollTop=0;aiFocusData=null;document.body.style.overflow='';if(aiFocusOpener&&aiFocusOpener.focus)aiFocusOpener.focus();}
+        el('sbs-af-ai-focus-original').addEventListener('click',function(){setAiFocusSide('original');});el('sbs-af-ai-focus-candidate').addEventListener('click',function(){setAiFocusSide('candidate');});el('sbs-af-ai-focus-close').addEventListener('click',closeAiFocus);
+        aiFocusStage.addEventListener('keydown',function(event){if(event.key==='Home'){event.preventDefault();aiFocusStage.scrollTo({left:0,top:0,behavior:'smooth'});}else if(event.key==='End'){event.preventDefault();aiFocusStage.scrollTo({left:aiFocusStage.scrollWidth,top:aiFocusStage.scrollHeight,behavior:'smooth'});}});
         function paintViewerTransform(){viewerImage.style.transform='translate3d('+viewerX+'px,'+viewerY+'px,0) scale('+viewerScale+')';}
         function resetViewer(){viewerScale=1;viewerX=0;viewerY=0;paintViewerTransform();}
         function selectViewerColor(color){viewer.dataset.color=color;document.querySelectorAll('[data-viewer-color]').forEach(function(button){var selected=button.getAttribute('data-viewer-color')===color;button.setAttribute('aria-pressed',selected?'true':'false');});}
@@ -143,7 +171,7 @@
         document.querySelectorAll('.sbs-af-proof-swatch').forEach(function(button){button.addEventListener('click',function(){openProofViewer(button.getAttribute('data-proof-color'),button);});});
         document.querySelectorAll('[data-viewer-color]').forEach(function(button){button.addEventListener('click',function(){selectViewerColor(button.getAttribute('data-viewer-color'));});});
         el('sbs-af-proof-reset').addEventListener('click',resetViewer);el('sbs-af-proof-close').addEventListener('click',closeProofViewer);
-        document.addEventListener('keydown',function(event){if(!viewer.hidden&&event.key==='Escape'){event.preventDefault();closeProofViewer();}});
+        document.addEventListener('keydown',function(event){if(event.key==='Escape'){if(!aiFocus.hidden){event.preventDefault();closeAiFocus();}else if(!viewer.hidden){event.preventDefault();closeProofViewer();}}});
         viewerImage.addEventListener('load',resetViewer);
         function friendlyName(title){return (title||'Artwork').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[\u2018\u2019']/g,'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,110)||'Artwork';}
         function renderAiReview(version){
@@ -157,9 +185,9 @@
             status.textContent=findings.length?'AI check: '+findings.length+' area'+(findings.length===1?'':'s')+' to inspect.':result.overall==='unable'?'AI could not assess the image reliably.':'AI check: no specific issues flagged.';
             if(!findings.length){var none=document.createElement('p');none.textContent=result.overall==='unable'?'Try the 4× comparison and inspect the artwork manually.':'No specific issues flagged. AI can miss defects.';report.appendChild(none);return;}
             var findingsHeading=document.createElement('h4');findingsHeading.textContent='Areas to inspect';report.appendChild(findingsHeading);
-            var zoomHelp=document.createElement('p');zoomHelp.className='sbs-af-ai-zoom-help';zoomHelp.textContent='View at 4× opens both images. Scroll within each image to inspect the named area.';report.appendChild(zoomHelp);
+            var zoomHelp=document.createElement('p');zoomHelp.className='sbs-af-ai-zoom-help';zoomHelp.textContent='View area opens the image at 4× and centres on the AI estimate when available. No marker covers the artwork.';report.appendChild(zoomHelp);
             var findingsList=document.createElement('ol');findingsList.className='sbs-af-review-points sbs-af-ai-findings';
-            findings.forEach(function(finding,index){var item=document.createElement('li');item.dataset.severity=finding.severity;var heading=document.createElement('strong');heading.textContent=(index+1)+'. '+finding.area;item.appendChild(heading);var issue=document.createElement('p');issue.textContent=finding.issue+' Check: '+finding.action;item.appendChild(issue);var zoomButton=document.createElement('button');zoomButton.type='button';zoomButton.className='sbs-button sbs-af-ai-zoom-button';zoomButton.textContent='View at 4×';zoomButton.setAttribute('aria-label','View '+finding.area+' in the 4× image comparison');zoomButton.addEventListener('click',function(){var zoom=el('sbs-af-zoom');zoom.value='4';zoom.dispatchEvent(new Event('change',{bubbles:true}));el('sbs-af-compare').scrollIntoView({behavior:'smooth',block:'start'});var candidateView=el('sbs-af-candidate').closest('.sbs-af-viewport');candidateView.focus({preventScroll:true});});item.appendChild(zoomButton);findingsList.appendChild(item);});
+            findings.forEach(function(finding,index){var item=document.createElement('li');item.dataset.severity=finding.severity;var heading=document.createElement('strong');heading.textContent=(index+1)+'. '+finding.area;item.appendChild(heading);var issue=document.createElement('p');issue.textContent=finding.issue+' Check: '+finding.action;item.appendChild(issue);var zoomButton=document.createElement('button');zoomButton.type='button';zoomButton.className='sbs-button sbs-af-ai-zoom-button';zoomButton.textContent='View area';zoomButton.setAttribute('aria-label','Open 4× view centred on '+finding.area);zoomButton.addEventListener('click',function(){openAiFocus(finding,zoomButton);});item.appendChild(zoomButton);findingsList.appendChild(item);});
             report.appendChild(findingsList);
         }
         function renderHandoff(version){

@@ -74,3 +74,7 @@ The Artwork Finishing tab supports separate Photos/Gallery and Files/My Files ch
 ### Full-screen garment proof viewer (v0.2.56)
 
 Artwork Finishing includes 12 colour proof backgrounds and a full-screen viewer that opens the original or candidate asset directly for detailed inspection. Pinch zoom, one-finger panning, Reset, Close and a horizontally scrollable colour toolbar are supported. Viewer colour changes affect only the display background. See [Print Production Workflow](docs/PRINT_PRODUCTION_WORKFLOW.md).
+
+### Focused AI review (v0.2.65)
+
+AI findings can open a full-screen 4× view centred on an approximate reported location. Switch between Original and Candidate, then scroll to pan. No marker covers the artwork. If the report has no location, the view starts at the image centre. Help text across Studio tabs is shorter while retaining important safety, privacy and cost notes.
