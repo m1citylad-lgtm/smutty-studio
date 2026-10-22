@@ -59,7 +59,7 @@ echo "PASS: generation and edit requests explicitly use low image moderation, pr
 $mock_response_body=json_encode(array('output_text'=>json_encode(array('summary'=>'Reviewed','overall'=>'review','findings'=>array(
     array('severity'=>'info','area'=>'Clean lettering','issue'=>'No change spotted','action'=>'No action needed'),
     array('severity'=>'concern','area'=>'Outer edge','issue'=>'Coloured flecks are visible','action'=>'Check against the intended garment colour'),
-))));
+)))));
 $review=SBS_OpenAI::review_finishing_artwork(101,202,'Large PNG review');
 check(!is_wp_error($review) && $review['summary']==='Reviewed', 'Full-resolution AI review did not parse');
 check(count($review['findings'])===1 && $review['findings'][0]['severity']==='concern', 'Non-actionable AI notes were not removed');
