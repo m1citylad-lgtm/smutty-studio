@@ -58,11 +58,14 @@ echo "PASS: generation and edit requests explicitly use low image moderation, pr
 // provider's 32 MB file-URL limit without editing or resizing either asset.
 $mock_response_body=json_encode(array('output_text'=>json_encode(array('summary'=>'Reviewed','overall'=>'review','findings'=>array(
     array('severity'=>'info','area'=>'Clean lettering','issue'=>'No change spotted','action'=>'No action needed'),
-    array('severity'=>'concern','area'=>'Outer edge','issue'=>'Coloured flecks are visible','action'=>'Check against the intended garment colour'),
+    array('severity'=>'concern','area'=>'Outer edge','issue'=>'Coloured flecks are visible','action'=>'Check against the intended garment colour','focus'=>array('x'=>0.82,'y'=>0.16)),
+    array('severity'=>'review','area'=>'Lettering','issue'=>'Fine detail may be altered','action'=>'Inspect the lettering','focus'=>array('x'=>2,'y'=>0.5)),
 )))));
 $review=SBS_OpenAI::review_finishing_artwork(101,202,'Large PNG review');
 check(!is_wp_error($review) && $review['summary']==='Reviewed', 'Full-resolution AI review did not parse');
-check(count($review['findings'])===1 && $review['findings'][0]['severity']==='concern', 'Non-actionable AI notes were not removed');
+check(count($review['findings'])===2 && $review['findings'][0]['severity']==='concern', 'Non-actionable AI notes were not removed');
+check($review['findings'][0]['focus']===array('x'=>0.82,'y'=>0.16), 'Valid image focus was not preserved');
+check(!isset($review['findings'][1]['focus']), 'Out-of-range image focus was accepted');
 $request=end($captured_requests);
 $payload=json_decode($request['args']['body'],true);
 $review_content=$payload['input'][0]['content'];

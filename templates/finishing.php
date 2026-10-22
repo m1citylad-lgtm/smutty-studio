@@ -7,7 +7,7 @@
                 <label for="sbs-af-name">Artwork title <span class="sbs-af-required">Required</span><input id="sbs-af-name" type="text" maxlength="190" spellcheck="true" autocapitalize="sentences" required aria-required="true"></label>
                 <label for="sbs-af-file">Browse device — Files / My Files<input id="sbs-af-file" type="file" accept=".png,.jpg,.jpeg,.webp,application/octet-stream" aria-describedby="sbs-af-file-help"></label>
                 <label for="sbs-af-gallery-file">Browse Photos / Gallery on this device<input id="sbs-af-gallery-file" type="file" accept="image/*" aria-describedby="sbs-af-file-help"></label>
-                <p id="sbs-af-file-help">Choose either Files / My Files or Photos / Gallery. PNG, JPEG or WebP; up to 20 MB and 40 million pixels. Photos / Gallery uses the image picker offered by your browser and tablet. Google Drive is a separate future connection.</p>
+                <p id="sbs-af-file-help">Choose Files / My Files or Photos / Gallery. PNG, JPEG or WebP up to 20 MB. Drive is not connected.</p>
             <button type="submit" class="sbs-button primary">1. Store untouched original</button>
             <p id="sbs-af-upload-status" role="status" aria-live="polite" aria-atomic="true">No artwork upload completed yet.</p>
             </form>
@@ -17,7 +17,7 @@
         <section class="sbs-card"><h2>2. Choose a stage</h2>
             <label for="sbs-af-method">Processing option<select id="sbs-af-method"><option value="inspect">Inspect — exact byte copy, no image changes</option><option value="resize">Fit down to print box — preserve aspect ratio, no crop</option><option value="upscale">AI upscale — Replicate Real-ESRGAN (automatic 2× or 4×)</option><option disabled>Sharpen / denoise / edge cleaning — preservation validation pending</option><option disabled>Background removal — deliberate background protection pending</option></select></label>
             <div class="sbs-grid two"><label for="sbs-af-width">Print width (inches)<input id="sbs-af-width" type="number" min="1" max="30" step="0.25" value="15"></label><label for="sbs-af-height">Print height (inches)<input id="sbs-af-height" type="number" min="1" max="30" step="0.25" value="18"></label></div>
-            <p>Inspect and Fit down stay local. AI upscale sends a copy to Replicate and may use credits. The original stays unchanged. 300 PPI is a size target, not a quality guarantee.</p>
+            <p>Inspect and Fit down stay local. AI upscale sends a copy to Replicate and may cost credits. Original stays unchanged. 300 PPI is a target, not a quality guarantee.</p>
             <label for="sbs-af-notes">Correction notes for this version<textarea id="sbs-af-notes" rows="4" maxlength="6000" spellcheck="true" autocapitalize="sentences" placeholder="Dictate details to check. Notes are recorded; they do not instruct AI or redraw this image."></textarea></label>
             <p id="sbs-af-stage-help">Choose a stage. Queue it, then run it. The original stays unchanged.</p>
             <button id="sbs-af-prepare" class="sbs-button" type="button" disabled>2. Queue selected stage</button>
@@ -37,7 +37,7 @@
         <div class="sbs-af-compare" id="sbs-af-compare"><figure><figcaption>Untouched original</figcaption><div class="sbs-af-viewport" tabindex="0" aria-label="Original image — scroll when magnified"><img id="sbs-af-original" alt="" hidden></div></figure><figure><figcaption>Selected candidate</figcaption><div class="sbs-af-viewport" tabindex="0" aria-label="Candidate image — scroll when magnified"><img id="sbs-af-candidate" alt="" hidden></div><a id="sbs-af-candidate-download" class="sbs-button" hidden download>Download selected candidate</a></figure></div>
         <section id="sbs-af-print-proof" class="sbs-af-print-proof" aria-labelledby="sbs-af-print-proof-title" hidden>
             <h3 id="sbs-af-print-proof-title">Garment-colour print check</h3>
-            <p id="sbs-af-print-proof-help">Select any proof image to inspect the full-resolution candidate on that garment colour. These are screen proofs only, not a guarantee of the printed result.</p>
+            <p id="sbs-af-print-proof-help">Tap a proof to inspect it full screen. Screen colours may differ from print.</p>
             <p id="sbs-af-print-status" role="status" aria-live="polite" aria-atomic="true">Select artwork to run the pixel-size check.</p>
             <div class="sbs-af-proof-grid" role="group" aria-label="Garment-colour proof backgrounds">
                 <figure><figcaption>1. BLACK</figcaption><button type="button" class="sbs-af-proof-swatch" data-proof-color="black" aria-label="Inspect artwork on black"><img data-af-proof-image="black" alt="" hidden></button></figure>
@@ -59,31 +59,42 @@
         <div id="sbs-af-qa"></div>
         <section id="sbs-af-ai-review" class="sbs-af-ai-review" aria-labelledby="sbs-af-ai-review-title" hidden>
             <h3 id="sbs-af-ai-review-title">AI quality check</h3>
-            <p>Optional: send the original and candidate to OpenAI for a visual check. This may use API credits. It reports possible issues; it never changes the images.</p>
+            <p>Optional: send both images to OpenAI. This may use credits. It reports issues but does not edit images.</p>
             <button id="sbs-af-ai-review-run" class="sbs-button" type="button">4. Run AI comparison (optional)</button>
             <p id="sbs-af-ai-status" role="status" aria-live="polite" aria-atomic="true">Not run. This check is optional.</p>
             <div id="sbs-af-ai-review-report" class="sbs-af-ai-review-report" aria-live="polite"></div>
         </section>
         <fieldset id="sbs-af-checks"><legend>5. Check this candidate</legend>
-            <label><input type="checkbox" data-af-check="identity"> I checked face, character identity, composition, stars and fur against the original.</label>
-            <label><input type="checkbox" data-af-check="lettering"> I checked all wording, lettering and small details.</label>
-            <label><input type="checkbox" data-af-check="texture"> I checked alpha edges, halos, deliberate backgrounds, halftone and distress.</label>
-            <label><input type="checkbox" data-af-check="garments"> I inspected the candidate on all 12 garment-colour proof backgrounds and at the intended print size.</label>
-            <label><input type="checkbox" data-af-check="warnings"> I reviewed the quality warnings and accept any unresolved limitations for this local candidate.</label>
+            <label><input type="checkbox" data-af-check="identity"> I checked the face, identity and composition against the original.</label>
+            <label><input type="checkbox" data-af-check="lettering"> I checked wording and small details.</label>
+            <label><input type="checkbox" data-af-check="texture"> I checked transparency, edges, halftone and distress.</label>
+            <label><input type="checkbox" data-af-check="garments"> I checked all 12 garment colours and the intended print size.</label>
+            <label><input type="checkbox" data-af-check="warnings"> I reviewed the warnings and accept any remaining limits.</label>
         </fieldset>
         <section id="sbs-af-handoff" class="sbs-af-handoff" aria-labelledby="sbs-af-handoff-title">
             <h3 id="sbs-af-handoff-title">Final checks and ChatGPT handoff</h3>
             <p id="sbs-af-readiness" role="status" aria-live="polite" aria-atomic="true" data-state="review">REVIEW — select a candidate to check readiness.</p>
-            <label for="sbs-af-handoff-text">Copy this with the ZIP when asking ChatGPT to review the artwork<textarea id="sbs-af-handoff-text" rows="9" readonly spellcheck="false"></textarea></label>
+            <label for="sbs-af-handoff-text">Copy this with the ZIP for ChatGPT review<textarea id="sbs-af-handoff-text" rows="9" readonly spellcheck="false"></textarea></label>
             <button id="sbs-af-copy-handoff" class="sbs-button" type="button" disabled>Copy ChatGPT handoff</button>
         </section>
         <button id="sbs-af-approve" class="sbs-button primary" type="button" disabled>6. Approve this local version</button>
         <label for="sbs-af-package-name">ZIP download filename (editable)<input id="sbs-af-package-name" type="text" maxlength="150" autocomplete="off" aria-describedby="sbs-af-package-name-help"></label>
-        <p id="sbs-af-package-name-help">Suggested from the artwork title. You may change it before building the ZIP. Studio adds a version and date to prevent confusing duplicate downloads.</p>
+        <p id="sbs-af-package-name-help">Suggested from the artwork title. Studio adds version and date to avoid duplicate names.</p>
         <button id="sbs-af-export" class="sbs-button" type="button" disabled aria-describedby="sbs-af-package-help">7. Build approved ZIP</button>
         <a id="sbs-af-package" class="sbs-button" hidden download>Download local package</a>
-        <p id="sbs-af-package-help">The ZIP includes the original, candidate and report. It is not a final print master. Save it to Downloads or another folder.</p>
+        <p id="sbs-af-package-help">ZIP contains the original, candidate and report. It is not a final print master.</p>
     </section>
+    <div id="sbs-af-ai-focus" class="sbs-af-ai-focus" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-ai-focus-title">
+        <div class="sbs-af-ai-focus-head">
+            <div><h2 id="sbs-af-ai-focus-title">Issue area</h2><p id="sbs-af-ai-focus-note">AI-suggested location; inspect the area manually.</p></div>
+            <button id="sbs-af-ai-focus-close" class="sbs-af-ai-focus-close" type="button" aria-label="Close issue view">×</button>
+        </div>
+        <div class="sbs-af-ai-focus-switch" role="group" aria-label="Image to inspect">
+            <button id="sbs-af-ai-focus-original" type="button" class="sbs-button">Original</button>
+            <button id="sbs-af-ai-focus-candidate" type="button" class="sbs-button">Candidate</button>
+        </div>
+        <div id="sbs-af-ai-focus-stage" class="sbs-af-ai-focus-stage" tabindex="0" aria-label="Four-times image view. Scroll to pan around the image."></div>
+    </div>
     <div id="sbs-af-proof-viewer" class="sbs-af-proof-viewer" hidden aria-modal="true" role="dialog" aria-label="Full-screen garment proof viewer">
         <button id="sbs-af-proof-close" class="sbs-af-proof-close" type="button" aria-label="Close proof viewer">×</button>
         <div id="sbs-af-proof-stage" class="sbs-af-proof-stage"><img id="sbs-af-proof-large" alt="Full-resolution artwork proof"></div>
