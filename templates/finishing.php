@@ -15,9 +15,10 @@
             <button id="sbs-af-refresh" class="sbs-button" type="button">Refresh workspaces</button>
         </section>
         <section class="sbs-card"><h2>2. Choose a stage</h2>
-            <label for="sbs-af-method">Processing option<select id="sbs-af-method"><option value="inspect">Inspect — exact byte copy, no image changes</option><option value="resize">Fit down to print box — preserve aspect ratio, no crop</option><option value="upscale">AI upscale — Replicate Real-ESRGAN (automatic 2× or 4×)</option><option disabled>Sharpen / denoise / edge cleaning — preservation validation pending</option><option disabled>Background removal — deliberate background protection pending</option></select></label>
+            <label for="sbs-af-method">Processing option<select id="sbs-af-method"><option value="inspect">Inspect — exact byte copy, no image changes</option><option value="resize">Fit down to print box — preserve aspect ratio, no crop</option><option value="print_png">Prepare print PNG — sRGB, RGBA, 300 PPI</option><option value="upscale">AI upscale — Replicate Real-ESRGAN (automatic 2× or 4×)</option><option disabled>Sharpen / denoise / edge cleaning — preservation validation pending</option><option disabled>Background removal — deliberate background protection pending</option></select></label>
             <div class="sbs-grid two"><label for="sbs-af-width">Print width (inches)<input id="sbs-af-width" type="number" min="1" max="30" step="0.25" value="15"></label><label for="sbs-af-height">Print height (inches)<input id="sbs-af-height" type="number" min="1" max="30" step="0.25" value="18"></label></div>
-            <p>Inspect and Fit down stay local. AI upscale sends a copy to Replicate and may cost credits. Original stays unchanged. 300 PPI is a target, not a quality guarantee.</p>
+            <label><input id="sbs-af-print-canvas" type="checkbox"> For Prepare print PNG: fit on a transparent print-size canvas, centred without stretching or enlarging the artwork.</label>
+            <p>Prepare print PNG uses the selected candidate, if present. Untagged sources are assumed sRGB; confirm colours manually. Inspect and Fit down stay local. AI upscale sends a copy to Replicate and may cost credits. Original stays unchanged. 300 PPI is a target, not a quality guarantee.</p>
             <label for="sbs-af-notes">Correction notes for this version<textarea id="sbs-af-notes" rows="4" maxlength="6000" spellcheck="true" autocapitalize="sentences" placeholder="Dictate details to check. Notes are recorded; they do not instruct AI or redraw this image."></textarea></label>
             <p id="sbs-af-stage-help">Choose a stage. Queue it, then run it. The original stays unchanged.</p>
             <button id="sbs-af-prepare" class="sbs-button" type="button" disabled>2. Queue selected stage</button>
@@ -34,6 +35,7 @@
         <label for="sbs-af-proof">Garment proof background<select id="sbs-af-proof" aria-describedby="sbs-af-proof-help"><option value="checker">Checkerboard</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
         <p id="sbs-af-zoom-help">Preview zoom only; it does not change the image.</p>
         <p id="sbs-af-proof-help">Check the image on light and dark backgrounds.</p>
+        <p>These on-screen colours check contrast only. They are not physical print proofs or a colour-match guarantee.</p>
         <div class="sbs-af-compare" id="sbs-af-compare"><figure><figcaption>Untouched original</figcaption><div class="sbs-af-viewport" tabindex="0" aria-label="Original image — scroll when magnified"><img id="sbs-af-original" alt="" hidden></div></figure><figure><figcaption>Selected candidate</figcaption><div class="sbs-af-viewport" tabindex="0" aria-label="Candidate image — scroll when magnified"><img id="sbs-af-candidate" alt="" hidden></div><a id="sbs-af-candidate-download" class="sbs-button" hidden download>Download selected candidate</a></figure></div>
         <section id="sbs-af-print-proof" class="sbs-af-print-proof" aria-labelledby="sbs-af-print-proof-title" hidden>
             <h3 id="sbs-af-print-proof-title">Garment-colour print check</h3>
@@ -56,6 +58,7 @@
         </section>
         <div id="sbs-af-progress" role="status" aria-live="polite" aria-atomic="true">No operation running.</div>
         <progress id="sbs-af-progress-bar" aria-label="Local finishing operation" hidden></progress>
+        <button id="sbs-af-refresh-qa" class="sbs-button" type="button">Refresh technical checks — no image changes</button><p>Refreshing checks clears local approval so you can review any new findings.</p>
         <div id="sbs-af-qa"></div>
         <section id="sbs-af-ai-review" class="sbs-af-ai-review" aria-labelledby="sbs-af-ai-review-title" hidden>
             <h3 id="sbs-af-ai-review-title">AI quality check</h3>
@@ -67,6 +70,7 @@
         <fieldset id="sbs-af-checks"><legend>5. Check this candidate</legend>
             <label><input type="checkbox" data-af-check="identity"> I checked the face, identity and composition against the original.</label>
             <label><input type="checkbox" data-af-check="lettering"> I checked wording and small details.</label>
+            <label><input type="checkbox" data-af-check="colour"> I checked colours against the original and accepted any untagged-sRGB assumption.</label>
             <label><input type="checkbox" data-af-check="texture"> I checked transparency, edges, halftone and distress.</label>
             <label><input type="checkbox" data-af-check="garments"> I checked all 12 garment colours and the intended print size.</label>
             <label><input type="checkbox" data-af-check="warnings"> I reviewed the warnings and accept any remaining limits.</label>
@@ -82,7 +86,7 @@
         <p id="sbs-af-package-name-help">Suggested from the artwork title. Studio adds version and date to avoid duplicate names.</p>
         <button id="sbs-af-export" class="sbs-button" type="button" disabled aria-describedby="sbs-af-package-help">7. Build approved ZIP</button>
         <a id="sbs-af-package" class="sbs-button" hidden download>Download local package</a>
-        <p id="sbs-af-package-help">ZIP contains the original, candidate and report. It is not a final print master.</p>
+        <p id="sbs-af-package-help">ZIP contains the original, candidate, report, finishing-qa.json and file checksums. It is not a final print master.</p>
     </section>
     <div id="sbs-af-ai-focus" class="sbs-af-ai-focus" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-ai-focus-title">
         <div class="sbs-af-ai-focus-head">

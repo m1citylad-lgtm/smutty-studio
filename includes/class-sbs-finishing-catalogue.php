@@ -21,6 +21,10 @@ final class SBS_Finishing_Catalogue
         }
         return $result;
     }
+    public static function production_rechecks($manifest,$sha256,$target)
+    {
+        return SBS_Print_QA::production_rechecks($manifest,$sha256,$target);
+    }
     public static function proposed_af_row($record)
     {
         $v=SBS_Finishing::current($record);

@@ -73,3 +73,9 @@ check($review_content[1]['type']==='input_image' && $review_content[1]['image_ur
 check($review_content[2]['type']==='input_image' && $review_content[2]['image_url']==='data:image/png;base64,' . base64_encode('unchanged-image-202'), 'Candidate was not sent as an unchanged data URL');
 check(!isset($review_content[1]['file_id']) && !isset($review_content[2]['file_id']), 'Large review still uses file URLs');
 echo "PASS: finishing comparison sends both unchanged full-resolution assets as data URLs\n";
+
+// Record actual native pixels separately from provider-reported settings; no maximum is inferred.
+$native_png=base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==');
+$result=SBS_OpenAI::parse_image_response(array('status'=>'completed','model'=>'router-revision','output'=>array(array('type'=>'image_generation_call','model'=>'image-revision','size'=>'auto','quality'=>'high','result'=>base64_encode($native_png)))));
+check($result['image_metadata']['actual_pixels']===array('width'=>1,'height'=>1)&&$result['image_metadata']['image_model_reported']==='image-revision'&&$result['image_metadata']['reported_size']==='auto','Native generation dimensions/model metadata lost or inferred from requested size');
+echo "PASS: native output metadata distinguishes requested/provider-reported dimensions from decoded pixels\n";
