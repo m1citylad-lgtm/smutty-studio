@@ -111,7 +111,9 @@ final class SBS_OpenAI
         $findings = array();
         foreach (array_slice($decoded['findings'], 0, 8) as $finding) {
             if (!is_array($finding)) { continue; }
-            $severity = in_array(($finding['severity'] ?? ''), array('review', 'concern'), true) ? $finding['severity'] : 'review';
+            $reported_severity = (string) ($finding['severity'] ?? '');
+            if ($reported_severity === 'info') { continue; }
+            $severity = in_array($reported_severity, array('review', 'concern'), true) ? $reported_severity : 'review';
             $findings[] = array(
                 'severity' => $severity,
                 'area' => sanitize_text_field((string) ($finding['area'] ?? 'Area not specified')),
