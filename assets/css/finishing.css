@@ -92,6 +92,8 @@
 .sbs-af-ai-findings li{border-left:5px solid #ffd05c;padding:.6rem .8rem;background:#172b49;border-radius:6px}
 .sbs-af-ai-findings li[data-severity="concern"]{border-left-color:#ff806b}
 .sbs-af-ai-findings p{margin:.35rem 0;color:#ffe08a}
+.sbs-af-ai-zoom-help{margin:.4rem 0;color:#fff3d4;font-size:.95rem}
+.sbs-af-ai-zoom-button{min-height:44px!important;margin-top:.35rem;padding:.35rem .85rem}
 @media(max-width:480px){.sbs-af-proof-stage{bottom:calc(64px + env(safe-area-inset-bottom))}.sbs-af-proof-toolbar{gap:5px}.sbs-af .sbs-af-colour{flex-basis:44px;width:44px;height:44px;min-height:44px}.sbs-af-proof-reset{min-height:42px!important;padding:0 10px}}
 
 .sbs-af-handoff{margin:1rem 0;padding:1rem;border:1px solid #d5b65b;border-radius:10px;background:#101d35;color:#fff}
