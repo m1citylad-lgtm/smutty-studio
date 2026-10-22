@@ -1317,7 +1317,7 @@ final class SBS_REST
             self::fail_job((int) $job['id'], new WP_Error('invalid_generated_image', 'OpenAI returned data that was not a valid image.'));
             return;
         }
-        $asset = SBS_Storage::store_bytes($parsed['bytes'], 'generated-' . $job['uuid'] . '.png', 'image/png', 'job', (int) $job['id'], 'generation', 'Generated artwork', array('openai_response_id' => $parsed['response_id']));
+        $asset = SBS_Storage::store_bytes($parsed['bytes'], 'generated-' . $job['uuid'] . '.png', 'image/png', 'job', (int) $job['id'], 'generation', 'Generated artwork', array('openai_response_id' => $parsed['response_id'],'native_generation'=>array_merge($parsed['image_metadata']??array(),array('provider'=>'OpenAI','requested_model'=>$payload['model']??null,'requested_size'=>$payload['size']??null,'requested_quality'=>$payload['quality']??null,'capability_maximum'=>'Not reported by provider; no automatic maximum claimed','stage'=>'native_generation_before_finishing'))));
         if (is_wp_error($asset)) {
             self::fail_job((int) $job['id'], $asset);
             return;

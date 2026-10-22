@@ -78,3 +78,17 @@ Artwork Finishing includes 12 colour proof backgrounds and a full-screen viewer 
 ### Focused AI review (v0.2.65)
 
 AI findings can open a full-screen 4× view centred on an approximate reported location. Switch between Original and Candidate, then scroll to pan. No marker covers the artwork. If the report has no location, the view starts at the image centre. Help text across Studio tabs is shorter while retaining important safety, privacy and cost notes.
+
+### Digital finishing preflight (v0.2.66)
+
+Artwork Finishing adds an explicit **Prepare print PNG** local stage. It uses the selected candidate (otherwise the original), converts valid embedded ICC profiles through Imagick, embeds the bundled sRGB profile, writes 8-bit RGBA PNG and 300 PPI metadata, and preserves originals. Untagged RGB is assumed sRGB with a visible review warning; unsupported/invalid colour declarations fail safely. GD-only hosts accept PNGs with known/assumed sRGB; non-PNG/profile conversion requires Imagick.
+
+Optional transparent target canvases fit, centre and pad without stretching, cropping or enlarging artwork pixels. The metadata shows the resulting artwork footprint in inches; a larger canvas does not invent detail. Print sizes remain editable.
+
+**Refresh technical checks** analyses the selected candidate without paid provider calls or pixel changes and clears local approval for renewed review. Bounded alpha samples can flag representative detached marks, enclosed openings and pale partial-alpha pixels. These are possible concerns, including intentional halftone/distress/counters/fades; they are never automatically removed. View area opens the existing 4× viewer without covering artwork with markers. Sampling can miss small defects. Low-memory hosts report sampling unavailable instead of risking a full-image decode.
+
+Approved local ZIPs include `finishing-qa.json` and `checksums.sha256`. The manifest records source/candidate hashes, export metadata, print target, generation/processing provenance, advisory findings and PASS/REVIEW/HOLD digital checks. It never grants production approval. The read-only production adapter reuses finishing checks only for approved matching bytes/target and requests selective rechecks after changed pixels or print size, plus brand placement and garment variants. Screen garment colours are contrast previews, not physical printer proofs.
+
+New OpenAI generations retain requested model/quality/size separately from provider-reported model/quality/size and actual decoded native pixels. Unknown provider revisions/maxima remain unknown. This release does not introduce new Freestyle models or query imaginary capability endpoints; live model-capability adapters and reference/outfit profiles remain deferred until Artwork Finishing owner acceptance.
+
+Validation: the existing release gates plus real PNG conversion, alpha/white-ink preservation, no-upscale canvas, selected-candidate lineage, QA reuse/invalidation and checksum-verified ZIP tests run with both Imagick and GD-only.

@@ -15,8 +15,8 @@ const studio = read('assets/js/studio.js');
 const backend = read('includes/class-sbs-finishing.php');
 const plugin = read('smutty-bear-studio.php');
 
-assert.match(plugin, /Version: 0\.2\.65/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.65'\)/);
+assert.match(plugin, /Version: 0\.2\.66/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.66'\)/);
 const openai = read('includes/class-sbs-openai.php');
 assert.match(openai, /finishing_review_input\(\(int\) \$original_asset_id\)/);
 assert.match(openai, /finishing_review_input\(\(int\) \$candidate_asset_id\)/);

@@ -207,6 +207,7 @@ final class SBS_OpenAI
                     'bytes' => $bytes,
                     'revised_prompt' => isset($item['revised_prompt']) ? $item['revised_prompt'] : '',
                     'image_call_id' => isset($item['id']) ? $item['id'] : '',
+                    'image_metadata' => array('image_model_reported'=>$item['model']??null,'response_model'=>$response['model']??null,'reported_size'=>$item['size']??null,'reported_quality'=>$item['quality']??null,'actual_pixels'=>($native=@getimagesizefromstring($bytes))?array('width'=>$native[0],'height'=>$native[1]):null),
                     'usage' => isset($response['usage']) ? $response['usage'] : array(),
                     'response_id' => isset($response['id']) ? $response['id'] : '',
                 );

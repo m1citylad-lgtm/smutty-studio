@@ -24,6 +24,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: zip, openssl, gd, imagick
+          coverage: none
+
       - name: Validate source and regression checks
         run: |
           find . -name '*.php' -not -path './build/*' -print0 | xargs -0 -n1 php -l
@@ -39,6 +45,8 @@ jobs:
           php tools/test-openai-response.php
           php tools/test-settings.php
           php tools/test-updater-rollback.php
+          php tools/test-print-qa.php
+          php -n -d extension=gd -d extension=zip tools/test-print-qa.php
           node tools/test-png-resolution.cjs
 
       - name: Build release
