@@ -8,11 +8,12 @@ function sanitize_textarea_field($v){return $v;}
 function remove_accents($v){return $v;}
 function wp_generate_uuid4(){return sprintf('%08s-0000-4000-8000-%012s',bin2hex(random_bytes(4)),bin2hex(random_bytes(6)));}
 function check_qa($v,$message){if(!$v){throw new Exception($message);}}
+class SBS_Finishing_Test_Request {private $params;private $files;function __construct($params,$files){$this->params=$params;$this->files=$files;}function get_param($key){return $this->params[$key]??null;}function get_file_params(){return $this->files;}}
 $dir=sys_get_temp_dir().'/sbs-print-test-'.bin2hex(random_bytes(5));mkdir($dir);mkdir($dir.'/tmp');
 class SBS_Storage {
     static function absolute_path($asset){return $asset['path'];}
     static function base_dir(){return $GLOBALS['dir'];}
-    static function store_bytes($bytes,$name,$mime,$owner,$id,$role,$title,$meta=array()){$path=self::base_dir().'/'.bin2hex(random_bytes(4)).'-'.$name;file_put_contents($path,$bytes);return array('path'=>$path,'filename'=>$name,'mime'=>$mime,'sha256'=>hash('sha256',$bytes),'metadata_json'=>json_encode($meta));}
+    static function store_bytes($bytes,$name,$mime,$owner,$id,$role,$title,$meta=array()){$path=self::base_dir().'/'.bin2hex(random_bytes(4)).'-'.$name;file_put_contents($path,$bytes);return array('path'=>$path,'uuid'=>wp_generate_uuid4(),'filename'=>$name,'mime'=>$mime,'sha256'=>hash('sha256',$bytes),'metadata_json'=>json_encode($meta));}
     static function store_file($path,$name,$mime,$owner,$id,$role,$title){return self::store_bytes(file_get_contents($path),$name,$mime,$owner,$id,$role,$title);}
 }
 require dirname(__DIR__).'/includes/class-sbs-print-qa.php';
@@ -42,6 +43,28 @@ try{
     $record_source=array('original'=>array('path'=>$source,'filename'=>'source.png','mime'=>'image/png','sha256'=>$hash),'original_qa'=>array('alpha'=>'Transparency detected (sampled)'),'title'=>'Test','versions'=>array(array('uuid'=>'selected','asset'=>array('path'=>$output,'filename'=>'normalized.png','mime'=>'image/png','sha256'=>hash_file('sha256',$output)))),'current_version'=>'selected');
     $process=new ReflectionMethod('SBS_Finishing','process');$process->setAccessible(true);$processed=$process->invoke(null,$record_source,$options);
     check_qa(!is_wp_error($processed)&&$processed['options']['source_sha256']===hash_file('sha256',$output),'Print conversion discarded the selected candidate');
+    // Flat-colour copies are local, keep identical dimensions, and record their exact parent.
+    $original_asset=array('path'=>$source,'uuid'=>'original-asset','filename'=>'original.png','mime'=>'image/png','sha256'=>$hash);
+    $original_qa=SBS_Finishing::inspect($original_asset,$options);
+    $flat_path=$dir.'/flat-copy.png';$flat_image=imagecreatefrompng($source);imagesetpixel($flat_image,0,0,imagecolorallocatealpha($flat_image,255,255,255,127));imagepng($flat_image,$flat_path);imagedestroy($flat_image);
+    $flat_file=array('tmp_name'=>$flat_path,'size'=>filesize($flat_path),'error'=>0);
+    $original_request=new SBS_Finishing_Test_Request(array('source_version'=>'original','colour'=>'#ffffff','tolerance'=>'18'),array('file'=>$flat_file));
+    $flat_version=SBS_Finishing::flat_background_version(array('original'=>$original_asset,'original_qa'=>$original_qa,'versions'=>array(),'current_version'=>null,'title'=>'Flat test'),$original_request);
+    check_qa(!is_wp_error($flat_version),'Flat-colour copy was refused');
+    check_qa($flat_version['options']['method']==='flat_background'&&$flat_version['options']['tolerance']===18&&$flat_version['source_version_uuid']===null,'Flat-colour settings or original parent lineage were lost');
+    check_qa($flat_version['qa']['width']===100&&$flat_version['qa']['height']===100,'Flat-colour copy dimensions changed');
+    check_qa(hash_file('sha256',$source)===$hash,'Flat-colour operation changed the untouched source bytes');
+    $parent_asset=SBS_Storage::store_bytes(file_get_contents($output),'parent.png','image/png','finishing',0,'finishing_candidate','Flat test');
+    $parent_qa=SBS_Finishing::inspect($parent_asset,$options);$parent_version=array('uuid'=>'parent-version','number'=>1,'asset'=>$parent_asset,'qa'=>$parent_qa,'options'=>$options);
+    $child_request=new SBS_Finishing_Test_Request(array('source_version'=>'parent-version','colour'=>'#ffffff','tolerance'=>'7'),array('file'=>$flat_file));
+    $child=SBS_Finishing::flat_background_version(array('original'=>$original_asset,'original_qa'=>$original_qa,'versions'=>array($parent_version),'current_version'=>'parent-version','title'=>'Flat test'),$child_request);
+    check_qa(!is_wp_error($child)&&$child['source_version_uuid']==='parent-version'&&$child['options']['source_sha256']===$parent_asset['sha256'],'Selected candidate source lineage was not preserved');
+    $undo_record=array('original'=>$original_asset,'versions'=>array($parent_version,$child),'current_version'=>$child['uuid'],'approval'=>array('version'=>$child['uuid']));$undone=SBS_Finishing::undo_flat_background($undo_record);
+    check_qa(!is_wp_error($undone)&&$undone['current_version']==='parent-version'&&$undone['approval']===null,'Undo did not reselect the source candidate');
+    $undo_original=SBS_Finishing::undo_flat_background(array('original'=>$original_asset,'versions'=>array($flat_version),'current_version'=>$flat_version['uuid'],'approval'=>null));
+    check_qa(!is_wp_error($undo_original)&&$undo_original['current_version']===null,'Undo did not restore the untouched original');
+    $stale_request=new SBS_Finishing_Test_Request(array('source_version'=>'wrong-version','colour'=>'#ffffff','tolerance'=>'0'),array('file'=>$flat_file));
+    check_qa(is_wp_error(SBS_Finishing::flat_background_version(array('original'=>$original_asset,'original_qa'=>$original_qa,'versions'=>array(),'current_version'=>null,'title'=>'Flat test'),$stale_request)),'Stale or foreign source version was accepted');
     $options['width']=30;$options['height']=30;check_qa(is_wp_error(SBS_Print_QA::normalize($source,$options)),'Unsafe canvas was accepted');
     $options['width']=1;$options['height']=1;
     $asset=array('path'=>$source,'filename'=>'original.png','mime'=>'image/png','sha256'=>$hash);

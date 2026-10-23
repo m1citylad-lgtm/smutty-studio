@@ -6,7 +6,7 @@ final class SBS_Finishing
 {
     public static function register_routes()
     {
-        foreach (array('' => array('GET','listing'), '/upload' => array('POST','upload'), '/(?P<uuid>[a-f0-9-]{36})' => array('GET','get'), '/(?P<uuid>[a-f0-9-]{36})/action' => array('POST','action')) as $path => $route) {
+        foreach (array('' => array('GET','listing'), '/upload' => array('POST','upload'), '/freestyle-sources' => array('GET','freestyle_sources'), '/freestyle-source' => array('POST','import_freestyle'), '/(?P<uuid>[a-f0-9-]{36})' => array('GET','get'), '/(?P<uuid>[a-f0-9-]{36})/action' => array('POST','action')) as $path => $route) {
             register_rest_route(SBS_REST::NS, '/finishing'.$path, array('methods'=>$route[0], 'callback'=>array(__CLASS__,$route[1]), 'permission_callback'=>array(__CLASS__,'permission')));
         }
     }
@@ -59,6 +59,47 @@ final class SBS_Finishing
         }
         usort($records,function($a,$b){return strcmp($b['updated_at'],$a['updated_at']);});
         return array('mode'=>'local_preview','records'=>array_slice($records,0,200),'drive_writes_enabled'=>false,'af_register'=>'1LQQAciLLM77nQTiUqaQcOvrpFlUyAWFymX3jWIt8Kb8');
+    }
+    public static function freestyle_sources()
+    {
+        global $wpdb;
+        $table=SBS_DB::table('projects');
+        $rows=$wpdb->get_results("SELECT uuid FROM {$table} WHERE concept_json LIKE '%freestyle%' ORDER BY updated_at DESC LIMIT 100",ARRAY_A);
+        $sources=array();
+        foreach($rows as $row){
+            $project=SBS_Freestyle::project($row['uuid']);if(is_wp_error($project)){continue;}
+            $generations=$project['generations']??array();$count=count($generations);
+            foreach($generations as $index=>$generation){
+                if(empty($generation['asset_uuid'])||empty($generation['asset_url'])){continue;}
+                $generation['project_uuid']=$project['uuid'];$generation['project_title']=$project['title'];$generation['version_number']=$count-$index;
+                $sources[]=$generation;
+            }
+        }
+        usort($sources,function($a,$b){return strcmp((string)($b['created_at']??''),(string)($a['created_at']??''));});
+        return array('sources'=>array_slice($sources,0,200));
+    }
+    public static function import_freestyle($request)
+    {
+        $project_uuid=sanitize_text_field((string)$request->get_param('project_uuid'));
+        $generation_uuid=sanitize_text_field((string)$request->get_param('generation_uuid'));
+        $project=SBS_Freestyle::project($project_uuid);if(is_wp_error($project)){return $project;}
+        $generation=null;foreach(($project['generations']??array()) as $row){if($row['uuid']===$generation_uuid){$generation=$row;break;}}
+        if(!$generation||empty($generation['asset_uuid'])||empty($generation['output_asset_id'])){return self::error('source','Choose a completed Freestyle image.');}
+        $source=SBS_Storage::get_asset((int)$generation['output_asset_id']);
+        if(!$source||!self::intact($source)){return self::error('integrity','The selected Freestyle image could not be verified. No finishing workspace was created.',409);}
+        $source_path=SBS_Storage::absolute_path($source);$bytes=is_file($source_path)?file_get_contents($source_path):false;
+        if(!is_string($bytes)||$bytes===''||hash('sha256',$bytes)!==$source['sha256']){return self::error('integrity','The selected Freestyle image could not be copied byte for byte. No workspace was created.',409);}
+        $all=$project['generations']??array();$version=(int)($generation['version_number']??0);
+        if(!$version){$version=count($all)-array_search($generation,$all,true);}
+        $source_metadata=array('source_route'=>'freestyle_handoff','freestyle_project_uuid'=>$project['uuid'],'freestyle_generation_uuid'=>$generation['uuid'],'freestyle_source_asset_uuid'=>$source['uuid'],'freestyle_source_sha256'=>$source['sha256'],'freestyle_settings'=>$generation['freestyle_settings']??null,'freestyle_instruction'=>$generation['freestyle_instruction']??'','freestyle_brief'=>$generation['freestyle_brief']??($project['concept']['original_brief']??''),'freestyle_references'=>$generation['freestyle_reference_uuids']??array());
+        $asset=SBS_Storage::store_bytes($bytes,$source['filename'],$source['mime'],'finishing',0,'finishing_original',$project['title'],$source_metadata);if(is_wp_error($asset)){return $asset;}
+        $lineage=array();$by_id=array();foreach($all as $entry){$by_id[(int)$entry['id']]=$entry;}
+        $cursor=$generation;$seen=array();while($cursor&&!isset($seen[$cursor['uuid']])){$seen[$cursor['uuid']]=true;$lineage[] = array('uuid'=>$cursor['uuid'],'parent_uuid'=>($by_id[(int)($cursor['parent_id']??0)]['uuid']??null),'created_at'=>$cursor['created_at']??null,'action'=>$cursor['action']??'generate','instruction'=>$cursor['freestyle_instruction']??'','settings'=>$cursor['freestyle_settings']??null,'brief'=>$cursor['freestyle_brief']??null,'asset_uuid'=>$cursor['asset_uuid']??null);$cursor=$by_id[(int)($cursor['parent_id']??0)]??null;}
+        $lineage=array_reverse($lineage);$options=self::options(array());$qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
+        $uuid=wp_generate_uuid4();$path=self::path($uuid);if(is_wp_error($path)){return $path;}
+        $title=sanitize_text_field($project['title'].' — v'.$version);
+        $record=array('schema'=>1,'uuid'=>$uuid,'af_id'=>null,'title'=>$title,'links'=>array('idea_ids'=>array(),'sb_id'=>'','verified'=>false),'source_route'=>'freestyle_handoff','original'=>$asset,'original_qa'=>$qa,'versions'=>array(),'current_version'=>null,'approval'=>null,'metadata_status'=>'TBC','status'=>'Awaiting Finishing','next_action'=>'Choose a local stage; Freestyle artwork is not approved for printing','freestyle_source'=>array('project_uuid'=>$project['uuid'],'project_title'=>$project['title'],'generation_uuid'=>$generation['uuid'],'version_number'=>$version,'created_at'=>$generation['created_at']??null,'instruction'=>$generation['freestyle_instruction']??'','brief'=>$generation['freestyle_brief']??($project['concept']['original_brief']??''),'settings'=>$generation['freestyle_settings']??null,'references'=>$generation['freestyle_reference_uuids']??array(),'lineage'=>$lineage,'source_asset_uuid'=>$source['uuid'],'source_sha256'=>$source['sha256']),'drive'=>array('original_file_id'=>null,'folder_id'=>null,'approved_master_file_id'=>null,'verified'=>false),'created_at'=>gmdate('c'),'updated_at'=>gmdate('c'),'revision'=>1,'audit'=>array(array('at'=>gmdate('c'),'action'=>'Copied Freestyle version byte for byte into Artwork Finishing; not print approved')));
+        return self::write($path,$record);
     }
     public static function get($request)
     {
@@ -128,6 +169,12 @@ final class SBS_Finishing
             if($action==='prepare'){
                 $o=self::options($request->get_param('options'));if(is_wp_error($o)){return $o;}
                 $r['pending']=$o;$r['status']='Queued';$r['approval']=null;$r['next_action']='Run queued local stage or cancel';
+            } elseif($action==='flat_background'){
+                if(!empty($r['pending'])){return self::error('busy','Cancel or finish the queued stage before removing a background.',409);}
+                $v=self::flat_background_version($r,$request);if(is_wp_error($v)){return $v;}
+                $r['versions'][]=$v;$r['current_version']=$v['uuid'];$r['approval']=null;$r['status']='Awaiting Review';$r['next_action']='Inspect the flat-colour removal copy; Undo or select another version if needed';
+            } elseif($action==='undo_flat_background'){
+                $undone=self::undo_flat_background($r);if(is_wp_error($undone)){return $undone;}$r=$undone;
             } elseif($action==='cancel'){
                 if(empty($r['pending'])){return self::error('state','No queued stage to cancel.');}
                 if(!empty($r['pending']['replicate_prediction_id'])){$canceled=SBS_Replicate::cancel($r['pending']['replicate_prediction_id']);if(is_wp_error($canceled)){return $canceled;}}
@@ -209,6 +256,37 @@ final class SBS_Finishing
         return array('uuid'=>wp_generate_uuid4(),'number'=>count($r['versions'])+1,'asset'=>$asset,'options'=>$options,'qa'=>$qa,'created_at'=>gmdate('c'),'provider_result'=>array('status'=>'succeeded','prediction_id'=>sanitize_text_field((string)($prediction['id']??'')),'predict_time'=>$duration),'comparison'=>array('byte_identical'=>hash_equals($r['original']['sha256'],$asset['sha256']),'geometry'=>self::geometry_report($r['original'],$asset,$r['original_qa'],$qa),'structural_detection'=>'Not run — human review required','text_face_detection'=>'Not run — human review required'));
     }
     public static function current($r){foreach($r['versions'] as $v){if($v['uuid']===$r['current_version']){return $v;}}return null;}
+    public static function flat_background_version($r,$request)
+    {
+        $source_uuid=(string)$request->get_param('source_version');
+        $selected=self::current($r);$expected=$selected?$selected['uuid']:'original';
+        if($source_uuid!==$expected){return self::error('source_version','The selected source changed. Refresh and try again.',409);}
+        $source=$selected?$selected['asset']:$r['original'];$source_qa=$selected?$selected['qa']:$r['original_qa'];
+        if(!self::intact($r['original'])||!self::intact($source)){return self::error('integrity','Source checksum mismatch. No copy was saved.',409);}
+        $colour=strtolower((string)$request->get_param('colour'));$tolerance=$request->get_param('tolerance');
+        if(!preg_match('/^#[0-9a-f]{6}$/D',$colour)||!preg_match('/^(?:0|[1-9][0-9]?|100)$/D',(string)$tolerance)){return self::error('options','Choose a background colour and tolerance from 0 to 100.');}
+        $file=$request->get_file_params()['file']??array();$file_bytes=(int)($file['size']??0);
+        if($file_bytes>20*1024*1024){return self::error('too_large','The PNG copy is larger than 20 MB. No copy was saved.');}
+        if(!empty($file['error'])||empty($file['tmp_name'])||!is_readable($file['tmp_name'])){return self::error('upload','The PNG copy could not be received. The source is unchanged.');}
+        $size=@getimagesize($file['tmp_name']);$source_size=@getimagesize(SBS_Storage::absolute_path($source));
+        if(!$size||($size['mime']??'')!=='image/png'||!$source_size){return self::error('format','The processed copy must be a valid PNG. The source is unchanged.');}
+        if((int)$size[0]*(int)$size[1]>32000000){return self::error('pixels','Flat-colour removal supports images up to 32 million pixels. The source is unchanged.',413);}
+        if((int)$size[0]!== (int)$source_size[0]||(int)$size[1]!== (int)$source_size[1]){return self::error('dimensions','The copy dimensions do not match the selected source. No copy was saved.',409);}
+        $bytes=file_get_contents($file['tmp_name']);if(!is_string($bytes)||$bytes===''){return self::error('upload','The PNG copy could not be read. The source is unchanged.');}
+        $asset=SBS_Storage::store_bytes($bytes,'candidate-flat-background.png','image/png','finishing',0,'finishing_candidate',$r['title'],array('finishing_operation'=>'edge_connected_flat_colour_removal','source_asset_uuid'=>$source['uuid']??null));if(is_wp_error($asset)){return $asset;}
+        $options=array('method'=>'flat_background','colour'=>$colour,'tolerance'=>(int)$tolerance,'source_version_uuid'=>$selected['uuid']??null,'source_asset_uuid'=>$source['uuid']??null,'source_sha256'=>$source['sha256'],'width'=>(float)($selected['options']['width']??15),'height'=>(float)($selected['options']['height']??18),'ppi'=>300,'provider'=>null,'model'=>null,'estimated_provider_cost'=>0,'preserve_texture'=>true,'generative_redraw'=>false);
+        $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
+        return array('uuid'=>wp_generate_uuid4(),'number'=>count($r['versions'])+1,'asset'=>$asset,'options'=>$options,'qa'=>$qa,'created_at'=>gmdate('c'),'source_version_uuid'=>$selected['uuid']??null,'source_asset_uuid'=>$source['uuid']??null,'comparison'=>array('byte_identical'=>hash_equals($r['original']['sha256'],$asset['sha256']),'geometry'=>self::geometry_report($source,$asset,$source_qa,$qa),'structural_detection'=>'Not run — human review required','text_face_detection'=>'Not run — human review required'));
+    }
+    public static function undo_flat_background($r)
+    {
+        $version=self::current($r);
+        if(!$version||($version['options']['method']??'')!=='flat_background'){return self::error('undo','Select a flat-colour removal version before using Undo.');}
+        $parent=$version['source_version_uuid']??null;$valid_empty=empty($parent);
+        if(!$valid_empty){$valid_parent=false;foreach($r['versions'] as $candidate){if($candidate['uuid']===$parent){$valid_parent=true;break;}}if(!$valid_parent){return self::error('undo','The source version for this copy is unavailable.',409);}}
+        $r['current_version']=$parent?:null;$r['approval']=null;unset($r['pending']);$r['status']=$parent?'Awaiting Review':'Awaiting Finishing';$r['next_action']=$parent?'Review the restored source version':'Choose a local stage or apply another optional operation';
+        return $r;
+    }
     private static function alpha_kind($qa)
     {
         if(($qa['pixel_review']['status']??'')==='sampled'){return !empty($qa['pixel_review']['partial_samples'])?'partial':(!empty($qa['pixel_review']['clear_samples'])?'transparent':'opaque');}

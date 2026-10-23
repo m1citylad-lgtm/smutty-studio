@@ -110,9 +110,9 @@ final class SBS_Plugin
         wp_enqueue_style('sbs-studio-theme', SBS_PLUGIN_URL . 'assets/css/studio-theme.css', array('sbs-studio-hierarchy'), SBS_VERSION);
         wp_enqueue_script('sbs-fabric', SBS_PLUGIN_URL . 'assets/vendor/fabric.min.js', array(), '5.3.0', true);
         wp_enqueue_script('sbs-studio', SBS_PLUGIN_URL . 'assets/js/studio.js', array('sbs-fabric'), SBS_VERSION, true);
-
-        wp_enqueue_script('sbs-freestyle', SBS_PLUGIN_URL . 'assets/js/freestyle.js', array('sbs-studio'), SBS_VERSION, true);
-        wp_enqueue_script('sbs-finishing', SBS_PLUGIN_URL . 'assets/js/finishing.js', array('sbs-studio'), SBS_VERSION, true);
+        wp_enqueue_script('sbs-flat-background', SBS_PLUGIN_URL . 'assets/js/flat-background.js', array(), SBS_VERSION, true);
+        wp_enqueue_script('sbs-freestyle', SBS_PLUGIN_URL . 'assets/js/freestyle.js', array('sbs-studio', 'sbs-flat-background'), SBS_VERSION, true);
+        wp_enqueue_script('sbs-finishing', SBS_PLUGIN_URL . 'assets/js/finishing.js', array('sbs-studio', 'sbs-flat-background'), SBS_VERSION, true);
         wp_enqueue_style('sbs-finishing', SBS_PLUGIN_URL . 'assets/css/finishing.css', array('sbs-studio-theme'), SBS_VERSION);
         include SBS_PLUGIN_DIR . 'templates/studio.php';
         exit;

@@ -13,6 +13,7 @@
 .sbs-af-compare[data-proof=light] .sbs-af-viewport{background:#fff}
 .sbs-af-compare[data-proof=dark] .sbs-af-viewport{background:#17182b}
 .sbs-af-notice,#sbs-af-progress{padding:1rem;border:2px solid #eac56c;background:#17182b;color:#fff3d7;border-radius:8px}
+.sbs-af-flat-background{margin:1rem 0;padding:1rem;border:1px solid #b69c65;border-radius:8px}.sbs-af-flat-background legend{font-weight:700;color:#fff3d7}.sbs-af-flat-background p{line-height:1.5}.sbs-af-flat-background button{margin:.25rem .5rem .25rem 0}#sbs-af-flat-status{min-height:1.5em;margin:.5rem 0 0}
 #sbs-af-upload-status{margin:.8rem 0;padding:.8rem 1rem;border:2px solid #eac56c;background:#17182b;color:#fff3d7;border-radius:8px;overflow-wrap:anywhere}
 #sbs-af-upload-status[data-state=error]{border-color:#ff987c}
 #sbs-af-upload-status[data-state=success]{border-color:#f0a23b}
