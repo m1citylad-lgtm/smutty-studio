@@ -4,6 +4,12 @@
         return [record.title, record.uuid, record.af_id || ''].join(' ').toLowerCase().includes(query.toLowerCase());
     }
     function canApprove(record) { return !!record && record.status === 'Awaiting Review' && !!record.current_version; }
+    function classifyTransparency(data) {
+        if(!data||!data.length||data.length%4)throw new Error('Decoded pixels are unavailable');
+        var clear=false,partial=false;
+        for(var i=3;i<data.length;i+=4){if(data[i]===0)clear=true;else if(data[i]<255)partial=true;}
+        return partial?'Partial alpha':clear?'Genuine transparency':'Opaque';
+    }
     function init() {
         var root=document.getElementById('sbs-app');if(!root || root.getAttribute('data-authenticated')!=='1')return;
         var current=null, records=[], busy=false, selectedFile=null, exportPickerOpen=false, proofPreviewUrl=null, proofSourceKey='', proofRenderedKey='', activePrintQA=null, activeProofAssetUrl='';
@@ -106,7 +112,16 @@
             return filename;
         }
         function chooseFile(input){var file=input.files&&input.files[0];selectedFile=file||null;if(!file){message('No file selected. Choose Photos / Gallery or Files / My Files.',true);uploadMessage('No file selected. Choose an image to continue.');return;}var other=el(input.id==='sbs-af-file'?'sbs-af-gallery-file':'sbs-af-file');other.value='';if(file.size>20*1024*1024){selectedFile=null;input.value='';var warning='This file is '+fileSize(file.size)+'. The limit is 20 MB. Choose a smaller copy; your original file will not be changed.';message(warning,true);uploadMessage(warning,'error');return;}var selected=file.name+' selected ('+fileSize(file.size)+'). Press Store untouched original locally to continue.';message(selected);uploadMessage(selected);}
-        function image(id,asset,alt){var img=el(id);img.hidden=!asset;if(asset){img.src=asset.url;img.alt=alt;}else{img.removeAttribute('src');img.alt='';}}
+        function setTransparency(id,result){var box=el(id);box.dataset.state=result==='Opaque'?'opaque':result==='Partial alpha'?'partial':result==='Genuine transparency'?'transparent':'unknown';box.querySelector('.sbs-transparency-label').textContent='Transparency: '+result;}
+        async function inspectTransparency(imageId,indicatorId){
+            var img=el(imageId),box=el(indicatorId),source=img.getAttribute('src');box.hidden=!source;
+            if(!source){box.dataset.inspectKey='';setTransparency(indicatorId,'Not checked');return;}
+            if(box.dataset.inspectKey===source)return;
+            box.dataset.inspectKey=source;setTransparency(indicatorId,'Not checked');
+            try{await img.decode();if(img.getAttribute('src')!==source||box.dataset.inspectKey!==source)return;var width=img.naturalWidth,height=img.naturalHeight,total=width*height;if(!width||!height||total>32000000)throw new Error('Pixel inspection unavailable');var canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;var context=canvas.getContext('2d',{willReadFrequently:true});if(!context)throw new Error('Pixel inspection unavailable');context.drawImage(img,0,0);var result=classifyTransparency(context.getImageData(0,0,width,height).data);if(img.getAttribute('src')===source&&box.dataset.inspectKey===source)setTransparency(indicatorId,result);}
+            catch(error){if(img.getAttribute('src')===source&&box.dataset.inspectKey===source)setTransparency(indicatorId,'Not checked');}
+        }
+        function image(id,asset,alt){var img=el(id);img.hidden=!asset;if(asset){if(img.getAttribute('src')!==asset.url)img.src=asset.url;img.alt=alt;}else{img.removeAttribute('src');img.alt='';}}
         function refreshPrintStatus(){
             var q=activePrintQA,status=el('sbs-af-print-status');
             if(!q){status.textContent='PPI: unavailable | Target: 300';status.dataset.state='warning';return;}
@@ -260,6 +275,7 @@
             var queuedCost=current&&current.pending&&current.pending.method==='upscale'?Number(current.pending.estimated_provider_cost||0):0;
             el('sbs-af-stage-help').textContent=queuedCost>0?'No provider request has been sent yet. Running this queued upscale will send the selected image to Replicate Real-ESRGAN. Estimated cost: $'+queuedCost.toFixed(3)+' for this image; actual provider billing may vary. You can cancel instead.':'Choose a stage. Queue it, then run it. The original stays unchanged.';var nameField=el('sbs-af-package-name');var workspaceKey=current?current.uuid:'';if(nameField.dataset.workspace!==workspaceKey){nameField.value=current?friendlyName(current.title)+'-local-finishing.zip':'';nameField.dataset.workspace=workspaceKey;}var v=current&&current.versions.find(function(v){return v.uuid===current.current_version;});
             image('sbs-af-original',current&&current.original,'Untouched original: '+(current?current.title:''));image('sbs-af-candidate',v&&v.asset,'Candidate version '+(v?v.number:''));
+            inspectTransparency('sbs-af-original','sbs-af-original-transparency');inspectTransparency('sbs-af-candidate','sbs-af-candidate-transparency');
             var candidateLink=el('sbs-af-candidate-download');candidateLink.hidden=!v;if(v){candidateLink.href=v.asset.url;}else{candidateLink.removeAttribute('href');}
             el('sbs-af-next').textContent=current?'Next action: '+current.next_action+' — '+current.status+' — local '+current.uuid:'Next action: upload or resume artwork.';
             var sourceDetails=el('sbs-af-freestyle-source'),freestyle=current&&current.freestyle_source;
@@ -360,6 +376,6 @@
         window.addEventListener('sbs-finishing-open',function(event){if(!event.detail)return;current=event.detail;render();message('Freestyle image copied byte for byte. Source settings, instructions and history are saved. This image is not approved for printing.');});
         render();
     }
-    if(typeof window!=='undefined')window.SBSFinishing={matches:matches,canApprove:canApprove,init:init};
+    if(typeof window!=='undefined')window.SBSFinishing={matches:matches,canApprove:canApprove,classifyTransparency:classifyTransparency,init:init};
     if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();}
 }());

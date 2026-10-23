@@ -350,11 +350,17 @@ body#sbs-studio-page .sbs-settings-admin .bad { color:#ffc45e; font-weight:bold;
  body#sbs-studio-page .sbs-settings-admin .widefat { display:block; overflow-x:auto; }
 }
 
-body#sbs-studio-page .sbs-fs-transparency{font-weight:700}
-body#sbs-studio-page .sbs-fs-transparency[data-state="opaque"]{color:#b42318}
-body#sbs-studio-page .sbs-fs-transparency[data-state="partial"]{color:#9a6700}
-body#sbs-studio-page .sbs-fs-transparency[data-state="transparent"]{color:#1a7f37}
-body#sbs-studio-page .sbs-fs-transparency[data-state="unknown"]{color:var(--sbs-text-muted)}
+body#sbs-studio-page .sbs-transparency-indicator{display:grid;gap:5px;width:100%;max-width:100%;margin:8px 0 4px;padding:0;box-sizing:border-box}
+body#sbs-studio-page .sbs-transparency-bar{display:block;width:100%;height:5px;border-radius:999px;background:#687080;box-shadow:0 0 0 1px #fff8}
+body#sbs-studio-page .sbs-transparency-label{display:inline-flex;align-items:center;align-self:start;min-height:30px;padding:3px 11px;border:2px solid #687080;border-radius:999px;background:#111827;color:#fff;font-weight:700;line-height:1.25}
+body#sbs-studio-page .sbs-transparency-indicator[data-state="opaque"] .sbs-transparency-bar{background:#d32f2f}
+body#sbs-studio-page .sbs-transparency-indicator[data-state="opaque"] .sbs-transparency-label{border-color:#ff5252}
+body#sbs-studio-page .sbs-transparency-indicator[data-state="partial"] .sbs-transparency-bar{background:#f0a000}
+body#sbs-studio-page .sbs-transparency-indicator[data-state="partial"] .sbs-transparency-label{border-color:#ffc247}
+body#sbs-studio-page .sbs-transparency-indicator[data-state="transparent"] .sbs-transparency-bar{background:#168a45}
+body#sbs-studio-page .sbs-transparency-indicator[data-state="transparent"] .sbs-transparency-label{border-color:#45c477}
+body#sbs-studio-page .sbs-transparency-indicator[data-state="unknown"] .sbs-transparency-bar{background:#687080}
+body#sbs-studio-page .sbs-transparency-key{margin:4px 0 12px;color:#fff!important;font-size:.9rem;line-height:1.45}
 body#sbs-studio-page .sbs-fs-source-row{display:grid;grid-template-columns:minmax(88px,140px) minmax(0,1fr);gap:14px;align-items:center;padding:12px;margin:10px 0;border:1px solid var(--sbs-border);border-radius:10px;background:var(--sbs-card)}
 body#sbs-studio-page .sbs-fs-source-row img{width:100%;height:100px;object-fit:contain;background:#fff}
 body#sbs-studio-page .sbs-fs-source-row p{margin:5px 0 10px}
