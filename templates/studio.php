@@ -11,10 +11,10 @@
 <div id="sbs-app" class="sbs-shell" data-rest="<?php echo esc_url(rest_url('smutty-bear/v1/')); ?>" data-authenticated="<?php echo SBS_Auth::is_authenticated() ? '1' : '0'; ?>" data-slug="<?php echo esc_attr(SBS_Plugin::studio_slug()); ?>" data-version="<?php echo esc_attr(SBS_VERSION); ?>" data-finishing-csrf="<?php echo SBS_Auth::is_authenticated() ? esc_attr(SBS_Finishing::csrf()) : ''; ?>" data-open-settings="<?php echo isset($_GET['settings']) ? '1' : '0'; ?>">
     <header class="sbs-header">
         <nav id="sbs-primary-nav" class="sbs-primary-tabs" aria-label="Main studio areas" <?php echo SBS_Auth::is_authenticated() ? '' : 'hidden'; ?>>
-            <button data-primary-tab="characters" class="active">Characters</button>
+            <button data-primary-tab="finishing" class="active">Artwork Finishing</button>
             <button data-primary-tab="freestyle">Freestyle</button>
-            <button data-primary-tab="finishing">Artwork Finishing</button>
             <button data-primary-tab="catalogue">Artwork Catalogue</button>
+            <button data-primary-tab="characters">Characters</button>
             <button data-primary-tab="usage">Usage</button>
             <button data-primary-tab="settings">Settings</button>
         </nav>
@@ -43,8 +43,10 @@
             <div class="sbs-character-tray">
             <div class="sbs-character-context">
                 <div class="sbs-character-selector"><p class="sbs-kicker">CURRENT CHARACTER</p><label class="sbs-context-select"><select id="sbs-current-pack" aria-label="Current character"></select></label></div>
-                <nav class="sbs-tabs" aria-label="Studio sections">
-                    <button data-tab="characters" class="active"><span class="sbs-stage-number">1.</span> Description</button>
+                <div class="sbs-character-page-picker">
+                <button class="sbs-character-page-trigger" id="sbs-character-page-trigger" type="button" aria-expanded="false" aria-controls="sbs-character-page-menu"><span class="sbs-character-page-menu-icon" aria-hidden="true">☰</span><span>Character pages: <strong id="sbs-character-page-current">Description</strong></span><span class="sbs-character-page-caret" aria-hidden="true">▾</span></button>
+                <nav class="sbs-tabs sbs-character-page-menu" id="sbs-character-page-menu" aria-label="Character pages" hidden>
+                    <button data-tab="characters" class="active" aria-current="page"><span class="sbs-stage-number">1.</span> Description</button>
                     <button data-tab="library">Character library</button>
                     <button data-tab="development"><span class="sbs-stage-number">2.</span> Visual Development</button>
                     <button data-tab="references"><span class="sbs-stage-number">3.</span> Reference</button>
@@ -52,6 +54,7 @@
                     <button data-tab="projects"><span class="sbs-stage-number">5.</span> Creations</button>
                     <button data-tab="canvas"><span class="sbs-stage-number">6.</span> Merch Canvas</button>
                 </nav>
+                </div>
                 <div class="sbs-character-commands"><button id="sbs-new-pack" class="sbs-button primary">New character</button><button id="sbs-fork-pack" class="sbs-button" disabled>Create new version</button></div>
             </div>
             </div>
@@ -84,7 +87,7 @@
                 <div id="sbs-live-jobs" class="sbs-job-grid"></div>
             </section>
 
-            <section class="sbs-panel active" data-panel="characters">
+            <section class="sbs-panel" data-panel="characters">
                 <div class="sbs-panel-heading"><div><p class="sbs-kicker">CHARACTER DESCRIPTION</p><h1><span class="sbs-stage-number">1.</span> Description</h1></div></div>
                 <aside class="sbs-tab-help"><span aria-hidden="true">&#9998;</span><div><strong>Set the character's identity.</strong> Add key traits, exclusions, humour and colours. AI suggestions never replace your description unless you approve them.</div></aside>
                 <div id="sbs-pack-description" class="sbs-card"><p class="sbs-muted">Choose a character above or create a new character.</p></div>

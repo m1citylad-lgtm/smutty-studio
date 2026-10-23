@@ -33,8 +33,19 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0\.2\.70/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.70'\)/);
+assert.match(plugin, /Version: 0\.2\.71/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.71'\)/);
+const mainNav = studioTemplate.match(/<nav id="sbs-primary-nav"[\s\S]*?<\/nav>/)[0];
+assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="freestyle"'));
+assert.ok(mainNav.indexOf('data-primary-tab="freestyle"') < mainNav.indexOf('data-primary-tab="catalogue"'));
+assert.ok(mainNav.indexOf('data-primary-tab="catalogue"') < mainNav.indexOf('data-primary-tab="characters"'));
+assert.match(mainNav, /data-primary-tab="finishing" class="active"/);
+assert.match(studioTemplate, /id="sbs-character-page-trigger"[^>]*aria-expanded="false"[^>]*aria-controls="sbs-character-page-menu"/);
+assert.match(studioTemplate, /id="sbs-character-page-menu"[^>]*aria-label="Character pages"[^>]*hidden/);
+for (const page of ['characters', 'library', 'development', 'references', 'create', 'projects', 'canvas']) {
+    assert.match(studioTemplate, new RegExp('data-tab="' + page + '"'));
+}
+assert.match(studio, /event\.key === 'Escape'.*closeMenu\(true\)/);
 const openai = read('includes/class-sbs-openai.php');
 assert.match(openai, /finishing_review_input\(\(int\) \$original_asset_id\)/);
 assert.match(openai, /finishing_review_input\(\(int\) \$candidate_asset_id\)/);
