@@ -1,6 +1,7 @@
 <section class="sbs-panel sbs-af" data-panel="finishing" aria-labelledby="sbs-af-title">
     <h1 id="sbs-af-title" tabindex="-1">Artwork Finishing</h1>
     <p class="sbs-af-notice"><strong>Local Artwork Finishing.</strong> Files stay in private Studio storage. Download the package when ready. Local finishing approval does not approve production.</p>
+    <details id="sbs-af-freestyle-source" hidden><summary>Freestyle source history</summary><p id="sbs-af-freestyle-source-summary"></p><p id="sbs-af-freestyle-source-settings"></p><ol id="sbs-af-freestyle-source-lineage"></ol></details>
     <div class="sbs-grid two">
         <section class="sbs-card"><h2>1. Choose artwork</h2>
             <form id="sbs-af-upload">
@@ -15,10 +16,17 @@
             <button id="sbs-af-refresh" class="sbs-button" type="button">Refresh workspaces</button>
         </section>
         <section class="sbs-card"><h2>2. Choose a stage</h2>
-            <label for="sbs-af-method">Processing option<select id="sbs-af-method"><option value="inspect">Inspect — exact byte copy, no image changes</option><option value="resize">Fit down to print box — preserve aspect ratio, no crop</option><option value="print_png">Prepare print PNG — sRGB, RGBA, 300 PPI</option><option value="upscale">AI upscale — Replicate Real-ESRGAN (automatic 2× or 4×)</option><option disabled>Sharpen / denoise / edge cleaning — preservation validation pending</option><option disabled>Background removal — deliberate background protection pending</option></select></label>
+            <label for="sbs-af-method">Processing option<select id="sbs-af-method"><option value="inspect">Inspect — exact byte copy, no image changes</option><option value="resize">Fit down to print box — preserve aspect ratio, no crop</option><option value="print_png">Prepare print PNG — sRGB, RGBA, 300 PPI</option><option value="upscale">AI upscale — Replicate Real-ESRGAN (automatic 2× or 4×)</option></select></label>
             <div class="sbs-grid two"><label for="sbs-af-width">Print width (inches)<input id="sbs-af-width" type="number" min="1" max="30" step="0.25" value="15"></label><label for="sbs-af-height">Print height (inches)<input id="sbs-af-height" type="number" min="1" max="30" step="0.25" value="18"></label></div>
             <label><input id="sbs-af-print-canvas" type="checkbox"> For Prepare print PNG: fit on a transparent print-size canvas, centred without stretching or enlarging the artwork.</label>
             <p>Prepare print PNG uses the selected candidate, if present. Untagged sources are assumed sRGB; confirm colours manually. Inspect and Fit down stay local. AI upscale sends a copy to Replicate and may cost credits. Original stays unchanged. 300 PPI is a target, not a quality guarantee.</p>
+            <fieldset class="sbs-af-flat-background"><legend>Optional: remove a plain background</legend>
+                <p>Local, non-AI operation. It removes only the selected colour connected to the image edge. It is not a checkerboard or complex-scene remover; it can leave fringes or remove edge-connected artwork. Inspect the copy before using it.</p>
+                <div class="sbs-grid two"><label for="sbs-af-flat-colour">Background colour<input id="sbs-af-flat-colour" type="color" value="#ffffff"></label><label for="sbs-af-flat-tolerance">Colour tolerance (0 = exact, 100 = broader)<input id="sbs-af-flat-tolerance" type="number" min="0" max="100" value="18"></label></div>
+                <button id="sbs-af-flat-remove" type="button" class="sbs-button" disabled>Remove matching edge colour into a copy</button>
+                <button id="sbs-af-flat-undo" type="button" class="sbs-button" disabled>Undo — restore source version</button>
+                <p id="sbs-af-flat-status" role="status" aria-live="polite" aria-atomic="true">Choose or resume artwork to use this option.</p>
+            </fieldset>
             <label for="sbs-af-notes">Correction notes for this version<textarea id="sbs-af-notes" rows="4" maxlength="6000" spellcheck="true" autocapitalize="sentences" placeholder="Dictate details to check. Notes are recorded; they do not instruct AI or redraw this image."></textarea></label>
             <p id="sbs-af-stage-help">Choose a stage. Queue it, then run it. The original stays unchanged.</p>
             <button id="sbs-af-prepare" class="sbs-button" type="button" disabled>2. Queue selected stage</button>
