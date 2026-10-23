@@ -18,8 +18,8 @@ const printQa = read('includes/class-sbs-print-qa.php');
 const plugin = read('smutty-bear-studio.php');
 const pluginClass = read('includes/class-sbs-plugin.php');
 
-assert.match(plugin, /Version: 0\.2\.66/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.66'\)/);
+assert.match(plugin, /Version: 0\.2\.67/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.67'\)/);
 const openai = read('includes/class-sbs-openai.php');
 assert.match(openai, /finishing_review_input\(\(int\) \$original_asset_id\)/);
 assert.match(openai, /finishing_review_input\(\(int\) \$candidate_asset_id\)/);
