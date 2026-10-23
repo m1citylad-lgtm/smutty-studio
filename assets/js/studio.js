@@ -1280,6 +1280,7 @@
                 // Keep the compact main navigation free of extra information
                 // buttons. Other controls retain their contextual help.
                 if (button.closest('.sbs-primary-tabs')) { return; }
+                if (button.closest('.sbs-character-page-menu')) { return; }
                 if (button.dataset.sbsInfoAttached || button.closest('.sbs-explain-dialog')) { return; }
                 button.dataset.sbsInfoAttached = '1';
                 var info = document.createElement('button');
