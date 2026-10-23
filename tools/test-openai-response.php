@@ -9,7 +9,7 @@ function home_url($path) { return 'https://example.invalid' . $path; }
 class WP_Error { private $code; private $message; public function __construct($code='error',$message='Error') { $this->code=$code; $this->message=$message; } public function get_error_code() { return $this->code; } public function get_error_message() { return $this->message; } }
 function is_wp_error($value) { return $value instanceof WP_Error; }
 $captured_requests = array();
-function wp_remote_request($url,$args) { global $captured_requests,$mock_response_body; $captured_requests[]=array('url'=>$url,'args'=>$args); return array('body'=>isset($mock_response_body)?$mock_response_body:'{"id":"resp_test","status":"queued"}'); }
+function wp_remote_request($url,$args) { global $captured_requests,$mock_response_body,$capture_large_request,$large_review_summary; if (!empty($capture_large_request)) { $payload=json_decode($args['body'],true); $content=$payload['input'][0]['content']??array(); $data_url=$content[2]['image_url']??''; $prefix='data:image/png;base64,'; $decoded=(strpos($data_url,$prefix)===0)?base64_decode(substr($data_url,strlen($prefix)),true):false; $large_review_summary=array('body_bytes'=>strlen($args['body']),'mime_ok'=>strpos($data_url,$prefix)===0,'decoded_sha256'=>is_string($decoded)?hash('sha256',$decoded):'','image_type'=>$content[2]['type']??''); unset($payload,$content,$data_url,$decoded); $captured_requests[]=array('url'=>$url,'args'=>array('body_bytes'=>strlen($args['body']))); } else { $captured_requests[]=array('url'=>$url,'args'=>$args); } return array('body'=>isset($mock_response_body)?$mock_response_body:'{"id":"resp_test","status":"queued"}'); }
 function wp_remote_retrieve_body($response) { return $response['body']; }
 function wp_remote_retrieve_response_code($response) { return 200; }
 function wp_remote_retrieve_header($response,$key) { return ''; }
@@ -85,16 +85,16 @@ $large_png.=png_test_chunk('IDAT',gzcompress("\0\0\0\0\0"));
 $large_png.=png_test_chunk('IEND','');
 check(strlen($large_png)>50*1024*1024, 'Oversized transparent PNG fixture was not created');
 SBS_Storage::$assets[202]=$large_png;
+$capture_large_request=true;
 $captured_before=count($captured_requests);
 $review=SBS_OpenAI::review_finishing_artwork(101,202,'Oversized transparent fixture');
+$capture_large_request=false;
 check(!is_wp_error($review), 'Oversized PNG review request could not be prepared');
-$request=$captured_requests[$captured_before];
-$encoded_large=base64_encode($large_png);
-// json_encode escapes slash characters by default; compare that exact JSON representation.
-$encoded_large_json=str_replace('/', '\\/', $encoded_large);
-check(strpos($request['args']['body'],'"image_url":"data:image/png;base64,' . $encoded_large_json . '"')!==false, 'Oversized PNG bytes were not preserved in the provider request');
-check(strpos($request['args']['body'],'"file_id"')===false, 'Oversized PNG unexpectedly used the provider file-ID path');
-unset($request,$encoded_large,$encoded_large_json,$large_png);
+check(count($captured_requests)===$captured_before+1, 'Oversized PNG did not produce one local stub request');
+check($large_review_summary['mime_ok'] && $large_review_summary['image_type']==='input_image', 'Oversized PNG was not sent as an image data URL');
+check($large_review_summary['decoded_sha256']===hash('sha256',$large_png), 'Oversized PNG bytes were not preserved in the provider request');
+check($large_review_summary['body_bytes']>50*1024*1024, 'Oversized PNG payload was truncated');
+unset($review,$large_png);
 SBS_Storage::$assets=array();
 echo "PASS: 50 MiB transparent PNG is preserved in a local stub request without provider use\n";
 
