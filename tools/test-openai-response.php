@@ -17,9 +17,11 @@ function wp_remote_retrieve_header($response,$key) { return ''; }
 function sanitize_textarea_field($value) { return trim(strip_tags($value)); }
 require __DIR__ . '/../includes/class-sbs-openai.php';
 class SBS_Storage {
-    public static function data_url($asset_id) { return 'data:image/png;base64,' . base64_encode('unchanged-image-' . (int)$asset_id); }
+    public static $assets = array();
+    public static function data_url($asset_id) { $bytes=isset(self::$assets[$asset_id])?self::$assets[$asset_id]:'unchanged-image-' . (int)$asset_id; return 'data:image/png;base64,' . base64_encode($bytes); }
 }
 function check($condition, $message) { if (!$condition) { throw new Exception($message); } }
+function png_test_chunk($type,$data) { return pack('N',strlen($data)) . $type . $data . hash('crc32b',$type.$data,true); }
 $image = array('type'=>'image_generation_call', 'result'=>base64_encode('original PNG bytes'));
 $refusal = array('type'=>'message', 'content'=>array(array('type'=>'refusal', 'refusal'=>'Cannot edit this image.')));
 $text = array('type'=>'message', 'content'=>array(array('type'=>'output_text', 'text'=>'Please clarify the requested correction.')));
@@ -73,6 +75,26 @@ check($review_content[1]['type']==='input_image' && $review_content[1]['image_ur
 check($review_content[2]['type']==='input_image' && $review_content[2]['image_url']==='data:image/png;base64,' . base64_encode('unchanged-image-202'), 'Candidate was not sent as an unchanged data URL');
 check(!isset($review_content[1]['file_id']) && !isset($review_content[2]['file_id']), 'Large review still uses file URLs');
 echo "PASS: finishing comparison sends both unchanged full-resolution assets as data URLs\n";
+
+// Exercise the oversized path with a valid, disposable 50 MiB transparent PNG.
+// The HTTP stub captures the request locally; no provider, account key or credits are used.
+$large_png="\x89PNG\r\n\x1a\n";
+$large_png.=png_test_chunk('IHDR',pack('N',1).pack('N',1)."\x08\x06\x00\x00\x00");
+$large_png.=png_test_chunk('iTXt',"Fixture\0\0\0\0\0".str_repeat('x',50*1024*1024));
+$large_png.=png_test_chunk('IDAT',gzcompress("\0\0\0\0\0"));
+$large_png.=png_test_chunk('IEND','');
+check(strlen($large_png)>50*1024*1024, 'Oversized transparent PNG fixture was not created');
+SBS_Storage::$assets[202]=$large_png;
+$captured_before=count($captured_requests);
+$review=SBS_OpenAI::review_finishing_artwork(101,202,'Oversized transparent fixture');
+check(!is_wp_error($review), 'Oversized PNG review request could not be prepared');
+$request=$captured_requests[$captured_before];
+$encoded_large=base64_encode($large_png);
+check(strpos($request['args']['body'],'"image_url":"data:image/png;base64,' . $encoded_large . '"')!==false, 'Oversized PNG bytes were not preserved in the provider request');
+check(strpos($request['args']['body'],'"file_id"')===false, 'Oversized PNG unexpectedly used the provider file-ID path');
+unset($request,$encoded_large,$large_png);
+SBS_Storage::$assets=array();
+echo "PASS: 50 MiB transparent PNG is preserved in a local stub request without provider use\n";
 
 // Record actual native pixels separately from provider-reported settings; no maximum is inferred.
 $native_png=base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==');
