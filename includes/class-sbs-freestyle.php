@@ -6,7 +6,7 @@ final class SBS_Freestyle
 {
     public static function register_routes()
     {
-        foreach (array('' => 'turn', '/select' => 'select', '/promote' => 'promote', '/brief' => 'save_brief', '/upload' => 'upload') as $suffix => $callback) {
+        foreach (array('' => 'turn', '/select' => 'select', '/promote' => 'promote', '/brief' => 'save_brief', '/upload' => 'upload', '/save-reference' => 'save_reference_to_character') as $suffix => $callback) {
             register_rest_route(SBS_REST::NS, '/freestyle' . $suffix, array('methods' => 'POST', 'callback' => array(__CLASS__, $callback), 'permission_callback' => array('SBS_REST', 'permission')));
         }
     }
@@ -92,6 +92,50 @@ final class SBS_Freestyle
         return $created['uuid'];
     }
 
+    private static function character_is_active($uuid)
+    {
+        global $wpdb;
+        $pack = SBS_DB::row_by_uuid('packs', $uuid);
+        if (!$pack || $pack['status'] === 'sandbox') { return false; }
+        $versions = SBS_DB::table('pack_versions');
+        $version = $wpdb->get_row($wpdb->prepare("SELECT identity_json FROM {$versions} WHERE pack_id = %d AND version = %d", (int) $pack['id'], (int) $pack['current_version']), ARRAY_A);
+        if (!$version) { return false; }
+        $identity = json_decode($version['identity_json'], true);
+        $status = is_array($identity) && isset($identity['library_status']) ? $identity['library_status'] : (!empty($identity['tests_approved']) ? 'active' : 'needs_review');
+        return $status === 'active';
+    }
+
+    public static function save_reference_to_character($request)
+    {
+        global $wpdb;
+        $project_uuid = sanitize_text_field($request->get_param('project_uuid'));
+        $asset_uuid = sanitize_text_field($request->get_param('asset_uuid'));
+        $name = sanitize_text_field($request->get_param('name'));
+        if (!$name) { return new WP_Error('missing_character_name', 'Enter a name for this character.', array('status' => 400)); }
+        $project = self::project($project_uuid);
+        if (is_wp_error($project)) { return $project; }
+        $assets = SBS_DB::table('assets');
+        $source = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$assets} WHERE uuid = %s AND owner_type = 'project' AND owner_id = %d AND role = 'freestyle_reference'", $asset_uuid, (int) $project['id']), ARRAY_A);
+        if (!$source || !in_array($source['mime'], array('image/png', 'image/jpeg', 'image/webp'), true)) {
+            return new WP_Error('invalid_character_reference', 'Choose a reference image from this Freestyle project.', array('status' => 400));
+        }
+        $source_path = SBS_Storage::absolute_path($source);
+        if (!$source_path || !is_readable($source_path)) { return new WP_Error('missing_character_reference', 'The original reference file could not be read. It has not been changed.', array('status' => 500)); }
+        $create = new WP_REST_Request('POST');
+        $create->set_param('name', $name);
+        $create->set_param('description', 'Imported from Freestyle for character review. The source image and its Freestyle project remain unchanged.');
+        $created_response = SBS_REST::create_pack($create);
+        $created = self::data($created_response);
+        if (is_wp_error($created)) { return $created; }
+        $copy = SBS_Storage::store_file($source_path, $source['filename'], $source['mime'], 'pack_version', (int) $created['version_id'], 'imported_reference', $source['label'] ?: $source['filename'], array('source' => 'freestyle_reference', 'source_project_uuid' => $project_uuid, 'source_asset_uuid' => $asset_uuid));
+        if (is_wp_error($copy)) {
+            $wpdb->delete(SBS_DB::table('pack_versions'), array('id' => (int) $created['version_id']), array('%d'));
+            $wpdb->delete(SBS_DB::table('packs'), array('uuid' => $created['uuid']), array('%s'));
+            return $copy;
+        }
+        return rest_ensure_response(array('created_uuid' => $created['uuid'], 'reference_label' => $source['label'] ?: $source['filename'], 'source_project_uuid' => $project_uuid));
+    }
+
     public static function validate_brief($value)
     {
         if (!is_string($value) || strlen($value) > 24000 || preg_match_all('/./us', $value) > 12000) {
@@ -138,7 +182,7 @@ final class SBS_Freestyle
         return rest_ensure_response(self::project($project['uuid']));
     }
 
-    /** Validate project-scoped user references; never accept another experiment's assets. */
+    /** Validate project-scoped uploads or references from the experiment's active Character profile. */
     public static function references($project, $uuids)
     {
         if ($uuids === null) { $uuids = array(); }
@@ -147,8 +191,20 @@ final class SBS_Freestyle
         foreach ($uuids as $uuid) {
             if (!is_string($uuid)) { return new WP_Error('invalid_freestyle_reference', 'Invalid reference.', array('status'=>400)); }
             $asset = SBS_Storage::asset_by_uuid($uuid);
-            if (!$asset || $asset['owner_type']!=='project' || (int)$asset['owner_id']!==(int)$project['id'] || $asset['role']!=='freestyle_reference' || !in_array($asset['mime'], array('image/png','image/jpeg','image/webp'), true)) {
-                return new WP_Error('invalid_freestyle_reference', 'Choose references uploaded to this experiment.', array('status'=>400));
+            $project_reference = $asset && $asset['owner_type'] === 'project' && (int) $asset['owner_id'] === (int) $project['id'] && $asset['role'] === 'freestyle_reference';
+            $character_reference = false;
+            if ($asset && $asset['owner_type'] === 'pack_version' && !empty($project['pack_uuid']) && self::character_is_active($project['pack_uuid'])) {
+                $pack = SBS_DB::row_by_uuid('packs', $project['pack_uuid']);
+                if ($pack) {
+                    global $wpdb;
+                    $versions = SBS_DB::table('pack_versions');
+                    $current = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$versions} WHERE pack_id = %d AND version = %d", (int) $pack['id'], (int) $pack['current_version']));
+                    $allowed_roles = array('reference', 'imported_reference', 'master_reference', 'face', 'full_body', 'expression', 'outfit', 'palette', 'style', 'generated_reference');
+                    $character_reference = $current && (int) $asset['owner_id'] === (int) $current && in_array($asset['role'], $allowed_roles, true);
+                }
+            }
+            if (!$asset || (!$project_reference && !$character_reference) || !in_array($asset['mime'], array('image/png','image/jpeg','image/webp'), true)) {
+                return new WP_Error('invalid_freestyle_reference', 'Choose an uploaded project reference or an approved reference from this Active character.', array('status'=>400));
             }
             $assets[$uuid] = $asset;
         }
@@ -230,6 +286,9 @@ final class SBS_Freestyle
         } else {
             if ($parent_uuid) { return new WP_Error('invalid_freestyle_parent', 'Start a new experiment without a source image.', array('status' => 400)); }
             $pack_uuid = sanitize_text_field($request->get_param('pack_uuid'));
+            if ($pack_uuid && !self::character_is_active($pack_uuid)) {
+                return new WP_Error('freestyle_character_not_active', 'Choose an Active character from the Character library, or start without a character.', array('status' => 400));
+            }
             if (!$pack_uuid) { $pack_uuid = self::neutral_pack(); }
             if (is_wp_error($pack_uuid)) { return $pack_uuid; }
             $create = new WP_REST_Request('POST');

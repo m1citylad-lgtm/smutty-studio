@@ -33,8 +33,8 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0\.2\.69/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.69'\)/);
+assert.match(plugin, /Version: 0\.2\.70/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.70'\)/);
 const openai = read('includes/class-sbs-openai.php');
 assert.match(openai, /finishing_review_input\(\(int\) \$original_asset_id\)/);
 assert.match(openai, /finishing_review_input\(\(int\) \$candidate_asset_id\)/);

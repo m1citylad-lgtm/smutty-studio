@@ -83,6 +83,7 @@
                 document.querySelectorAll('.sbs-tabs button').forEach(function (item) { item.classList.toggle('active', item === button); });
                 document.querySelectorAll('.sbs-panel').forEach(function (panel) { panel.classList.toggle('active', panel.getAttribute('data-panel') === button.getAttribute('data-tab')); });
                 if (button.getAttribute('data-tab') === 'development') { renderDevelopment(); }
+                if (button.getAttribute('data-tab') === 'library') { renderCharacterLibrary(); }
                 if (button.getAttribute('data-tab') === 'projects') { renderProjects(); }
                 if (button.getAttribute('data-tab') === 'canvas') { ensureCanvas(); renderCanvasOptions(); if(state.freestyleNewCanvas){state.freestyleNewCanvas=false;}else{loadLatestCanvas();} resizeCanvasViewport(); }
                 if (button.getAttribute('data-tab') === 'usage') { loadUsage(); }
@@ -100,7 +101,7 @@
             state.freestylePackUuid = data.freestyle_pack_uuid || "";
             state.freestyleReady = true;
             state.selectedPack = findPack(selectedUuid) || state.packs[0] || null;
-            renderPackOptions(); renderPacks(); renderPackEditor(); renderDevelopment(); renderProjects(); renderUsage(state.usage); renderCanvasOptions(); renderCharacterContext();
+            renderPackOptions(); renderPacks(); renderPackEditor(); renderDevelopment(); renderProjects(); renderUsage(state.usage); renderCanvasOptions(); renderCharacterContext(); renderCharacterLibrary();
             if (freestyle) { freestyle.render(); }
             if (data.active_jobs && data.active_jobs.length) { trackJobs(data.active_jobs); }
             if (!state.providers.openai) { showMessage('OpenAI is not configured yet. An administrator can add the API key in the Settings tab.', true); }
@@ -120,6 +121,50 @@
         var name = state.selectedPack ? state.selectedPack.name : 'No character selected';
         ['sbs-idea-character-name', 'sbs-creations-character-name', 'sbs-canvas-character-name', 'sbs-usage-character-name'].forEach(function (id) { if (el(id)) { el(id).textContent = name; } });
         if (el('sbs-fork-pack')) { el('sbs-fork-pack').disabled = !state.selectedPack; }
+    }
+
+    function renderCharacterLibrary() {
+        var list = el('sbs-character-library-list'), filter = el('sbs-character-library-filter');
+        if (!list || !filter) { return; }
+        var characters = state.packs.filter(function (pack) { return pack.uuid !== state.freestylePackUuid; });
+        if (filter.value !== 'all') { characters = characters.filter(function (pack) { return pack.library_status === filter.value; }); }
+        if (!characters.length) { list.innerHTML = '<p class="sbs-muted">No characters in this group.</p>'; return; }
+        var statusLabels = {needs_review:'Needs review',in_development:'In development',active:'Active',archived:'Archived'};
+        list.innerHTML = characters.map(function (pack) {
+            var preferredRoles = ['face','full_body','imported_reference','master_reference','reference','generated_reference','expression','outfit','palette','style'];
+            var image = preferredRoles.map(function (role) { return (pack.assets || []).find(function (asset) { return asset.role === role && /^image\/(png|jpeg|webp)$/.test(asset.mime || ''); }); }).find(Boolean) || (pack.assets || []).find(function (asset) { return /^image\/(png|jpeg|webp)$/.test(asset.mime || ''); });
+            var selected = state.selectedPack && state.selectedPack.uuid === pack.uuid;
+            var count = Number(pack.project_count || 0), usageCount = Number(pack.usage_count || 0);
+            return '<article class="sbs-character-library-card" data-library-uuid="'+esc(pack.uuid)+'"><div class="sbs-character-library-image">'+(image?'<img src="'+esc(image.url)+'" alt="Reference image for '+esc(pack.name)+'">':'<span>No reference image</span>')+'</div><div class="sbs-character-library-fields"><p class="sbs-kicker">'+esc(statusLabels[pack.library_status]||'Needs review')+(selected?' · Current character':'')+'</p><label>Character name<input type="text" data-library-name value="'+esc(pack.name)+'" maxlength="190"></label><label>Status<select data-library-status><option value="needs_review"'+(pack.library_status==='needs_review'?' selected':'')+'>Needs review</option><option value="in_development"'+(pack.library_status==='in_development'?' selected':'')+'>In development</option><option value="active"'+(pack.library_status==='active'?' selected':'')+'>Active</option><option value="archived"'+(pack.library_status==='archived'?' selected':'')+'>Archived</option></select></label><p class="sbs-muted">'+(count?esc(count)+' saved work set(s) use this character. ':'')+(usageCount?esc(usageCount)+' usage record(s). ':'')+((count||usageCount)?'Archive to keep this history.':'No saved work history.')+'</p><div class="sbs-row wrap"><button type="button" class="sbs-button" data-library-action="save">Save changes</button><button type="button" class="sbs-button" data-library-action="view">Open character</button><button type="button" class="sbs-button danger" data-library-action="delete"'+((count||usageCount)?' disabled title="Archive instead to preserve saved work"':'')+'>Delete character</button></div></div></article>';
+        }).join('');
+    }
+
+    function bindCharacterLibrary() {
+        var filter = el('sbs-character-library-filter'), list = el('sbs-character-library-list');
+        if (!filter || !list) { return; }
+        filter.addEventListener('change', renderCharacterLibrary);
+        list.addEventListener('click', function (event) {
+            var button = event.target.closest('[data-library-action]');
+            if (!button) { return; }
+            var card = button.closest('[data-library-uuid]'), uuid = card && card.getAttribute('data-library-uuid');
+            var pack = state.packs.find(function (item) { return item.uuid === uuid; });
+            if (!pack) { return; }
+            var action = button.getAttribute('data-library-action');
+            if (action === 'view') { selectPack(uuid); activateTab('characters'); return; }
+            if (action === 'save') {
+                var name = card.querySelector('[data-library-name]').value.trim(), status = card.querySelector('[data-library-status]').value;
+                if (!name) { showMessage('Enter a character name.', true); return; }
+                buttonBusy(button, true);
+                patch('packs/' + uuid, {name:name,description:pack.description||'',library_status:status}).then(function () { return loadBootstrap(); }).then(function () { showMessage('Character details and status saved.'); }).catch(handleError).finally(function () { buttonBusy(button, false); });
+                return;
+            }
+            if (action === 'delete') {
+                if (Number(pack.project_count || 0) || Number(pack.usage_count || 0)) { showMessage('This character has saved work or usage history. Archive it to keep that history safe.', true); return; }
+                if (!window.confirm('Permanently delete '+pack.name+' and its stored Character reference images? Freestyle projects and their originals are not changed.')) { return; }
+                buttonBusy(button, true);
+                remove('packs/' + uuid).then(function () { return loadBootstrap(); }).then(function () { showMessage('Character and its Character reference images deleted.'); }).catch(handleError).finally(function () { buttonBusy(button, false); });
+            }
+        });
     }
 
     function selectPack(uuid, persist) {
@@ -1154,7 +1199,7 @@
     function handleError(error) { showMessage(error.message || String(error), true); }
 
     document.addEventListener('DOMContentLoaded', function () {
-        bindLogin(); bindPrimaryTabs(); bindTabs(); bindCharacters(); bindCreate(); bindImageModal(); bindGuide();
+        bindLogin(); bindPrimaryTabs(); bindTabs(); bindCharacters(); bindCharacterLibrary(); bindCreate(); bindImageModal(); bindGuide();
         installStudioHelp(); installImageSpecifications();
         freestyle = window.SBSFreestyle.init({state:state,el:el,esc:esc,api:api,post:post,loadBootstrap:loadBootstrap,replaceProject:replaceProject,trackJobs:trackJobs,showMessage:showMessage,handleError:handleError,zoom:openImageModal,openProject:function(uuid,generationUuid){
             if(state.canvas && !state.canvasUuid && state.canvas.getObjects().some(function(o){return o.sbsType!=='guide';}) && (!state.activeProject || state.activeProject.uuid!==uuid) && !window.confirm('Open this project and clear the current unsaved canvas? Save that canvas first if you want to keep it.'))return;

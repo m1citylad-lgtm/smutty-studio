@@ -27,7 +27,10 @@ final class SBS_REST
             array('methods' => 'POST', 'callback' => array(__CLASS__, 'create_pack'), 'permission_callback' => array(__CLASS__, 'permission')),
         ));
         register_rest_route(self::NS, '/packs/(?P<uuid>[a-f0-9\-]+)/fork', array('methods' => 'POST', 'callback' => array(__CLASS__, 'fork_pack'), 'permission_callback' => array(__CLASS__, 'permission')));
-        register_rest_route(self::NS, '/packs/(?P<uuid>[a-f0-9\-]+)', array('methods' => 'PATCH', 'callback' => array(__CLASS__, 'update_pack'), 'permission_callback' => array(__CLASS__, 'permission')));
+        register_rest_route(self::NS, '/packs/(?P<uuid>[a-f0-9\-]+)', array(
+            array('methods' => 'PATCH', 'callback' => array(__CLASS__, 'update_pack'), 'permission_callback' => array(__CLASS__, 'permission')),
+            array('methods' => 'DELETE', 'callback' => array(__CLASS__, 'delete_pack'), 'permission_callback' => array(__CLASS__, 'permission')),
+        ));
         register_rest_route(self::NS, '/packs/(?P<uuid>[a-f0-9\-]+)/assets', array('methods' => 'POST', 'callback' => array(__CLASS__, 'upload_pack_asset'), 'permission_callback' => array(__CLASS__, 'permission')));
         register_rest_route(self::NS, '/packs/(?P<uuid>[a-f0-9\-]+)/assets/(?P<asset_uuid>[a-f0-9\-]+)', array('methods' => 'DELETE', 'callback' => array(__CLASS__, 'delete_pack_asset'), 'permission_callback' => array(__CLASS__, 'permission')));
         register_rest_route(self::NS, '/packs/(?P<uuid>[a-f0-9\-]+)/analyse', array('methods' => 'POST', 'callback' => array(__CLASS__, 'analyse_pack'), 'permission_callback' => array(__CLASS__, 'permission')));
@@ -220,6 +223,7 @@ final class SBS_REST
             'name' => $name,
             'summary' => $description,
             'adult' => true,
+            'library_status' => 'needs_review',
             'locked_traits' => array(),
             'exclusions' => array('No childlike or ambiguous age presentation', 'No visible genitals or depicted sex acts'),
             'palette' => array(),
@@ -290,6 +294,14 @@ final class SBS_REST
             $identity = array();
         }
         $identity_before = $identity;
+        $library_status = $request->get_param('library_status');
+        if ($library_status !== null) {
+            $library_status = sanitize_key($library_status);
+            if (!in_array($library_status, array('needs_review', 'in_development', 'active', 'archived'), true)) {
+                return new WP_Error('invalid_library_status', 'Choose Needs review, In development, Active or Archived.', array('status' => 400));
+            }
+            $identity['library_status'] = $library_status;
+        }
         if (is_array($incoming)) {
             if (isset($incoming['summary'])) {
                 $identity['summary'] = sanitize_textarea_field($incoming['summary']);
@@ -308,7 +320,15 @@ final class SBS_REST
         }
         $identity['name'] = $name;
         $identity['adult'] = true;
-        $identity_changed = wp_json_encode($identity_before) !== wp_json_encode($identity) || $description !== $pack['description'] || $name !== $pack['name'];
+        $identity_before_for_comparison = $identity_before;
+        $identity_after_for_comparison = $identity;
+        unset($identity_before_for_comparison['library_status'], $identity_after_for_comparison['library_status']);
+        $identity_changed = wp_json_encode($identity_before_for_comparison) !== wp_json_encode($identity_after_for_comparison) || $description !== $pack['description'] || $name !== $pack['name'];
+        if (!$identity_changed && $library_status !== null) {
+            $wpdb->update(SBS_DB::table('packs'), array('updated_at' => current_time('mysql', true)), array('id' => (int) $pack['id']));
+            $wpdb->update(SBS_DB::table('pack_versions'), array('identity_json' => wp_json_encode($identity)), array('id' => (int) $pack['version_id']));
+            return rest_ensure_response(self::pack_by_uuid($pack['uuid']));
+        }
         if ($identity_changed) {
             $grounding_updated_at = current_time('mysql', true);
             $identity['tests_approved'] = false;
@@ -319,6 +339,40 @@ final class SBS_REST
         $wpdb->update(SBS_DB::table('packs'), array('name' => $name, 'description' => $description, 'status' => 'ready', 'updated_at' => current_time('mysql', true)), array('id' => (int) $pack['id']));
         $wpdb->update(SBS_DB::table('pack_versions'), array('identity_json' => wp_json_encode($identity), 'status' => 'ready', 'locked_at' => null), array('id' => (int) $pack['version_id']));
         return rest_ensure_response(self::pack_by_uuid($pack['uuid']));
+    }
+
+    public static function delete_pack($request)
+    {
+        global $wpdb;
+        $pack = SBS_DB::row_by_uuid('packs', sanitize_text_field($request['uuid']));
+        if (!$pack) {
+            return new WP_Error('missing_pack', 'Character not found.', array('status' => 404));
+        }
+        if ($pack['uuid'] === get_option('sbs_freestyle_pack_uuid', '')) {
+            return new WP_Error('protected_pack', 'The Freestyle workspace cannot be deleted here.', array('status' => 409));
+        }
+        $versions_table = SBS_DB::table('pack_versions');
+        $version_ids = array_map('intval', $wpdb->get_col($wpdb->prepare("SELECT id FROM {$versions_table} WHERE pack_id = %d", (int) $pack['id'])));
+        if (!$version_ids) {
+            return new WP_Error('missing_pack_version', 'No character version was found; nothing was deleted.', array('status' => 409));
+        }
+        $id_list = implode(',', $version_ids);
+        $project_count = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . SBS_DB::table('projects') . ' WHERE pack_version_id IN (' . $id_list . ')');
+        $usage_count = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . SBS_DB::table('usage') . ' WHERE pack_version_id IN (' . $id_list . ')');
+        if ($project_count || $usage_count) {
+            return new WP_Error('character_has_history', 'This character has saved work or usage history. Archive it to hide it while keeping that work safe.', array('status' => 409));
+        }
+        $assets = SBS_DB::table('assets');
+        $asset_ids = $wpdb->get_col('SELECT id FROM ' . $assets . " WHERE owner_type = 'pack_version' AND owner_id IN ({$id_list})");
+        foreach ($asset_ids as $asset_id) {
+            $deleted = SBS_Storage::delete_asset((int) $asset_id);
+            if (is_wp_error($deleted)) {
+                return $deleted;
+            }
+        }
+        $wpdb->delete($versions_table, array('pack_id' => (int) $pack['id']), array('%d'));
+        $wpdb->delete(SBS_DB::table('packs'), array('id' => (int) $pack['id']), array('%d'));
+        return rest_ensure_response(array('deleted' => true, 'uuid' => $pack['uuid']));
     }
 
     public static function upload_pack_asset($request)
@@ -1469,6 +1523,12 @@ final class SBS_REST
         $row['version_id'] = (int) $row['version_id'];
         $row['current_version'] = (int) $row['current_version'];
         $row['identity'] = json_decode($row['identity_json'], true);
+        $identity = is_array($row['identity']) ? $row['identity'] : array();
+        $row['library_status'] = isset($identity['library_status']) && in_array($identity['library_status'], array('needs_review', 'in_development', 'active', 'archived'), true)
+            ? $identity['library_status']
+            : (!empty($identity['tests_approved']) ? 'active' : 'needs_review');
+        $row['project_count'] = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . SBS_DB::table('projects') . ' WHERE pack_version_id IN (SELECT id FROM ' . SBS_DB::table('pack_versions') . ' WHERE pack_id = %d)', (int) $row['id']));
+        $row['usage_count'] = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . SBS_DB::table('usage') . ' WHERE pack_version_id IN (SELECT id FROM ' . SBS_DB::table('pack_versions') . ' WHERE pack_id = %d)', (int) $row['id']));
         $row['assets'] = array_map(array('SBS_Storage', 'present'), $asset_rows);
         unset($row['identity_json']);
         return $row;
