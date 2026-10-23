@@ -35,6 +35,7 @@ assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2
 
 assert.match(plugin, /Version: 0\.2\.72/);
 assert.match(plugin, /define\('SBS_VERSION', '0\.2\.72'\)/);
+assert.match(studio, /button\.closest\('\.sbs-character-page-menu'\)\) \{ return; \}/, 'Character menu entries must not receive information buttons');
 const mainNav = studioTemplate.match(/<nav id="sbs-primary-nav"[\s\S]*?<\/nav>/)[0];
 assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="freestyle"'));
 assert.ok(mainNav.indexOf('data-primary-tab="freestyle"') < mainNav.indexOf('data-primary-tab="catalogue"'));
