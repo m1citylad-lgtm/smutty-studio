@@ -45,6 +45,7 @@
                 <div class="sbs-character-selector"><p class="sbs-kicker">CURRENT CHARACTER</p><label class="sbs-context-select"><select id="sbs-current-pack" aria-label="Current character"></select></label></div>
                 <nav class="sbs-tabs" aria-label="Studio sections">
                     <button data-tab="characters" class="active"><span class="sbs-stage-number">1.</span> Description</button>
+                    <button data-tab="library">Character library</button>
                     <button data-tab="development"><span class="sbs-stage-number">2.</span> Visual Development</button>
                     <button data-tab="references"><span class="sbs-stage-number">3.</span> Reference</button>
                     <button data-tab="create"><span class="sbs-stage-number">4.</span> Idea Room</button>
@@ -87,6 +88,14 @@
                 <div class="sbs-panel-heading"><div><p class="sbs-kicker">CHARACTER DESCRIPTION</p><h1><span class="sbs-stage-number">1.</span> Description</h1></div></div>
                 <aside class="sbs-tab-help"><span aria-hidden="true">&#9998;</span><div><strong>Set the character's identity.</strong> Add key traits, exclusions, humour and colours. AI suggestions never replace your description unless you approve them.</div></aside>
                 <div id="sbs-pack-description" class="sbs-card"><p class="sbs-muted">Choose a character above or create a new character.</p></div>
+            </section>
+
+            <section class="sbs-panel" data-panel="library">
+                <div class="sbs-panel-heading"><div><p class="sbs-kicker">CHARACTER LIBRARY</p><h1>Review and manage characters</h1></div></div>
+                <p class="sbs-muted">New or imported characters start as Needs review. Only Active characters appear in Freestyle. Archiving hides a character while keeping its saved work.</p>
+                <label for="sbs-character-library-filter">Show characters<select id="sbs-character-library-filter"><option value="needs_review">Needs review</option><option value="in_development">In development</option><option value="active">Active</option><option value="archived">Archived</option><option value="all">All characters</option></select></label>
+                <p id="sbs-character-library-status" role="status" aria-live="polite"></p>
+                <div id="sbs-character-library-list" class="sbs-character-library-list"></div>
             </section>
 
             <section class="sbs-panel" data-panel="development">

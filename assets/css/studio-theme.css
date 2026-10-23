@@ -334,6 +334,10 @@ body#sbs-studio-page #sbs-fs-original { display:inline-block; margin:12px 0; tex
 body#sbs-studio-page .sbs-fs-reference input[type="checkbox"] { flex:0 0 26px; width:26px; max-width:26px; height:26px; margin:0; }
 body#sbs-studio-page .sbs-fs-reference img { flex:0 0 70px; }
 body#sbs-studio-page .sbs-fs-reference span { min-width:0; }
+body#sbs-studio-page .sbs-fs-reference { flex-direction:column; align-items:stretch; width:min(100%,420px); }
+body#sbs-studio-page .sbs-fs-reference>label { display:flex; align-items:center; gap:10px; margin:0; }
+body#sbs-studio-page .sbs-fs-save-character { width:100%; }
+body#sbs-studio-page .sbs-fs-save-character .sbs-button { width:100%; min-height:48px; margin-top:8px; }
 
 /* Administrator forms inside Studio use the same accessible controls. */
 body#sbs-studio-page .sbs-settings-admin { overflow-wrap: anywhere; }
