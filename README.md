@@ -89,6 +89,10 @@ Optional transparent target canvases fit, centre and pad without stretching, cro
 
 Approved local ZIPs include `finishing-qa.json` and `checksums.sha256`. The manifest records source/candidate hashes, export metadata, print target, generation/processing provenance, advisory findings and PASS/REVIEW/HOLD digital checks. It never grants production approval. The read-only production adapter reuses finishing checks only for approved matching bytes/target and requests selective rechecks after changed pixels or print size, plus brand placement and garment variants. Screen garment colours are contrast previews, not physical printer proofs.
 
+### Transparency indicators (v0.2.69)
+
+Freestyle and Artwork Finishing show a compact, high-contrast transparency status beneath each image. The status is decoded from image pixels: red means opaque, amber means partial alpha, green means transparent with no partial-alpha pixels, and grey means not checked. A thin colour bar, white-on-dark status pill and white text key make the result visible without taking much screen space. Artwork Finishing checks both the untouched original and selected candidate. Opaque checkerboard pixels remain opaque; the preview background is never used to infer transparency.
+
 New OpenAI generations retain requested model/quality/size separately from provider-reported model/quality/size and actual decoded native pixels. Unknown provider revisions/maxima remain unknown. This release does not introduce new Freestyle models or query imaginary capability endpoints; live model-capability adapters and reference/outfit profiles remain deferred until Artwork Finishing owner acceptance.
 
 Validation: the existing release gates plus real PNG conversion, alpha/white-ink preservation, no-upscale canvas, selected-candidate lineage, QA reuse/invalidation and checksum-verified ZIP tests run with both Imagick and GD-only.

@@ -17,6 +17,11 @@
         for(var i=3;i<data.length;i+=4){if(data[i]===0)clear=true;else if(data[i]<255)partial=true;}
         return partial?'Partial alpha':clear?'Genuine transparency':'Opaque';
     }
+    function setTransparency(indicator,result) {
+        if(!indicator)return;
+        indicator.querySelector('.sbs-transparency-label').textContent='Transparency: '+result;
+        indicator.dataset.state=result==='Opaque'?'opaque':result==='Partial alpha'?'partial':result==='Genuine transparency'?'transparent':'unknown';
+    }
     function designBrief(project, generation) {
         if (!project) return '';
         var key=generation?generation.uuid:'initial', saved=project.concept.design_briefs||{};
@@ -100,15 +105,15 @@
             ctx.showMessage('Failed instruction restored for editing. Nothing has been submitted.');
         }
         async function inspectTransparency(generation) {
-            var status=el('sbs-fs-transparency');if(!selected()||selected().uuid!==generation.uuid)return;status.textContent='Transparency: Not checked';status.dataset.state='unknown';
+            var status=el('sbs-fs-transparency');if(!selected()||selected().uuid!==generation.uuid)return;setTransparency(status,'Not checked');
             try {
                 var image=new Image();image.src=generation.asset_url;await image.decode();
                 var total=image.naturalWidth*image.naturalHeight;if(!image.naturalWidth||!image.naturalHeight||total>32000000)throw new Error('Image too large to inspect');
                 var canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
                 var context=canvas.getContext('2d',{willReadFrequently:true});if(!context)throw new Error('Pixel inspection unavailable');
                 context.drawImage(image,0,0);var result=classifyTransparency(context.getImageData(0,0,canvas.width,canvas.height).data);
-                if(selected()&&selected().uuid===generation.uuid){status.textContent='Transparency: '+result;status.dataset.state=result==='Opaque'?'opaque':result==='Partial alpha'?'partial':'transparent';}
-            } catch(error) {if(selected()&&selected().uuid===generation.uuid){status.textContent='Transparency: Not checked';status.dataset.state='unknown';}}
+                if(selected()&&selected().uuid===generation.uuid)setTransparency(status,result);
+            } catch(error) {if(selected()&&selected().uuid===generation.uuid)setTransparency(status,'Not checked');}
         }
         function showSupport(uuid) {
             var j=jobByUuid(uuid),p=project();if(!j||!p)return;
@@ -172,8 +177,8 @@
             var thumbs=el('sbs-fs-thumbnails');thumbs.innerHTML=recentSix(gs,g&&g.uuid).map(function(image){var n=gs.length-gs.findIndex(function(x){return x.uuid===image.uuid;});var isSelected=!!g&&g.uuid===image.uuid;return '<button type="button" class="sbs-fs-thumbnail'+(isSelected?' selected':'')+'" data-fs-image="'+esc(image.uuid)+'" aria-pressed="'+(isSelected?'true':'false')+'" aria-label="Version '+n+(isSelected?', selected':'')+'"><img src="'+esc(image.asset_url)+'" alt="Version '+n+'"><span>Version '+n+(isSelected?' · Selected':'')+'</span></button>';}).join('');
             thumbs.querySelectorAll('[data-fs-image]').forEach(function(button){button.addEventListener('click',function(){redo[active]=[];setSelection(button.getAttribute('data-fs-image'),true);});});
             el('sbs-fs-empty').hidden=!!g;el('sbs-fs-zoom').hidden=!g;
-            if(g&&el('sbs-fs-image').getAttribute('src')!==g.asset_url){el('sbs-fs-transparency').textContent='Transparency: Not checked';el('sbs-fs-transparency').dataset.state='unknown';el('sbs-fs-image').src=g.asset_url;}
-            if(!g){el('sbs-fs-image').removeAttribute('src');el('sbs-fs-image-info').textContent='';el('sbs-fs-transparency').textContent='Transparency: Not checked';el('sbs-fs-transparency').dataset.state='unknown';}
+            if(g&&el('sbs-fs-image').getAttribute('src')!==g.asset_url){setTransparency(el('sbs-fs-transparency'),'Not checked');el('sbs-fs-image').src=g.asset_url;}
+            if(!g){el('sbs-fs-image').removeAttribute('src');el('sbs-fs-image-info').textContent='';setTransparency(el('sbs-fs-transparency'),'Not checked');}
             var path=g?branch(gs,g.uuid):[];
             var original=importedSource(),allowed=read('allow-edit:'+active,'no')==='yes';el('sbs-fs-edit-lock').hidden=!original;el('sbs-fs-allow-edit').checked=allowed;if(original){el('sbs-fs-original').href=original.asset_url;}
             var refs=referenceSelection();el('sbs-fs-references').innerHTML=referenceAssets().map(function(a){return '<label class="sbs-fs-reference"><input type="checkbox" data-fs-ref="'+esc(a.uuid)+'"'+(refs.includes(a.uuid)?' checked':'')+'><img src="'+esc(a.url)+'" alt=""><span>'+esc(a.label||a.filename)+'</span></label>';}).join('');

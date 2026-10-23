@@ -17,9 +17,24 @@ const backend = read('includes/class-sbs-finishing.php');
 const printQa = read('includes/class-sbs-print-qa.php');
 const plugin = read('smutty-bear-studio.php');
 const pluginClass = read('includes/class-sbs-plugin.php');
+const vm = require('node:vm');
 
-assert.match(plugin, /Version: 0\.2\.68/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.68'\)/);
+const finishingContext = { window: {}, document: undefined };
+vm.createContext(finishingContext);
+vm.runInContext(finishing, finishingContext);
+const classifyTransparency = finishingContext.window.SBSFinishing.classifyTransparency;
+assert.equal(classifyTransparency(new Uint8ClampedArray([20,20,20,255,220,220,220,255])), 'Opaque', 'Opaque/checkerboard pixels must not be called transparent');
+assert.equal(classifyTransparency(new Uint8ClampedArray([20,20,20,0,220,220,220,255])), 'Genuine transparency');
+assert.equal(classifyTransparency(new Uint8ClampedArray([20,20,20,128])), 'Partial alpha');
+assert.throws(() => classifyTransparency(new Uint8ClampedArray([20,20,20])), /Decoded pixels are unavailable/);
+assert.match(template, /id="sbs-af-original-transparency"/);
+assert.match(template, /id="sbs-af-candidate-transparency"/);
+assert.match(template, /Red = opaque · Amber = partial alpha · Green = transparent with no partial alpha · Grey = not checked/);
+assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
+assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
+
+assert.match(plugin, /Version: 0\.2\.69/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.69'\)/);
 const openai = read('includes/class-sbs-openai.php');
 assert.match(openai, /finishing_review_input\(\(int\) \$original_asset_id\)/);
 assert.match(openai, /finishing_review_input\(\(int\) \$candidate_asset_id\)/);
