@@ -90,9 +90,11 @@ $review=SBS_OpenAI::review_finishing_artwork(101,202,'Oversized transparent fixt
 check(!is_wp_error($review), 'Oversized PNG review request could not be prepared');
 $request=$captured_requests[$captured_before];
 $encoded_large=base64_encode($large_png);
-check(strpos($request['args']['body'],'"image_url":"data:image/png;base64,' . $encoded_large . '"')!==false, 'Oversized PNG bytes were not preserved in the provider request');
+// json_encode escapes slash characters by default; compare that exact JSON representation.
+$encoded_large_json=str_replace('/', '\\/', $encoded_large);
+check(strpos($request['args']['body'],'"image_url":"data:image/png;base64,' . $encoded_large_json . '"')!==false, 'Oversized PNG bytes were not preserved in the provider request');
 check(strpos($request['args']['body'],'"file_id"')===false, 'Oversized PNG unexpectedly used the provider file-ID path');
-unset($request,$encoded_large,$large_png);
+unset($request,$encoded_large,$encoded_large_json,$large_png);
 SBS_Storage::$assets=array();
 echo "PASS: 50 MiB transparent PNG is preserved in a local stub request without provider use\n";
 
