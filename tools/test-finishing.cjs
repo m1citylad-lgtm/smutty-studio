@@ -18,8 +18,8 @@ const printQa = read('includes/class-sbs-print-qa.php');
 const plugin = read('smutty-bear-studio.php');
 const pluginClass = read('includes/class-sbs-plugin.php');
 
-assert.match(plugin, /Version: 0\.2\.67/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.67'\)/);
+assert.match(plugin, /Version: 0\.2\.68/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.68'\)/);
 const openai = read('includes/class-sbs-openai.php');
 assert.match(openai, /finishing_review_input\(\(int\) \$original_asset_id\)/);
 assert.match(openai, /finishing_review_input\(\(int\) \$candidate_asset_id\)/);
@@ -34,7 +34,8 @@ assert.match(finishing, /selectedFile\|\|el\('sbs-af-file'\)\.files\[0\]\|\|el\(
 // Regression for the empty review box: global inputs are 100% wide, so the
 // checkbox must have its own fixed column and the text must have room to wrap.
 assert.match(css, /input\[type=checkbox\][^{]*\{[^}]*width:28px[^}]*flex:0 0 28px/);
-assert.match(css, /fieldset label\{[^}]*grid-template-columns:28px minmax\(0,1fr\)/);
+assert.match(css, /#sbs-af-checks label\{[^}]*grid-template-columns:28px minmax\(0,1fr\)/);
+assert.doesNotMatch(css, /\.sbs-af fieldset label\{[^}]*grid-template-columns/);
 assert.match(css, /@media\(max-width:750px\)\{\.sbs-af-compare\{grid-template-columns:minmax\(0,1fr\)/);
 
 assert.match(template, /2\. Queue selected stage/);
