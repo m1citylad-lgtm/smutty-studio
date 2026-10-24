@@ -15,7 +15,7 @@ Updated: 2026-10-19 — final status after live verification
 
 The owner approved retiring Google Picker and direct Drive transfer from the active workflow. Use Android Files / My Files to import artwork, process and review locally, approve the local finishing candidate, download the artwork/package, then upload the package into ChatGPT for Drive filing and documentation. The live page retains disabled Google controls marked deferred; transfer is not active.
 
-The owner returned a local-finishing ZIP on 2026-10-19, confirming that a download was produced. Its contents were not inspected. The public Studio page was signed out during the final check, so authenticated local processing and Android screen-magnification acceptance were not repeated. Local finishing approval is not final production approval.
+The owner returned a local-finishing ZIP on 2026-10-19, confirming that a download was produced. Its contents were not inspected. The public Studio page was signed out during the final check, so authenticated local processing was not repeated. Local finishing approval is not final production approval.
 
 AI upscaling, sharpening/denoising and background removal remain pending development. Friendly artwork-title ZIP filenames are an approved documentation requirement only and are not implemented by this release.
 
