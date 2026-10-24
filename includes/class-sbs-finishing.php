@@ -256,6 +256,10 @@ final class SBS_Finishing
                 if(!empty($r['pending'])){return self::error('busy','Cancel or finish the queued stage before removing a background.',409);}
                 $v=self::flat_background_version($r,$request);if(is_wp_error($v)){return $v;}
                 $r['versions'][]=$v;$r['current_version']=$v['uuid'];$r['approval']=null;$r['status']='Awaiting Review';$r['next_action']='Inspect the flat-colour removal copy; Undo or select another version if needed';
+            } elseif($action==='edit_candidate'){
+                if(!empty($r['pending'])){return self::error('busy','Cancel or finish the queued stage before editing a candidate.',409);}
+                $v=self::edited_candidate_version($r,$request);if(is_wp_error($v)){return $v;}
+                $r['versions'][]=$v;$r['current_version']=$v['uuid'];$r['approval']=null;$r['status']='Awaiting Review';$r['next_action']='Review the edited transparent candidate and its edges';
             } elseif($action==='undo_flat_background'){
                 $undone=self::undo_flat_background($r);if(is_wp_error($undone)){return $undone;}$r=$undone;
             } elseif($action==='cancel'){
@@ -360,6 +364,28 @@ final class SBS_Finishing
         $options=array('method'=>'flat_background','colour'=>$colour,'colour2'=>$use_second?$colour2:null,'tolerance'=>(int)$tolerance,'source_version_uuid'=>$selected['uuid']??null,'source_asset_uuid'=>$source['uuid']??null,'source_sha256'=>$source['sha256'],'width'=>(float)($selected['options']['width']??15),'height'=>(float)($selected['options']['height']??18),'ppi'=>300,'provider'=>null,'model'=>null,'estimated_provider_cost'=>0,'preserve_texture'=>true,'generative_redraw'=>false);
         $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
         return array('uuid'=>wp_generate_uuid4(),'number'=>count($r['versions'])+1,'asset'=>$asset,'options'=>$options,'qa'=>$qa,'created_at'=>gmdate('c'),'source_version_uuid'=>$selected['uuid']??null,'source_asset_uuid'=>$source['uuid']??null,'comparison'=>array('byte_identical'=>hash_equals($r['original']['sha256'],$asset['sha256']),'geometry'=>self::geometry_report($source,$asset,$source_qa,$qa),'structural_detection'=>'Not run — human review required','text_face_detection'=>'Not run — human review required'));
+    }
+    private static function edited_candidate_version($r,$request)
+    {
+        $source_uuid=(string)$request->get_param('source_version');$selected=self::current($r);
+        if(!$selected||$source_uuid!==$selected['uuid']){return self::error('source_version','Select a candidate and retry; the source version changed. No copy was saved.',409);}
+        $source=$selected['asset'];if(!self::intact($r['original'])||!self::intact($source)){return self::error('integrity','Source checksum mismatch. No copy was saved.',409);}
+        $kind=(string)$request->get_param('edit_kind');if(!in_array($kind,array('touchup','trim_transparent'),true)){return self::error('edit_kind','Unsupported artwork edit. No copy was saved.');}
+        $file=$request->get_file_params()['file']??array();$bytes_count=(int)($file['size']??0);
+        if($bytes_count>20*1024*1024){return self::error('too_large','The edited PNG exceeds the 20 MB copy limit. The source is unchanged.',413);}
+        if(!empty($file['error'])||empty($file['tmp_name'])||!is_readable($file['tmp_name'])){return self::error('upload','The PNG copy could not be received. The source is unchanged.');}
+        $size=@getimagesize($file['tmp_name']);$source_size=@getimagesize(SBS_Storage::absolute_path($source));
+        if(!$size||($size['mime']??'')!=='image/png'||!$source_size){return self::error('format','The edit must be a valid PNG. The source is unchanged.');}
+        if((int)$size[0]*(int)$size[1]>32000000){return self::error('pixels','Edits are limited to 32 million pixels. The source is unchanged.',413);}
+        if($kind==='touchup'&&((int)$size[0]!== (int)$source_size[0]||(int)$size[1]!== (int)$source_size[1])){return self::error('dimensions','Touch-up must keep the candidate dimensions. No copy was saved.',409);}
+        if($kind==='trim_transparent'&&((int)$size[0]>(int)$source_size[0]||(int)$size[1]>(int)$source_size[1])){return self::error('dimensions','Trim cannot enlarge the canvas. No copy was saved.',409);}
+        $bytes=file_get_contents($file['tmp_name']);if(!is_string($bytes)||$bytes===''){return self::error('upload','The PNG copy could not be read. The source is unchanged.');}
+        $op=$kind==='touchup'?'manual_transparent_touchup':'trim_transparent_margins';
+        $asset=SBS_Storage::store_bytes($bytes,$kind==='touchup'?'candidate-touchup.png':'candidate-trimmed.png','image/png','finishing',0,'finishing_candidate',$r['title'],array('finishing_operation'=>$op,'source_asset_uuid'=>$source['uuid']??null,'source_sha256'=>$source['sha256']));if(is_wp_error($asset)){return $asset;}
+        $options=array('method'=>$op,'source_version_uuid'=>$selected['uuid'],'source_asset_uuid'=>$source['uuid']??null,'source_sha256'=>$source['sha256'],'width'=>(float)($selected['options']['width']??15),'height'=>(float)($selected['options']['height']??18),'ppi'=>300,'provider'=>null,'model'=>null,'estimated_provider_cost'=>0,'preserve_texture'=>true,'generative_redraw'=>false);
+        $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
+        $geometry=self::geometry_report($source,$asset,$selected['qa'],$qa);if($kind==='trim_transparent'){$geometry=array('status'=>'trimmed','message'=>'Canvas bounds were trimmed around transparent margins without rescaling. Confirm artwork edges and product placement manually.','transparency_sample_matches'=>$geometry['transparency_sample_matches']??null);}
+        return array('uuid'=>wp_generate_uuid4(),'number'=>count($r['versions'])+1,'asset'=>$asset,'options'=>$options,'qa'=>$qa,'created_at'=>gmdate('c'),'source_version_uuid'=>$selected['uuid'],'source_asset_uuid'=>$source['uuid']??null,'comparison'=>array('byte_identical'=>hash_equals($source['sha256'],$asset['sha256']),'geometry'=>$geometry,'structural_detection'=>'Not run — human review required','text_face_detection'=>'Not run — human review required'));
     }
     public static function undo_flat_background($r)
     {
