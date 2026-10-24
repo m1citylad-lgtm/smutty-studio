@@ -2,55 +2,64 @@
     <h1 id="sbs-af-title" tabindex="-1">Artwork Finishing</h1>
     <p class="sbs-af-notice"><strong>Local Artwork Finishing.</strong> Files stay in private Studio storage. Download the package when ready. Local finishing approval does not approve production.</p>
     <details id="sbs-af-freestyle-source" hidden><summary>Freestyle source history</summary><p id="sbs-af-freestyle-source-summary"></p><p id="sbs-af-freestyle-source-settings"></p><ol id="sbs-af-freestyle-source-lineage"></ol></details>
-    <div class="sbs-grid two">
-        <section class="sbs-card"><h2>1. Choose artwork</h2>
+<div class="sbs-grid two sbs-af-workflow-layout">
+        <section class="sbs-card sbs-af-workspace-card"><h2>1. Choose artwork</h2>
             <form id="sbs-af-upload">
                 <label for="sbs-af-name">Artwork title <span class="sbs-af-required">Required</span><input id="sbs-af-name" type="text" maxlength="190" spellcheck="true" autocapitalize="sentences" required aria-required="true"></label>
                 <label for="sbs-af-file">Browse device — Files / My Files<input id="sbs-af-file" type="file" accept=".png,.jpg,.jpeg,.webp,application/octet-stream" aria-describedby="sbs-af-file-help"></label>
                 <label for="sbs-af-gallery-file">Browse Photos / Gallery on this device<input id="sbs-af-gallery-file" type="file" accept="image/*" aria-describedby="sbs-af-file-help"></label>
                 <p id="sbs-af-file-help">Choose Files / My Files or Photos / Gallery. PNG, JPEG or WebP up to 20 MB. Drive is not connected.</p>
-            <button type="submit" class="sbs-button primary">1. Store untouched original</button>
-            <p id="sbs-af-upload-status" role="status" aria-live="polite" aria-atomic="true">No artwork upload completed yet.</p>
+                <button type="submit" class="sbs-button primary">1. Store untouched original</button>
+                <p id="sbs-af-upload-status" role="status" aria-live="polite" aria-atomic="true">No artwork upload completed yet.</p>
             </form>
             <label for="sbs-af-resume">Resume local artwork<select id="sbs-af-resume"><option value="">Choose a workspace</option></select></label>
             <button id="sbs-af-refresh" class="sbs-button" type="button">Refresh workspaces</button>
+            <section class="sbs-af-print-settings" aria-label="Print target settings">
+                <h3>Print target</h3>
+                <div class="sbs-grid two sbs-af-print-target"><label for="sbs-af-width">Print width (inches)<input id="sbs-af-width" type="number" min="1" max="30" step="0.25" value="15"></label><label for="sbs-af-height">Print height (inches)<input id="sbs-af-height" type="number" min="1" max="30" step="0.25" value="18"></label></div>
+                <label class="sbs-af-print-canvas-label"><input id="sbs-af-print-canvas" type="checkbox"> For Step 3 only: fit artwork on a transparent print-size canvas, centred without stretching or enlarging.</label>
+                <p>Set these dimensions before running Inspect, Fit down or Prepare print PNG. 300 PPI is a target, not a quality or detail guarantee.</p>
+            </section>
+
+            <section class="sbs-af-workflow-panel" aria-labelledby="sbs-af-stage-options-title">
+                <h2>2. Choose and run a stage</h2>
+                <h3 id="sbs-af-stage-options-title">Recommended order</h3>
+                <p id="sbs-af-stage-order-help">Choose a workspace above, then select a stage below. Inspect first. Use AI upscale only if Inspect shows too few pixels. Prepare print PNG last.</p>
+                <div class="sbs-af-stage-options" role="group" aria-labelledby="sbs-af-stage-options-title">
+                    <article class="sbs-af-stage-card is-selected" data-af-stage-card="inspect"><div class="sbs-af-stage-heading"><h4>Step 1 — Inspect</h4><button class="sbs-button" type="button" data-af-method="inspect" aria-pressed="true"><span class="sbs-af-stage-button-label">Choose Step 1: Inspect</span><span class="sbs-af-stage-spinner" aria-hidden="true" hidden></span><span class="sbs-af-stage-done" aria-hidden="true" hidden>✓</span></button></div><p><strong>Optional — recommended first.</strong> Checks pixel size, effective PPI, colour profile, transparency samples and other technical points. Saves a byte-identical candidate; it does not alter the artwork.</p></article>
+                    <article class="sbs-af-stage-card" data-af-stage-card="upscale"><div class="sbs-af-stage-heading"><h4>Step 2 — AI upscale</h4><button class="sbs-button" type="button" data-af-method="upscale" aria-pressed="false"><span class="sbs-af-stage-button-label">Choose Step 2: AI upscale</span><span class="sbs-af-stage-spinner" aria-hidden="true" hidden></span><span class="sbs-af-stage-done" aria-hidden="true" hidden>✓</span></button></div><p><strong>Optional — use only if Inspect shows too few pixels.</strong> Sends a copy of the untouched original to Replicate Real-ESRGAN for automatic 2× or 4× upscaling; it may use paid credits.</p><p class="sbs-af-upscale-instructions"><strong>After selecting Step 2:</strong> queue it, then run it. The spinner means it is processing; a tick means it has finished. Review the result before continuing.</p></article>
+                    <article class="sbs-af-stage-card" data-af-stage-card="print_png"><div class="sbs-af-stage-heading"><h4>Step 3 — Prepare print PNG</h4><button class="sbs-button" type="button" data-af-method="print_png" aria-pressed="false"><span class="sbs-af-stage-button-label">Choose Step 3: Prepare print PNG</span><span class="sbs-af-stage-spinner" aria-hidden="true" hidden></span><span class="sbs-af-stage-done" aria-hidden="true" hidden>✓</span></button></div><p><strong>Optional — use for a standardised print file.</strong> Creates an 8-bit RGBA PNG with sRGB and 300-PPI metadata, using the selected candidate or the original. Select the AI-upscaled version first if you ran Step 2. It does not add image detail.</p></article>
+                </div>
+                <details class="sbs-af-fit-down"><summary>Fit down to print box — optional</summary>
+                    <div class="sbs-af-fit-content">
+                        <article class="sbs-af-stage-card" data-af-stage-card="resize"><div class="sbs-af-stage-heading"><h4>Fit down to print box</h4><button class="sbs-button" type="button" data-af-method="resize" aria-pressed="false"><span class="sbs-af-stage-button-label">Choose Fit down</span><span class="sbs-af-stage-spinner" aria-hidden="true" hidden></span><span class="sbs-af-stage-done" aria-hidden="true" hidden>✓</span></button></div><p>Use only when artwork is larger than the print area. It shrinks the selected image to fit, preserves proportions, never crops or enlarges, and saves a separate PNG candidate.</p></article>
+                    </div>
+                </details>
+                <p class="sbs-af-action-sequence"><strong>Next:</strong> Queue selected stage <span aria-hidden="true">↓</span> Run queued stage.</p>
+                <p id="sbs-af-stage-help" role="status" aria-live="polite">Choosing a stage only selects it. Queue it, then run it. The spinner shows that it is processing; a tick shows that it completed.</p>
+                <button id="sbs-af-prepare" class="sbs-button" type="button" disabled>2. Queue selected stage</button>
+                <p class="sbs-af-then" aria-hidden="true">↓ Then</p>
+                <button id="sbs-af-run" class="sbs-button primary" type="button" disabled>3. Run queued stage</button>
+                <button id="sbs-af-cancel" class="sbs-button" type="button" disabled>Cancel queued stage or upscale</button>
+                <p>Cancel before running. To retry, queue the stage again.</p>
+            </section>
         </section>
-        <section class="sbs-card"><h2>2. Choose a stage</h2>
-            <h3 id="sbs-af-stage-options-title">Recommended finishing order</h3>
-<p id="sbs-af-stage-order-help">Use Step 1 first. Use Step 2 only if the image needs more pixels. Use Step 3 to make the print PNG. Fit down is a separate, occasional tool.</p>
-<div class="sbs-af-stage-options" role="group" aria-labelledby="sbs-af-stage-options-title">
- <article class="sbs-af-stage-card is-selected" data-af-stage-card="inspect"><div class="sbs-af-stage-heading"><h4>Step 1 — Inspect</h4><button class="sbs-button" type="button" data-af-method="inspect" aria-pressed="true"><span class="sbs-af-stage-button-label">Choose Step 1: Inspect</span><span class="sbs-af-stage-spinner" aria-hidden="true" hidden></span><span class="sbs-af-stage-done" aria-hidden="true" hidden>✓</span></button></div><p><strong>Optional — recommended first.</strong> Checks pixel size, effective PPI, colour profile, transparency samples and other technical points. Saves a byte-identical candidate and report; it does not alter the artwork.</p></article>
- <article class="sbs-af-stage-card" data-af-stage-card="upscale"><div class="sbs-af-stage-heading"><h4>Step 2 — AI upscale</h4><button class="sbs-button" type="button" data-af-method="upscale" aria-pressed="false"><span class="sbs-af-stage-button-label">Choose Step 2: AI upscale</span><span class="sbs-af-stage-spinner" aria-hidden="true" hidden></span><span class="sbs-af-stage-done" aria-hidden="true" hidden>✓</span></button></div><p><strong>Optional — use only if Inspect shows too few pixels.</strong> Sends a copy of the untouched original to Replicate Real-ESRGAN for automatic 2× or 4× upscaling. It may use paid credits. Review the result before continuing.</p></article>
- <article class="sbs-af-stage-card" data-af-stage-card="print_png"><div class="sbs-af-stage-heading"><h4>Step 3 — Prepare print PNG</h4><button class="sbs-button" type="button" data-af-method="print_png" aria-pressed="false"><span class="sbs-af-stage-button-label">Choose Step 3: Prepare print PNG</span><span class="sbs-af-stage-spinner" aria-hidden="true" hidden></span><span class="sbs-af-stage-done" aria-hidden="true" hidden>✓</span></button></div><p><strong>Optional — use for a standardised print file.</strong> Creates an 8-bit RGBA PNG with sRGB and 300-PPI metadata, using the selected candidate or the original. Select the AI-upscaled version first if you ran Step 2. It does not add image detail; the canvas option below only scales artwork down.</p></article>
-</div>
-<details class="sbs-af-fit-down"><summary>Fit down to print box — optional</summary>
- <div class="sbs-af-fit-content">
-  <article class="sbs-af-stage-card" data-af-stage-card="resize"><div class="sbs-af-stage-heading"><h4>Fit down to print box</h4><button class="sbs-button" type="button" data-af-method="resize" aria-pressed="false"><span class="sbs-af-stage-button-label">Choose Fit down</span><span class="sbs-af-stage-spinner" aria-hidden="true" hidden></span><span class="sbs-af-stage-done" aria-hidden="true" hidden>✓</span></button></div><p>Use only when artwork is larger than the print area. It shrinks the selected image to fit, preserves proportions, never crops or enlarges, and saves a separate PNG candidate. Then queue and run it.</p></article>
- </div>
-</details>
-            <div class="sbs-grid two"><label for="sbs-af-width">Print width (inches)<input id="sbs-af-width" type="number" min="1" max="30" step="0.25" value="15"></label><label for="sbs-af-height">Print height (inches)<input id="sbs-af-height" type="number" min="1" max="30" step="0.25" value="18"></label></div>
-            <label><input id="sbs-af-print-canvas" type="checkbox"> Prepare print PNG only: fit on a transparent print-size canvas, centred without stretching or enlarging the artwork.</label>
-            <p>Untagged sources are assumed sRGB; confirm colours manually. 300 PPI is a target, not a quality or detail guarantee. The untouched original is retained.</p>
+
+        <section class="sbs-card sbs-af-adjustments-card"><h2>Optional artwork adjustments</h2>
             <details class="sbs-af-flat-background"><summary>Optional: remove a plain background</summary>
                 <div class="sbs-af-flat-background-content">
-                <p>Local, non-AI operation. It removes selected sampled colours only where connected to the image edge. It can leave fringes or remove edge-touching artwork. Sampling can be uncertain; inspect the preview and saved copy. It does not detect every checkerboard and is not a complex-scene remover.</p>
-                <button id="sbs-af-flat-sample" type="button" class="sbs-button" disabled>Sample image corners</button>
-                <p id="sbs-af-flat-samples" role="status" aria-live="polite">Choose or resume artwork, then sample its image pixels. The preview background is not sampled.</p>
-                <div class="sbs-grid two"><label for="sbs-af-flat-colour">Background colour 1<input id="sbs-af-flat-colour" type="color" value="#ffffff"></label><label for="sbs-af-flat-colour-2">Background colour 2<input id="sbs-af-flat-colour-2" type="color" value="#d0d0d0"></label><label class="sbs-check"><input id="sbs-af-flat-use-second" type="checkbox"> Also remove the second colour</label><label for="sbs-af-flat-tolerance">Colour tolerance (0 = exact, 100 = broader)<input id="sbs-af-flat-tolerance" type="number" min="0" max="100" value="18"></label></div>
-                <button id="sbs-af-flat-preview" type="button" class="sbs-button" disabled>Preview edge-colour removal</button>
-                <div id="sbs-af-flat-preview-box" class="sbs-af-flat-preview" hidden><strong>Preview only — source unchanged</strong><img id="sbs-af-flat-preview-image" alt="Preview of proposed edge-connected background removal"><p id="sbs-af-flat-preview-summary"></p></div>
-                <button id="sbs-af-flat-remove" type="button" class="sbs-button" disabled>Save preview as separate PNG copy</button>
-                <button id="sbs-af-flat-undo" type="button" class="sbs-button" disabled>Undo — restore source version</button>
-                <p id="sbs-af-flat-status" role="status" aria-live="polite" aria-atomic="true">Choose or resume artwork to use this option.</p>
+                    <p>Local, non-AI operation. Removes selected sampled colours only where connected to the image edge. It can leave fringes or remove edge-touching artwork. It does not detect every checkerboard or remove complex scenes.</p>
+                    <button id="sbs-af-flat-sample" type="button" class="sbs-button" disabled>Sample image corners</button>
+                    <p id="sbs-af-flat-samples" role="status" aria-live="polite">Choose or resume artwork, then sample its image pixels. The preview background is not sampled.</p>
+                    <div class="sbs-grid two"><label for="sbs-af-flat-colour">Background colour 1<input id="sbs-af-flat-colour" type="color" value="#ffffff"></label><label for="sbs-af-flat-colour-2">Background colour 2<input id="sbs-af-flat-colour-2" type="color" value="#d0d0d0"></label><label class="sbs-check"><input id="sbs-af-flat-use-second" type="checkbox"> Also remove the second colour</label><label for="sbs-af-flat-tolerance">Colour tolerance (0 = exact, 100 = broader)<input id="sbs-af-flat-tolerance" type="number" min="0" max="100" value="18"></label></div>
+                    <button id="sbs-af-flat-preview" type="button" class="sbs-button" disabled>Preview edge-colour removal</button>
+                    <div id="sbs-af-flat-preview-box" class="sbs-af-flat-preview" hidden><strong>Preview only — source unchanged</strong><img id="sbs-af-flat-preview-image" alt="Preview of proposed edge-connected background removal"><p id="sbs-af-flat-preview-summary"></p></div>
+                    <button id="sbs-af-flat-remove" type="button" class="sbs-button" disabled>Save preview as separate PNG copy</button>
+                    <button id="sbs-af-flat-undo" type="button" class="sbs-button" disabled>Undo — restore source version</button>
+                    <p id="sbs-af-flat-status" role="status" aria-live="polite" aria-atomic="true">Choose or resume artwork to use this option.</p>
                 </div>
             </details>
             <label for="sbs-af-notes">Correction notes for this version<textarea id="sbs-af-notes" rows="4" maxlength="6000" spellcheck="true" autocapitalize="sentences" placeholder="Dictate details to check. Notes are recorded; they do not instruct AI or redraw this image."></textarea></label>
-            <p id="sbs-af-stage-help" role="status" aria-live="polite">No particular stage is mandatory. Inspect is the recommended first step. Choose a workspace, select a step, then queue and run it. One candidate is needed before approval; Inspect creates one without changing the artwork bytes.</p>
-            <button id="sbs-af-prepare" class="sbs-button" type="button" disabled>2. Queue selected stage</button>
-            <p class="sbs-af-then" aria-hidden="true">Then ↓</p>
-            <button id="sbs-af-run" class="sbs-button primary" type="button" disabled>3. Run queued stage</button>
-            <button id="sbs-af-cancel" class="sbs-button" type="button" disabled>Cancel queued stage or upscale</button>
-            <p>Cancel before running. To retry, queue the stage again.</p>
         </section>
     </div>
     <section class="sbs-card"><h2>3. Compare and review</h2>
