@@ -34,8 +34,8 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0\.2\.73/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.73'\)/);
+assert.match(plugin, /Version: 0\.2\.74/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.74'\)/);
 assert.match(studio, /button\.closest\('\.sbs-character-page-menu'\)\) \{ return; \}/, 'Character menu entries must not receive information buttons');
 const mainNav = studioTemplate.match(/<nav id="sbs-primary-nav"[\s\S]*?<\/nav>/)[0];
 assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="freestyle"'));
@@ -84,6 +84,8 @@ assert.match(template, /id="sbs-af-filter-next"/);
 assert.match(template, /id="sbs-af-filter-alpha"/);
 assert.match(template, /id="sbs-af-catalogue-viewer"[^>]*role="dialog"/);
 assert.match(finishing, /Rename/);
+assert.match(finishing, /querySelectorAll\('\[data-af-rename\]'\)\.forEach\(function\(n\)\{n\.disabled=busy;\}\)/);
+assert.match(finishing, /rename\.setAttribute\('data-af-rename','1'\)/);
 assert.match(backend, /public static function rename/);
 assert.match(backend, /\/rename/);
 assert.match(backend, /public static function delete_plan/);
