@@ -34,8 +34,8 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0\.2\.77/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.77'\)/);
+assert.match(plugin, /Version: 0\.2\.78/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.78'\)/);
 assert.match(studio, /button\.closest\('\.sbs-character-page-menu'\)\) \{ return; \}/, 'Character menu entries must not receive information buttons');
 const mainNav = studioTemplate.match(/<nav id="sbs-primary-nav"[\s\S]*?<\/nav>/)[0];
 assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="freestyle"'));
@@ -220,8 +220,8 @@ assert.match(finishing, /Choose a folder for the ZIP/);
 assert.match(finishing, /response\.body\.pipeTo/);
 
 // Replicate upscale is explicitly supported by the existing adapter and remains a separate review candidate.
-assert.match(template, /data-af-method="upscale" aria-pressed="false">Choose AI upscale/);
-assert.match(template, /data-af-method="inspect" aria-pressed="true">Choose Inspect/);
+assert.match(template, /data-af-method="upscale" aria-pressed="false">Choose Step 2: AI upscale/);
+assert.match(template, /data-af-method="inspect" aria-pressed="true">Choose Step 1: Inspect/);
 assert.match(template, /No particular stage is mandatory/);
 assert.doesNotMatch(template, /id="sbs-af-method"/);
 assert.match(finishing, /method:selectedMethod/);

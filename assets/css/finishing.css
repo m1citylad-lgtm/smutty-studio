@@ -174,3 +174,10 @@ body#sbs-studio-page .sbs-af-catalogue-row .sbs-danger-tool { justify-self:end; 
 .sbs-af-stage-card button{grid-column:2;grid-row:1;white-space:normal}
 #sbs-af-stage-options-title{margin-bottom:.35rem}
 @media(max-width:750px){.sbs-af-stage-card{grid-template-columns:minmax(0,1fr)}.sbs-af-stage-card button{grid-column:1;grid-row:auto;justify-self:start}}
+
+.sbs-af-fit-down{margin:1rem 0;border:2px solid #b69c65;border-radius:10px;background:#17182b;color:#fff3d7;overflow:hidden}
+.sbs-af-fit-down>summary{min-height:48px;padding:.75rem 1rem;display:flex;align-items:center;font-weight:700;color:#ffe08a;cursor:pointer}
+.sbs-af-fit-down>summary:focus-visible{outline:3px solid #ffe08a;outline-offset:-3px}
+.sbs-af-fit-content{padding:0 1rem 1rem}
+.sbs-af-fit-down .sbs-af-stage-card{margin:0}
+#sbs-af-stage-order-help{line-height:1.5}
