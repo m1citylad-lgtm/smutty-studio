@@ -1506,7 +1506,7 @@ select:disabled {
 .sbs-header button, .sbs-primary-tabs button, .sbs-primary-tabs button.active,
 .sbs-primary-tabs button.active:hover { background: #0b1b35; color: #f6a12a; }
 
-/* Keep the main areas in a predictable order, with equal, magnification-friendly targets. */
+/* Keep the main areas in a predictable order with equal-sized targets. */
 body#sbs-studio-page .sbs-header {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
