@@ -372,8 +372,8 @@ final class SBS_Finishing
         $source=$selected['asset'];if(!self::intact($r['original'])||!self::intact($source)){return self::error('integrity','Source checksum mismatch. No copy was saved.',409);}
         $kind=(string)$request->get_param('edit_kind');if(!in_array($kind,array('touchup','trim_transparent'),true)){return self::error('edit_kind','Unsupported artwork edit. No copy was saved.');}
         $file=$request->get_file_params()['file']??array();$bytes_count=(int)($file['size']??0);
-        if($bytes_count>20*1024*1024){return self::error('too_large','The edited PNG exceeds the 20 MB copy limit. The source is unchanged.',413);}
-        if(!empty($file['error'])||empty($file['tmp_name'])||!is_readable($file['tmp_name'])){return self::error('upload','The PNG copy could not be received. The source is unchanged.');}
+        if($bytes_count>64*1024*1024){return self::error('too_large','The edited PNG exceeds the 64 MB copy limit. The source is unchanged.',413);}
+        if(!empty($file['error'])||empty($file['tmp_name'])||!is_readable($file['tmp_name'])){$upload_error=(int)($file['error']??0);$server_limit=size_format(wp_max_upload_size());$message=in_array($upload_error,array(UPLOAD_ERR_INI_SIZE,UPLOAD_ERR_FORM_SIZE),true)?'The server upload limit is '.$server_limit.'. The edited copy did not reach Studio; the source is unchanged.':'The PNG copy could not be received. The source is unchanged.';return self::error('upload',$message);}
         $size=@getimagesize($file['tmp_name']);$source_size=@getimagesize(SBS_Storage::absolute_path($source));
         if(!$size||($size['mime']??'')!=='image/png'||!$source_size){return self::error('format','The edit must be a valid PNG. The source is unchanged.');}
         if((int)$size[0]*(int)$size[1]>32000000){return self::error('pixels','Edits are limited to 32 million pixels. The source is unchanged.',413);}
