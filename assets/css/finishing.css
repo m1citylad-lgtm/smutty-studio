@@ -190,3 +190,17 @@ body#sbs-studio-page .sbs-af-catalogue-row .sbs-danger-tool { justify-self:end; 
 .sbs-af-fit-content{padding:0 1rem 1rem}
 .sbs-af-fit-down .sbs-af-stage-card{margin:0}
 #sbs-af-stage-order-help{line-height:1.5}
+
+
+/* Keep artwork selection, print target, and stage actions in one visible workflow. */
+.sbs-af-workflow-layout{align-items:start}
+.sbs-af-workspace-card,.sbs-af-adjustments-card{align-self:start}
+.sbs-af-workflow-panel{margin-top:1.25rem;padding-top:1rem;border-top:2px solid #b69c65}
+.sbs-af-print-settings{margin:1rem 0;padding:12px;border:1px solid #b69c65;border-radius:8px;background:#17182b}
+.sbs-af-print-settings h3{margin:.1rem 0 .75rem;color:#ffe08a}
+.sbs-af-print-settings p{margin:.5rem 0 0;line-height:1.45}
+.sbs-af-print-canvas-label{display:block;margin:.75rem 0}
+.sbs-af-upscale-instructions{padding:.6rem .75rem;border-left:3px solid #f0ad64;background:#101827}
+.sbs-af-action-sequence{margin:1rem 0 .5rem;font-weight:700;color:#ffe08a}
+.sbs-af-then{text-align:center;font-weight:700;color:#ffe08a}
+#sbs-af-prepare,#sbs-af-run{margin:.25rem .5rem .5rem 0}
