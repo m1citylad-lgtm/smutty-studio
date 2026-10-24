@@ -22,9 +22,13 @@
             <p>Prepare print PNG uses the selected candidate, if present. Untagged sources are assumed sRGB; confirm colours manually. Inspect and Fit down stay local. AI upscale sends a copy to Replicate and may cost credits. Original stays unchanged. 300 PPI is a target, not a quality guarantee.</p>
             <details class="sbs-af-flat-background"><summary>Optional: remove a plain background</summary>
                 <div class="sbs-af-flat-background-content">
-                <p>Local, non-AI operation. It removes only the selected colour connected to the image edge. It is not a checkerboard or complex-scene remover; it can leave fringes or remove edge-connected artwork. Inspect the copy before using it.</p>
-                <div class="sbs-grid two"><label for="sbs-af-flat-colour">Background colour<input id="sbs-af-flat-colour" type="color" value="#ffffff"></label><label for="sbs-af-flat-tolerance">Colour tolerance (0 = exact, 100 = broader)<input id="sbs-af-flat-tolerance" type="number" min="0" max="100" value="18"></label></div>
-                <button id="sbs-af-flat-remove" type="button" class="sbs-button" disabled>Remove matching edge colour into a copy</button>
+                <p>Local, non-AI operation. It removes selected sampled colours only where connected to the image edge. It can leave fringes or remove edge-touching artwork. Sampling can be uncertain; inspect the preview and saved copy. It does not detect every checkerboard and is not a complex-scene remover.</p>
+                <button id="sbs-af-flat-sample" type="button" class="sbs-button" disabled>Sample image corners</button>
+                <p id="sbs-af-flat-samples" role="status" aria-live="polite">Choose or resume artwork, then sample its image pixels. The preview background is not sampled.</p>
+                <div class="sbs-grid two"><label for="sbs-af-flat-colour">Background colour 1<input id="sbs-af-flat-colour" type="color" value="#ffffff"></label><label for="sbs-af-flat-colour-2">Background colour 2<input id="sbs-af-flat-colour-2" type="color" value="#d0d0d0"></label><label class="sbs-check"><input id="sbs-af-flat-use-second" type="checkbox"> Also remove the second colour</label><label for="sbs-af-flat-tolerance">Colour tolerance (0 = exact, 100 = broader)<input id="sbs-af-flat-tolerance" type="number" min="0" max="100" value="18"></label></div>
+                <button id="sbs-af-flat-preview" type="button" class="sbs-button" disabled>Preview edge-colour removal</button>
+                <div id="sbs-af-flat-preview-box" class="sbs-af-flat-preview" hidden><strong>Preview only — source unchanged</strong><img id="sbs-af-flat-preview-image" alt="Preview of proposed edge-connected background removal"><p id="sbs-af-flat-preview-summary"></p></div>
+                <button id="sbs-af-flat-remove" type="button" class="sbs-button" disabled>Save preview as separate PNG copy</button>
                 <button id="sbs-af-flat-undo" type="button" class="sbs-button" disabled>Undo — restore source version</button>
                 <p id="sbs-af-flat-status" role="status" aria-live="polite" aria-atomic="true">Choose or resume artwork to use this option.</p>
                 </div>

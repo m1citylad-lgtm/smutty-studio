@@ -276,8 +276,8 @@ final class SBS_Finishing
         if($source_uuid!==$expected){return self::error('source_version','The selected source changed. Refresh and try again.',409);}
         $source=$selected?$selected['asset']:$r['original'];$source_qa=$selected?$selected['qa']:$r['original_qa'];
         if(!self::intact($r['original'])||!self::intact($source)){return self::error('integrity','Source checksum mismatch. No copy was saved.',409);}
-        $colour=strtolower((string)$request->get_param('colour'));$tolerance=$request->get_param('tolerance');
-        if(!preg_match('/^#[0-9a-f]{6}$/D',$colour)||!preg_match('/^(?:0|[1-9][0-9]?|100)$/D',(string)$tolerance)){return self::error('options','Choose a background colour and tolerance from 0 to 100.');}
+        $colour=strtolower((string)$request->get_param('colour'));$colour2=strtolower((string)$request->get_param('colour2'));$use_second=(string)$request->get_param('use_second')==='true';$tolerance=$request->get_param('tolerance');
+        if(!preg_match('/^#[0-9a-f]{6}$/D',$colour)||($use_second&&!preg_match('/^#[0-9a-f]{6}$/D',$colour2))||!preg_match('/^(?:0|[1-9][0-9]?|100)$/D',(string)$tolerance)){return self::error('options','Choose one or two background colours and a tolerance from 0 to 100.');}
         $file=$request->get_file_params()['file']??array();$file_bytes=(int)($file['size']??0);
         if($file_bytes>20*1024*1024){return self::error('too_large','The PNG copy is larger than 20 MB. No copy was saved.');}
         if(!empty($file['error'])||empty($file['tmp_name'])||!is_readable($file['tmp_name'])){return self::error('upload','The PNG copy could not be received. The source is unchanged.');}
@@ -287,7 +287,7 @@ final class SBS_Finishing
         if((int)$size[0]!== (int)$source_size[0]||(int)$size[1]!== (int)$source_size[1]){return self::error('dimensions','The copy dimensions do not match the selected source. No copy was saved.',409);}
         $bytes=file_get_contents($file['tmp_name']);if(!is_string($bytes)||$bytes===''){return self::error('upload','The PNG copy could not be read. The source is unchanged.');}
         $asset=SBS_Storage::store_bytes($bytes,'candidate-flat-background.png','image/png','finishing',0,'finishing_candidate',$r['title'],array('finishing_operation'=>'edge_connected_flat_colour_removal','source_asset_uuid'=>$source['uuid']??null));if(is_wp_error($asset)){return $asset;}
-        $options=array('method'=>'flat_background','colour'=>$colour,'tolerance'=>(int)$tolerance,'source_version_uuid'=>$selected['uuid']??null,'source_asset_uuid'=>$source['uuid']??null,'source_sha256'=>$source['sha256'],'width'=>(float)($selected['options']['width']??15),'height'=>(float)($selected['options']['height']??18),'ppi'=>300,'provider'=>null,'model'=>null,'estimated_provider_cost'=>0,'preserve_texture'=>true,'generative_redraw'=>false);
+        $options=array('method'=>'flat_background','colour'=>$colour,'colour2'=>$use_second?$colour2:null,'tolerance'=>(int)$tolerance,'source_version_uuid'=>$selected['uuid']??null,'source_asset_uuid'=>$source['uuid']??null,'source_sha256'=>$source['sha256'],'width'=>(float)($selected['options']['width']??15),'height'=>(float)($selected['options']['height']??18),'ppi'=>300,'provider'=>null,'model'=>null,'estimated_provider_cost'=>0,'preserve_texture'=>true,'generative_redraw'=>false);
         $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
         return array('uuid'=>wp_generate_uuid4(),'number'=>count($r['versions'])+1,'asset'=>$asset,'options'=>$options,'qa'=>$qa,'created_at'=>gmdate('c'),'source_version_uuid'=>$selected['uuid']??null,'source_asset_uuid'=>$source['uuid']??null,'comparison'=>array('byte_identical'=>hash_equals($r['original']['sha256'],$asset['sha256']),'geometry'=>self::geometry_report($source,$asset,$source_qa,$qa),'structural_detection'=>'Not run — human review required','text_face_detection'=>'Not run — human review required'));
     }
