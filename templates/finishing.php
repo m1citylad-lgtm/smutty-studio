@@ -13,7 +13,7 @@
                 <p id="sbs-af-upload-status" role="status" aria-live="polite" aria-atomic="true">No artwork upload completed yet.</p>
             </form>
             <label for="sbs-af-resume">Resume local artwork<select id="sbs-af-resume"><option value="">Choose a workspace</option></select></label>
-            <button id="sbs-af-refresh" class="sbs-button" type="button">Refresh workspaces</button>
+            <button id="sbs-af-refresh" class="sbs-button" type="button" aria-live="polite"><span id="sbs-af-refresh-label">Refresh workspaces</span><span id="sbs-af-refresh-spinner" aria-hidden="true" hidden> ⌛</span><span id="sbs-af-refresh-done" aria-hidden="true" hidden> ✓</span></button>
             <section class="sbs-af-print-settings" aria-label="Print target settings">
                 <h3>Print target</h3>
                 <div class="sbs-grid two sbs-af-print-target"><label for="sbs-af-width">Print width (inches)<input id="sbs-af-width" type="number" min="1" max="30" step="0.25" value="15"></label><label for="sbs-af-height">Print height (inches)<input id="sbs-af-height" type="number" min="1" max="30" step="0.25" value="18"></label></div>
@@ -70,7 +70,7 @@
         <p id="sbs-af-zoom-help">Preview zoom only; it does not change the image.</p>
         <p id="sbs-af-proof-help">Check the image on light and dark backgrounds.</p>
         <p>These on-screen colours check contrast only. They are not physical print proofs or a colour-match guarantee.</p>
-        <div class="sbs-af-compare" id="sbs-af-compare"><figure><figcaption>Untouched original</figcaption><div class="sbs-af-viewport" tabindex="0" aria-label="Original image viewport — scroll to inspect"><img id="sbs-af-original" alt="" hidden></div><div id="sbs-af-original-transparency" class="sbs-transparency-indicator" role="status" aria-live="polite" aria-atomic="true" data-state="unknown"><span class="sbs-transparency-bar" aria-hidden="true"></span><span class="sbs-transparency-label">Transparency: Not checked</span></div></figure><figure><figcaption>Selected candidate</figcaption><div class="sbs-af-viewport" tabindex="0" aria-label="Candidate image viewport — scroll to inspect"><img id="sbs-af-candidate" alt="" hidden></div><div id="sbs-af-candidate-transparency" class="sbs-transparency-indicator" role="status" aria-live="polite" aria-atomic="true" data-state="unknown"><span class="sbs-transparency-bar" aria-hidden="true"></span><span class="sbs-transparency-label">Transparency: Not checked</span></div><a id="sbs-af-candidate-download" class="sbs-button" hidden download>Download selected candidate</a></figure></div>
+        <div class="sbs-af-compare" id="sbs-af-compare"><figure><figcaption>Untouched original</figcaption><div class="sbs-af-viewport" tabindex="0" aria-label="Original image viewport — scroll to inspect"><img id="sbs-af-original" alt="" hidden></div><div id="sbs-af-original-transparency" class="sbs-transparency-indicator" role="status" aria-live="polite" aria-atomic="true" data-state="unknown"><span class="sbs-transparency-bar" aria-hidden="true"></span><span class="sbs-transparency-label">Transparency: Not checked</span></div></figure><figure><figcaption>Selected candidate</figcaption><div class="sbs-af-viewport" tabindex="0" aria-label="Candidate image viewport — scroll to inspect"><img id="sbs-af-candidate" alt="" hidden></div><div id="sbs-af-candidate-transparency" class="sbs-transparency-indicator" role="status" aria-live="polite" aria-atomic="true" data-state="unknown"><span class="sbs-transparency-bar" aria-hidden="true"></span><span class="sbs-transparency-label">Transparency: Not checked</span></div><a id="sbs-af-candidate-download" class="sbs-button" hidden download>Download selected candidate</a><button id="sbs-af-edit-open" class="sbs-button" type="button" disabled>Edit transparent candidate</button><button id="sbs-af-trim" class="sbs-button" type="button" disabled>Auto-trim transparent margins</button><p>Use trim only to remove extra transparent space around isolated artwork. It keeps all visible pixels and leaves a 1–2 px transparent edge. Keep the full canvas when a product template depends on its exact size or placement. Solid backgrounds are not trimmed.</p><p id="sbs-af-edit-status" role="status" aria-live="polite">Choose a transparent candidate to enable cleanup and trim.</p></figure></div>
         <p class="sbs-transparency-key">Red = opaque · Amber = partial alpha · Green = transparent with no partial alpha · Grey = not checked</p>
         <section id="sbs-af-print-proof" class="sbs-af-print-proof" aria-labelledby="sbs-af-print-proof-title" hidden>
             <h3 id="sbs-af-print-proof-title">Garment-colour print check</h3>
@@ -133,6 +133,24 @@
             <button id="sbs-af-ai-focus-candidate" type="button" class="sbs-button">Candidate</button>
         </div>
         <div id="sbs-af-ai-focus-stage" class="sbs-af-ai-focus-stage" tabindex="0" aria-label="Four-times image view. Scroll to pan around the image."></div>
+    </div>
+    <div id="sbs-af-editor" class="sbs-af-editor" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-editor-title">
+        <header class="sbs-af-editor-head"><div><h2 id="sbs-af-editor-title">Clean transparent artwork</h2><p>Changes apply to a new copy. The selected candidate and original stay in history.</p></div><button id="sbs-af-editor-close" class="sbs-af-ai-focus-close" type="button" aria-label="Close editor">×</button></header>
+        <div class="sbs-af-editor-controls" role="toolbar" aria-label="Transparent artwork tools">
+            <button id="sbs-af-tool-erase" class="sbs-button" type="button" aria-pressed="true">Erase to transparent</button><button id="sbs-af-tool-restore" class="sbs-button" type="button" aria-pressed="false">Restore from source</button>
+            <label>Brush width <input id="sbs-af-brush-width" type="range" min="1" max="120" value="24"><output id="sbs-af-brush-width-value">24 px</output></label>
+            <label>Soft edge <input id="sbs-af-brush-soft" type="range" min="0" max="100" value="35"><output id="sbs-af-brush-soft-value">35%</output></label>
+            <button id="sbs-af-edit-undo" class="sbs-button" type="button" disabled>Undo</button><button id="sbs-af-edit-redo" class="sbs-button" type="button" disabled>Redo</button>
+            <button id="sbs-af-edit-save" class="sbs-button primary" type="button" disabled>Save as new version</button>
+        </div>
+        <label>Zoom <input id="sbs-af-editor-zoom" type="range" min="50" max="400" value="100"><output id="sbs-af-editor-zoom-value">100%</output></label>
+        <label>Brush strength <input id="sbs-af-brush-strength" type="range" min="10" max="100" value="100"><output id="sbs-af-brush-strength-value">100%</output></label>
+        <p id="sbs-af-editor-status" role="status" aria-live="polite">Loading candidate…</p><div id="sbs-af-editor-viewport" class="sbs-af-editor-viewport" tabindex="0" aria-label="Artwork editor canvas; zoom and scroll to inspect"><canvas id="sbs-af-editor-canvas"></canvas></div>
+    </div>
+    <div id="sbs-af-trim-dialog" class="sbs-af-editor" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-trim-title">
+        <header class="sbs-af-editor-head"><div><h2 id="sbs-af-trim-title">Preview transparent-margin trim</h2><p id="sbs-af-trim-summary"></p></div><button id="sbs-af-trim-close" class="sbs-af-ai-focus-close" type="button" aria-label="Cancel trim preview">×</button></header>
+        <p id="sbs-af-trim-status" role="status" aria-live="polite">Preview only. Original and selected candidate remain unchanged.</p><div class="sbs-af-trim-preview"><canvas id="sbs-af-trim-canvas"></canvas></div>
+        <div class="sbs-af-editor-controls"><button id="sbs-af-trim-save" class="sbs-button primary" type="button">Save trimmed copy as new version</button><button id="sbs-af-trim-cancel" class="sbs-button" type="button">Cancel</button></div>
     </div>
     <div id="sbs-af-proof-viewer" class="sbs-af-proof-viewer" hidden aria-modal="true" role="dialog" aria-label="Full-screen garment proof viewer">
         <button id="sbs-af-proof-close" class="sbs-af-proof-close" type="button" aria-label="Close proof viewer">×</button>
