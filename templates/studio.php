@@ -11,9 +11,9 @@
 <div id="sbs-app" class="sbs-shell" data-rest="<?php echo esc_url(rest_url('smutty-bear/v1/')); ?>" data-authenticated="<?php echo SBS_Auth::is_authenticated() ? '1' : '0'; ?>" data-slug="<?php echo esc_attr(SBS_Plugin::studio_slug()); ?>" data-version="<?php echo esc_attr(SBS_VERSION); ?>" data-finishing-csrf="<?php echo SBS_Auth::is_authenticated() ? esc_attr(SBS_Finishing::csrf()) : ''; ?>" data-open-settings="<?php echo isset($_GET['settings']) ? '1' : '0'; ?>">
     <header class="sbs-header">
         <nav id="sbs-primary-nav" class="sbs-primary-tabs" aria-label="Main studio areas" <?php echo SBS_Auth::is_authenticated() ? '' : 'hidden'; ?>>
-            <button data-primary-tab="finishing" class="active">Artwork Finishing</button>
+            <button data-primary-tab="finishing" class="active">Finishing</button>
             <button data-primary-tab="freestyle">Freestyle</button>
-            <button data-primary-tab="catalogue">Artwork Catalogue</button>
+            <button data-primary-tab="catalogue">Catalogue</button>
             <button data-primary-tab="characters">Characters</button>
             <button data-primary-tab="usage">Usage</button>
             <button data-primary-tab="settings">Settings</button>
@@ -46,13 +46,13 @@
                 <div class="sbs-character-page-picker">
                 <div class="sbs-character-page-heading">Character pages · <strong id="sbs-character-page-current">Description</strong></div>
                 <nav class="sbs-tabs sbs-character-page-menu" id="sbs-character-page-menu" aria-label="Character pages">
+                    <button data-tab="library">Character</button>
                     <button data-tab="characters" class="active" aria-current="page"><span class="sbs-stage-number">1.</span> Description</button>
-                    <button data-tab="library">Character library</button>
                     <button data-tab="development"><span class="sbs-stage-number">2.</span> Visual Development</button>
-                    <button data-tab="references"><span class="sbs-stage-number">3.</span> Reference</button>
-                    <button data-tab="create" hidden><span class="sbs-stage-number">4.</span> Idea Room</button>
-                    <button data-tab="projects"><span class="sbs-stage-number">5.</span> Creations</button>
-                    <button data-tab="canvas"><span class="sbs-stage-number">6.</span> Composition Tool</button>
+                    <button data-tab="canvas"><span class="sbs-stage-number">3.</span> Composition Tool</button>
+                    <button data-tab="references">Reference</button>
+                    <button data-tab="projects">Creations</button>
+                    <button data-tab="create" hidden>Idea Room</button>
                 </nav>
                 </div>
                 <div class="sbs-character-commands"><button id="sbs-new-pack" class="sbs-button primary">New character</button><button id="sbs-fork-pack" class="sbs-button" disabled>Create new version</button></div>

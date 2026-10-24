@@ -171,7 +171,7 @@
         });
     }
 
-    function selectPack(uuid, persist) {
+    function selectPack(uuid, persist, showDescription) {
         var pack = findPack(uuid);
         if (!pack) { return; }
         var changed = !state.selectedPack || state.selectedPack.uuid !== pack.uuid;
@@ -181,6 +181,7 @@
         if (changed) { state.analysisSuggestion = null; state.developmentProjectUuid = ''; state.developmentJobs = {}; resetCanvasProject(); if (el('sbs-live-jobs')) { el('sbs-live-jobs').innerHTML = ''; } }
         renderPackOptions(); renderCharacterContext(); renderPacks(); renderPackEditor(); renderDevelopment(); renderProjects(); renderCanvasOptions(); updatePromptPreview();
         if (changed && state.canvas) { loadLatestCanvas(); }
+        if (changed && showDescription) { activateTab('characters'); }
     }
 
     function renderPacks() {
@@ -548,7 +549,7 @@
             var description = window.prompt('Describe the adult character, personality and visual style') || '';
             post('packs', { name: name, description: description }).then(function (pack) { state.packs.unshift(pack); selectPack(pack.uuid); activateTab('characters'); }).catch(handleError);
         });
-        el('sbs-current-pack').addEventListener('change', function () { selectPack(this.value); });
+        el('sbs-current-pack').addEventListener('change', function () { selectPack(this.value, true, true); });
         el('sbs-fork-pack').addEventListener('click', function () {
             if (!state.selectedPack) { return; }
             var button = this; buttonBusy(button, true);
@@ -1256,6 +1257,7 @@
                 // buttons. Other controls retain their contextual help.
                 if (button.closest('.sbs-primary-tabs')) { return; }
                 if (button.closest('.sbs-character-page-menu')) { return; }
+                if (button.closest('.sbs-af[data-panel="catalogue"]')) { return; }
                 if (button.dataset.sbsInfoAttached || button.closest('.sbs-explain-dialog')) { return; }
                 button.dataset.sbsInfoAttached = '1';
                 var info = document.createElement('button');
