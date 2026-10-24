@@ -137,19 +137,24 @@
     </div>
 </section>
 <section class="sbs-panel sbs-af" data-panel="catalogue" aria-labelledby="sbs-af-catalogue-title">
-    <h1 id="sbs-af-catalogue-title">Artwork Catalogue</h1>
-    <p>Local workspaces are processing records, not production approvals or a second catalogue. Studio does not update Drive registers.</p>
-        <div id="sbs-af-local-catalogue">
-            <label for="sbs-af-search">Search by artwork title or local workspace reference<input id="sbs-af-search" type="search"></label>
-            <div class="sbs-af-catalogue-filters">
-                <label for="sbs-af-filter-status">Status<select id="sbs-af-filter-status"><option value="">Any status</option></select></label>
-                <label for="sbs-af-filter-next">Next task<select id="sbs-af-filter-next"><option value="">Any next task</option></select></label>
-                <label for="sbs-af-filter-alpha">Transparency<select id="sbs-af-filter-alpha"><option value="">Any</option><option value="opaque">Opaque</option><option value="partial">Partial alpha</option><option value="transparent">Transparent</option><option value="unknown">Not checked</option></select></label>
-            </div>
-            <div class="sbs-af-catalogue-batch"><button id="sbs-af-delete-selected" class="sbs-button" type="button" disabled>Delete selected records</button><span id="sbs-af-delete-status" role="status" aria-live="polite"></span></div>
-            <p id="sbs-af-counts" role="status" aria-live="polite"></p><div id="sbs-af-records"></div>
+    <div class="sbs-af-catalogue-heading">
+        <h1 id="sbs-af-catalogue-title">Catalogue</h1>
+        <div class="sbs-af-catalogue-info">
+            <button id="sbs-af-catalogue-info-toggle" class="sbs-info-button" type="button" aria-label="Catalogue information" aria-controls="sbs-af-catalogue-info-popover" aria-expanded="false">i</button>
+            <div id="sbs-af-catalogue-info-popover" class="sbs-af-catalogue-info-popover" hidden role="note">Local workspaces are processing records, not production approvals or a second catalogue. Studio does not update Drive registers.</div>
         </div>
-        <div id="sbs-af-catalogue-viewer" class="sbs-af-catalogue-viewer" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-catalogue-viewer-title">
-            <div class="sbs-af-catalogue-viewer-panel"><button id="sbs-af-catalogue-viewer-close" class="sbs-button" type="button">Close artwork view</button><h2 id="sbs-af-catalogue-viewer-title"></h2><img id="sbs-af-catalogue-viewer-image" alt="Enlarged catalogue artwork"></div>
+    </div>
+    <div id="sbs-af-local-catalogue">
+        <div class="sbs-af-search-row"><label for="sbs-af-search">Search</label><input id="sbs-af-search" type="search"></div>
+        <div class="sbs-af-catalogue-filters">
+            <label for="sbs-af-filter-status">Status<select id="sbs-af-filter-status"><option value="">Any status</option></select></label>
+            <label for="sbs-af-filter-next">Next task<select id="sbs-af-filter-next"><option value="">Any next task</option></select></label>
+            <label for="sbs-af-filter-alpha">Transparency<select id="sbs-af-filter-alpha"><option value="">Any</option><option value="opaque">Opaque</option><option value="partial">Partial alpha</option><option value="transparent">Transparent</option><option value="unknown">Not checked</option></select></label>
         </div>
-    </section>
+        <div class="sbs-af-catalogue-batch"><button id="sbs-af-delete-selected" class="sbs-button" type="button" disabled>Delete selected records</button><span id="sbs-af-delete-status" role="status" aria-live="polite"></span></div>
+        <p id="sbs-af-counts" role="status" aria-live="polite"></p><div id="sbs-af-records"></div>
+    </div>
+    <div id="sbs-af-catalogue-viewer" class="sbs-af-catalogue-viewer" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-catalogue-viewer-title">
+        <div class="sbs-af-catalogue-viewer-panel"><button id="sbs-af-catalogue-viewer-close" class="sbs-button" type="button">Close artwork view</button><h2 id="sbs-af-catalogue-viewer-title"></h2><img id="sbs-af-catalogue-viewer-image" alt="Artwork preview"></div>
+    </div>
+</section>
