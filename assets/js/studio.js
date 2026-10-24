@@ -79,20 +79,6 @@
 
     function bindTabs() {
         var menu = el('sbs-character-page-menu');
-        var trigger = el('sbs-character-page-trigger');
-        function closeMenu(returnFocus) {
-            menu.hidden = true;
-            trigger.setAttribute('aria-expanded', 'false');
-            if (returnFocus) { trigger.focus(); }
-        }
-        trigger.addEventListener('click', function () {
-            var opening = menu.hidden;
-            menu.hidden = !opening;
-            trigger.setAttribute('aria-expanded', opening ? 'true' : 'false');
-        });
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape' && !menu.hidden) { closeMenu(true); }
-        });
         document.querySelectorAll('.sbs-tabs button').forEach(function (button) {
             button.addEventListener('click', function () {
                 document.querySelectorAll('.sbs-tabs button').forEach(function (item) { item.classList.toggle('active', item === button); });
@@ -100,7 +86,6 @@
                 button.setAttribute('aria-current', 'page');
                 document.querySelectorAll('.sbs-panel').forEach(function (panel) { panel.classList.toggle('active', panel.getAttribute('data-panel') === button.getAttribute('data-tab')); });
                 el('sbs-character-page-current').textContent = button.textContent.replace(/^\s*\d+\.\s*/, '').trim();
-                closeMenu(false);
                 if (button.getAttribute('data-tab') === 'development') { renderDevelopment(); }
                 if (button.getAttribute('data-tab') === 'library') { renderCharacterLibrary(); }
                 if (button.getAttribute('data-tab') === 'projects') { renderProjects(); }
