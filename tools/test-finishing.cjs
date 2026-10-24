@@ -10,6 +10,7 @@ const studioTemplate = read('templates/studio.php');
 const settingsTemplate = read('templates/finishing-settings.php');
 const css = read('assets/css/finishing.css');
 const theme = read('assets/css/studio-theme.css');
+const studioStyles = read('assets/css/studio-hierarchy.css');
 const finishing = read('assets/js/finishing.js');
 const flatBackground = read('assets/js/flat-background.js');
 const studio = read('assets/js/studio.js');
@@ -41,12 +42,19 @@ assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('dat
 assert.ok(mainNav.indexOf('data-primary-tab="freestyle"') < mainNav.indexOf('data-primary-tab="catalogue"'));
 assert.ok(mainNav.indexOf('data-primary-tab="catalogue"') < mainNav.indexOf('data-primary-tab="characters"'));
 assert.match(mainNav, /data-primary-tab="finishing" class="active"/);
-assert.match(studioTemplate, /id="sbs-character-page-trigger"[^>]*aria-expanded="false"[^>]*aria-controls="sbs-character-page-menu"/);
-assert.match(studioTemplate, /id="sbs-character-page-menu"[^>]*aria-label="Character pages"[^>]*hidden/);
+assert.match(studioTemplate, /class="sbs-character-page-heading">Character pages/);
+assert.match(studioTemplate, /id="sbs-character-page-menu"[^>]*aria-label="Character pages"(?![^>]*hidden)/);
+assert.match(studioTemplate, /data-tab="characters"/);
+assert.match(studioTemplate, /data-tab="library"/);
+assert.match(studioTemplate, /data-tab="development"/);
+assert.match(studioTemplate, /data-tab="references"/);
+assert.match(studioTemplate, /data-tab="projects"/);
+assert.match(studioTemplate, /data-tab="canvas"/);
+assert.match(studioStyles, /\.sbs-character-page-menu \{\s*display: grid;/);
 for (const page of ['characters', 'library', 'development', 'references', 'create', 'projects', 'canvas']) {
     assert.match(studioTemplate, new RegExp('data-tab="' + page + '"'));
 }
-assert.match(studio, /event\.key === 'Escape'.*closeMenu\(true\)/);
+assert.doesNotMatch(studio, /sbs-character-page-trigger/);
 const openai = read('includes/class-sbs-openai.php');
 assert.match(openai, /finishing_review_input\(\(int\) \$original_asset_id\)/);
 assert.match(openai, /finishing_review_input\(\(int\) \$candidate_asset_id\)/);
