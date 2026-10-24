@@ -44,8 +44,8 @@
             <div class="sbs-character-context">
                 <div class="sbs-character-selector"><p class="sbs-kicker">CURRENT CHARACTER</p><label class="sbs-context-select"><select id="sbs-current-pack" aria-label="Current character"></select></label></div>
                 <div class="sbs-character-page-picker">
-                <button class="sbs-character-page-trigger" id="sbs-character-page-trigger" type="button" aria-expanded="false" aria-controls="sbs-character-page-menu"><span class="sbs-character-page-menu-icon" aria-hidden="true">☰</span><span>Character pages: <strong id="sbs-character-page-current">Description</strong></span><span class="sbs-character-page-caret" aria-hidden="true">▾</span></button>
-                <nav class="sbs-tabs sbs-character-page-menu" id="sbs-character-page-menu" aria-label="Character pages" hidden>
+                <div class="sbs-character-page-heading">Character pages · <strong id="sbs-character-page-current">Description</strong></div>
+                <nav class="sbs-tabs sbs-character-page-menu" id="sbs-character-page-menu" aria-label="Character pages">
                     <button data-tab="characters" class="active" aria-current="page"><span class="sbs-stage-number">1.</span> Description</button>
                     <button data-tab="library">Character library</button>
                     <button data-tab="development"><span class="sbs-stage-number">2.</span> Visual Development</button>
