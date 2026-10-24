@@ -80,7 +80,7 @@ body#sbs-studio-page select {
     -webkit-appearance: none;
     appearance: none;
     /* Keep the native select interaction and accessibility while moving its
-       visible, clickable indicator into the magnifier-friendly left edge. */
+       visible, clickable indicator into the left edge. */
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23fff3d4' d='M2 5l6 6 6-6z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: 12px center;
