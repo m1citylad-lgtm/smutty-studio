@@ -13,7 +13,7 @@
     function init() {
         var root=document.getElementById('sbs-app');if(!root || root.getAttribute('data-authenticated')!=='1')return;
         var current=null, records=[], busy=false, selectedFile=null, exportPickerOpen=false, proofPreviewUrl=null, proofSourceKey='', proofRenderedKey='', activePrintQA=null, activeProofAssetUrl='';
-        var el=function(id){return document.getElementById(id);};
+        var el=function(id){return document.getElementById(id);},catalogueReturnFocus=null;
         function message(text,error){el('sbs-af-progress').textContent=text;el('sbs-af-progress').setAttribute('role',error?'alert':'status');}
         function uploadMessage(text,state){var status=el('sbs-af-upload-status');status.textContent=text;status.dataset.state=state||'info';status.setAttribute('role',state==='error'?'alert':'status');}
         async function api(path,data){
@@ -306,9 +306,24 @@
             controls();
         }
         function catalogue(){
-            var list=el('sbs-af-records');list.replaceChildren();var found=records.filter(function(r){return matches(r,el('sbs-af-search').value);}),counts={};records.forEach(function(r){counts[r.status]=(counts[r.status]||0)+1;});
-            el('sbs-af-counts').textContent=found.length+' local workspaces shown (newest update first). '+Object.keys(counts).map(function(k){return k+': '+counts[k];}).join('; ');
-            found.forEach(function(r){var article=document.createElement('article');article.className='sbs-card';var title=document.createElement('h2');title.textContent=r.title;article.appendChild(title);var p=document.createElement('p');p.textContent='Local '+r.uuid+' · '+r.status+' · Next action: '+r.next_action+' · Metadata: '+r.metadata_status;article.appendChild(p);var button=document.createElement('button');button.className='sbs-button';button.type='button';button.setAttribute('data-af-open',r.uuid);button.textContent='Open in Finishing';button.disabled=busy;button.addEventListener('click',function(){if(busy)return;current=r;render();document.querySelector('[data-primary-tab="finishing"]').click();el('sbs-af-title').focus();});article.appendChild(button);list.appendChild(article);});
+            var list=el('sbs-af-records'),status=el('sbs-af-filter-status'),next=el('sbs-af-filter-next');list.replaceChildren();
+            function fill(select,values,placeholder){var selected=select.value,unique=Array.from(new Set(values.filter(Boolean))).sort();select.replaceChildren(new Option(placeholder,''));unique.forEach(function(value){select.add(new Option(value,value));});if(unique.includes(selected))select.value=selected;}
+            fill(status,records.map(function(r){return r.status;}),'Any status');fill(next,records.map(function(r){return r.next_action;}),'Any next task');
+            function alpha(r){var value=String((r.original_qa||{}).alpha||'').toLowerCase();return value.indexOf('partial')>=0?'partial':value.indexOf('no transparency')>=0?'opaque':value.indexOf('transparency detected')>=0?'transparent':'unknown';}
+            var found=records.filter(function(r){return matches(r,el('sbs-af-search').value)&&(!status.value||r.status===status.value)&&(!next.value||r.next_action===next.value)&&(!el('sbs-af-filter-alpha').value||alpha(r)===el('sbs-af-filter-alpha').value);}),counts={};records.forEach(function(r){counts[r.status]=(counts[r.status]||0)+1;});
+            el('sbs-af-counts').textContent=found.length+' of '+records.length+' local workspaces shown (newest update first). '+Object.keys(counts).map(function(k){return k+': '+counts[k];}).join('; ');
+            found.forEach(function(r){
+                var article=document.createElement('article');article.className='sbs-af-catalogue-row sbs-card';
+                var details=document.createElement('div');details.className='sbs-af-catalogue-details';
+                var title=document.createElement('h2');title.textContent=r.title;details.appendChild(title);
+                [["Workspace",r.uuid],["Status",r.status],["Next task",r.next_action],["Transparency",(r.original_qa||{}).alpha||'Not checked'],["Updated",r.updated_at],["Metadata",r.metadata_status]].forEach(function(pair){var line=document.createElement('p');line.className='sbs-af-catalogue-field';var label=document.createElement('strong');label.textContent=pair[0];var value=document.createElement('span');value.textContent=pair[1]||'—';line.append(label,value);details.appendChild(line);});
+                var thumb=document.createElement('button');thumb.type='button';thumb.className='sbs-af-catalogue-thumbnail';thumb.setAttribute('aria-label','Enlarge artwork for '+r.title);thumb.disabled=!r.original||!r.original.url;
+                if(r.original&&r.original.url){var img=document.createElement('img');img.src=r.original.url;img.alt='';img.loading='lazy';thumb.appendChild(img);}else{thumb.textContent='No preview';}
+                thumb.addEventListener('click',function(){if(!r.original||!r.original.url)return;catalogueReturnFocus=this;var modal=el('sbs-af-catalogue-viewer');el('sbs-af-catalogue-viewer-title').textContent=r.title;el('sbs-af-catalogue-viewer-image').src=r.original.url;modal.hidden=false;el('sbs-af-catalogue-viewer-close').focus();});
+                var actions=document.createElement('div');actions.className='sbs-af-catalogue-actions';var open=document.createElement('button');open.className='sbs-button';open.type='button';open.setAttribute('data-af-open',r.uuid);open.textContent='Open in Finishing';open.disabled=busy;open.addEventListener('click',function(){if(busy)return;current=r;render();document.querySelector('[data-primary-tab="finishing"]').click();el('sbs-af-title').focus();});
+                var rename=document.createElement('button');rename.className='sbs-button';rename.type='button';rename.textContent='Rename';rename.disabled=busy;rename.addEventListener('click',function(){var value=window.prompt('Rename this catalogue record. Artwork bytes and history will stay unchanged.',r.title);if(value===null||!value.trim()||value.trim()===r.title)return;operation(async function(){await api('/'+r.uuid+'/rename',{revision:r.revision,title:value.trim()});await refresh();message('Catalogue title updated. Artwork bytes and history were not changed.');},'Saving catalogue title…',rename);});
+                actions.append(open,rename);article.append(details,thumb,actions);list.appendChild(article);
+            });
         }
         async function refresh(){var data=await api('');records=data.records;var select=el('sbs-af-resume');select.replaceChildren();var empty=document.createElement('option');empty.value='';empty.textContent='Choose a workspace';select.appendChild(empty);records.forEach(function(r){var o=document.createElement('option');o.value=r.uuid;o.textContent=r.title+' — '+r.status;select.appendChild(o);});if(current){current=records.find(function(r){return r.uuid===current.uuid;})||current;select.value=current.uuid;}catalogue();}
         async function pollReplicate(){
@@ -362,6 +377,11 @@
         var syncing=false;document.querySelectorAll('.sbs-af-viewport').forEach(function(view){view.addEventListener('scroll',function(){if(syncing)return;syncing=true;document.querySelectorAll('.sbs-af-viewport').forEach(function(other){if(other!==view){other.scrollLeft=view.scrollLeft;other.scrollTop=view.scrollTop;}});requestAnimationFrame(function(){syncing=false;});});});
         el('sbs-af-proof').addEventListener('change',function(){el('sbs-af-compare').setAttribute('data-proof',this.value);});
         el('sbs-af-search').addEventListener('input',catalogue);
+        ['sbs-af-filter-status','sbs-af-filter-next','sbs-af-filter-alpha'].forEach(function(id){el(id).addEventListener('change',catalogue);});
+        function closeCatalogueViewer(){el('sbs-af-catalogue-viewer').hidden=true;el('sbs-af-catalogue-viewer-image').removeAttribute('src');if(catalogueReturnFocus&&catalogueReturnFocus.isConnected)catalogueReturnFocus.focus();}
+        el('sbs-af-catalogue-viewer-close').addEventListener('click',closeCatalogueViewer);
+        el('sbs-af-catalogue-viewer').addEventListener('click',function(event){if(event.target===this)closeCatalogueViewer();});
+        document.addEventListener('keydown',function(event){if(event.key==='Escape'&&!el('sbs-af-catalogue-viewer').hidden)closeCatalogueViewer();});
         var googleBusy=false,googleState={configured:false,connected:false};
         function googleControls(){el('sbs-google-connect').disabled=googleBusy||!googleState.configured||googleState.connected;el('sbs-google-reconnect').disabled=googleBusy||!googleState.configured;el('sbs-google-disconnect').disabled=googleBusy||!googleState.connected;el('sbs-google-refresh').disabled=googleBusy;el('sbs-google-config').querySelectorAll('input,button').forEach(function(n){n.disabled=googleBusy;});}
         function googlePaint(s,prefix){googleState={configured:!!s.configured,connected:!!s.connected};el('sbs-google-status').textContent=(prefix||'')+(s.connected?'Google sign-in is connected'+(s.access_expired?' (reconnect required)':''):s.configured?'Client settings are saved; Google sign-in is not connected yet.':'Client settings are not saved; Google sign-in is not connected.')+' '+s.message;el('sbs-google-redirect').textContent=s.redirect_uri;googleControls();}

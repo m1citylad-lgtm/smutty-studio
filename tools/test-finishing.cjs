@@ -68,6 +68,16 @@ assert.match(css, /@media\(max-width:750px\)\{\.sbs-af-compare\{grid-template-co
 assert.match(template, /2\. Queue selected stage/);
 assert.doesNotMatch(template, /Sharpen \/ denoise \/ edge cleaning|Background removal — deliberate background protection pending/);
 assert.match(template, /Optional: remove a plain background/);
+assert.match(template, /<details class="sbs-af-flat-background"><summary>Optional: remove a plain background<\/summary>/, 'Optional background removal must start collapsed');
+assert.match(theme, /background-position: 12px center/);
+assert.match(theme, /appearance: none/);
+assert.match(template, /id="sbs-af-filter-status"/);
+assert.match(template, /id="sbs-af-filter-next"/);
+assert.match(template, /id="sbs-af-filter-alpha"/);
+assert.match(template, /id="sbs-af-catalogue-viewer"[^>]*role="dialog"/);
+assert.match(finishing, /Rename/);
+assert.match(backend, /public static function rename/);
+assert.match(backend, /\/rename/);
 assert.match(template, /It removes only the selected colour connected to the image edge/);
 assert.match(template, /not a checkerboard or complex-scene remover/);
 assert.match(template, /id="sbs-af-flat-colour"/);
@@ -94,6 +104,12 @@ assert.match(backend, /'lineage'=>\$lineage/);assert.match(printQa, /'freestyle_
 assert.ok(backend.includes("hash('sha256',$bytes)!==$source['sha256']"));
 assert.match(backend, /not approved for printing/i);
 assert.match(finishing, /freestyle\.settings/);assert.match(finishing, /freestyle\.lineage/);assert.match(finishing, /Estimated cost: \$/);
+assert.match(studioTemplate, /data-panel="create" hidden/);
+assert.match(studioTemplate, /data-tab="create" hidden/);
+assert.match(studioTemplate, /Composition Tool/);
+assert.match(studioTemplate, /class="sbs-print-settings" hidden/);
+assert.match(studio, /toCanvasElement\(1, \{ enableRetinaScaling: false \}\)/);
+assert.match(studio, /no print-size or PPI preparation/);
 
 assert.match(backend, /source_version_uuid/);
 assert.match(pluginClass, /assets\/js\/flat-background\.js/);

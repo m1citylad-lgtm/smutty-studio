@@ -683,10 +683,10 @@
             return '<article class="sbs-generation ' + (selected ? 'selected' : '') + '" data-generation="' + esc(generation.uuid) + '"><button type="button" class="sbs-image-zoom" data-zoom-image="' + esc(generation.asset_url) + '" data-zoom-caption="' + esc(caption) + '"><img src="' + esc(generation.asset_url) + '" alt=""></button><footer><span>' + esc(generation.action) + ' · ' + esc(generation.quality) + '<br>' + money(generation.cost_estimate) + '</span><div class="sbs-creation-actions"><button type="button" class="sbs-select-creation ' + (selected ? 'is-selected' : '') + '" data-select-generation="' + esc(generation.uuid) + '" aria-pressed="' + (selected ? 'true' : 'false') + '" ' + (selected ? 'disabled' : '') + '>' + (selected ? '✓ Selected for refinement' : 'Select for refinement') + '</button><button type="button" class="sbs-remove-creation" data-delete-generation="' + esc(generation.uuid) + '" title="Remove this image"><span aria-hidden="true">🗑</span> Remove</button></div></footer></article>';
         }).join('');
         var designCards = (project.designs || []).filter(function (design) { return design.preview_url; }).map(function (design) {
-            return '<article class="sbs-generation sbs-saved-design"><button type="button" class="sbs-image-zoom" data-zoom-image="' + esc(design.preview_url) + '" data-zoom-caption="' + esc(design.name + ' · saved merchandise design') + '"><img src="' + esc(design.preview_url) + '" alt=""></button><footer><span>Merch design<br>' + esc(design.updated_at) + '</span><div class="sbs-creation-actions"><button type="button" class="sbs-remove-creation" data-delete-design="' + esc(design.uuid) + '" title="Remove this saved design"><span aria-hidden="true">🗑</span> Remove</button></div></footer></article>';
+            return '<article class="sbs-generation sbs-saved-design"><button type="button" class="sbs-image-zoom" data-zoom-image="' + esc(design.preview_url) + '" data-zoom-caption="' + esc(design.name + ' · saved composition') + '"><img src="' + esc(design.preview_url) + '" alt=""></button><footer><span>Composition<br>' + esc(design.updated_at) + '</span><div class="sbs-creation-actions"><button type="button" class="sbs-remove-creation" data-delete-design="' + esc(design.uuid) + '" title="Remove this saved design"><span aria-hidden="true">🗑</span> Remove</button></div></footer></article>';
         }).join('');
         var cards = generationCards + designCards;
-        box.innerHTML = '<h2 class="sbs-stage-heading"><span class="sbs-stage-number">5.2</span> Inspect and select a creation</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Compare the images and select one to refine or use on the canvas.</p><div class="sbs-inline-heading"><div><p class="sbs-kicker">' + esc(project.pack_name || '') + '</p><h2>' + esc(project.title) + '</h2></div><button id="sbs-open-canvas" class="sbs-button">Open in canvas</button>' + (project.concept && project.concept.type==='freestyle' ? '<button type="button" id="sbs-new-freestyle-canvas" class="sbs-button">New print layout from selected image</button>' : '') + '</div><div class="sbs-generation-grid sbs-creation-gallery">' + (cards || '<p class="sbs-muted">No completed creations yet.</p>') + '</div><div class="sbs-card" style="margin-top:18px"><h2 class="sbs-stage-heading"><span class="sbs-stage-number">5.3</span> Refine or finish the image</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Choose refinement, polish or upscale if needed; inspect the result before opening the canvas.</p><label>Refinement instruction<textarea id="sbs-refine-prompt" rows="4" placeholder="Change one thing at a time and say what must stay unchanged."></textarea></label><div class="sbs-row wrap"><button id="sbs-refine" class="sbs-button primary">Refine selected</button><button id="sbs-polish" class="sbs-button accent">High-quality polish</button><button id="sbs-upscale-2" class="sbs-button">AI upscale 2×</button><button id="sbs-upscale-4" class="sbs-button">AI upscale 4×</button></div></div>';
+        box.innerHTML = '<h2 class="sbs-stage-heading"><span class="sbs-stage-number">5.2</span> Inspect and select a creation</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Compare the images and select one to refine or use on the canvas.</p><div class="sbs-inline-heading"><div><p class="sbs-kicker">' + esc(project.pack_name || '') + '</p><h2>' + esc(project.title) + '</h2></div><button id="sbs-open-canvas" class="sbs-button">Open in canvas</button>' + (project.concept && project.concept.type==='freestyle' ? '<button type="button" id="sbs-new-freestyle-canvas" class="sbs-button">New composition from selected image</button>' : '') + '</div><div class="sbs-generation-grid sbs-creation-gallery">' + (cards || '<p class="sbs-muted">No completed creations yet.</p>') + '</div><div class="sbs-card" style="margin-top:18px"><h2 class="sbs-stage-heading"><span class="sbs-stage-number">5.3</span> Refine or finish the image</h2><p class="sbs-stage-decision"><strong>Decision:</strong> Choose refinement, polish or upscale if needed; inspect the result before opening the canvas.</p><label>Refinement instruction<textarea id="sbs-refine-prompt" rows="4" placeholder="Change one thing at a time and say what must stay unchanged."></textarea></label><div class="sbs-row wrap"><button id="sbs-refine" class="sbs-button primary">Refine selected</button><button id="sbs-polish" class="sbs-button accent">High-quality polish</button><button id="sbs-upscale-2" class="sbs-button">AI upscale 2×</button><button id="sbs-upscale-4" class="sbs-button">AI upscale 4×</button></div></div>';
         box.querySelectorAll('[data-select-generation]').forEach(function (button) { button.addEventListener('click', function () { state.selectedGeneration = project.generations.find(function (gen) { return gen.uuid === button.getAttribute('data-select-generation'); }); renderProjectDetail(); }); });
         bindCreationActions(box);
         el('sbs-refine').addEventListener('click', function () { refineSelected(false); });
@@ -695,8 +695,8 @@
         el('sbs-upscale-4').addEventListener('click', function () { upscaleSelected(4); });
         el('sbs-open-canvas').addEventListener('click', function () { activateTab('canvas'); renderCanvasOptions(); });
         if(el('sbs-new-freestyle-canvas'))el('sbs-new-freestyle-canvas').addEventListener('click',function(){
-            if(!state.selectedGeneration){showMessage('Select an image for the new print layout.',true);return;}
-            if(state.canvas&&!state.canvasUuid&&state.canvas.getObjects().some(function(o){return o.sbsType!=='guide';})&&!window.confirm('Start a new print layout? Save the current unsaved canvas first if you want to keep it.'))return;
+            if(!state.selectedGeneration){showMessage('Select an image for the new composition.',true);return;}
+            if(state.canvas&&!state.canvasUuid&&state.canvas.getObjects().some(function(o){return o.sbsType!=='guide';})&&!window.confirm('Start a new composition? Save the current unsaved canvas first if you want to keep it.'))return;
             ensureCanvas();resetCanvasProject();state.freestyleNewCanvas=true;activateTab('canvas');prepareFreestyleCanvas();
         });
         updateProjectActionControls();
@@ -752,7 +752,7 @@
         }).then(function () { showMessage('Image removed from the project.'); }).catch(handleError);
     }
     function deleteDesign(uuid) {
-        if (!uuid || !window.confirm('Delete this saved merchandise design? The editable design and its preview cannot be recovered.')) { return; }
+        if (!uuid || !window.confirm('Delete this saved composition? The editable design and its preview cannot be recovered.')) { return; }
         remove('canvases/' + uuid).then(function () {
             if (state.canvasUuid === uuid) { state.canvasUuid = ''; }
             return refreshProjects();
@@ -1028,7 +1028,7 @@
         if (!state.activeProject) { showMessage('Choose a project first.', true); return; }
         var guides = state.canvas.getObjects().filter(function (obj) { return obj.sbsType === 'guide'; }), visible = guides.map(function (obj) { return obj.visible; }); guides.forEach(function (obj) { obj.visible = false; }); state.canvas.renderAll();
         var preview = state.canvas.toDataURL({ format: 'png', multiplier: .45 }); guides.forEach(function (obj, i) { obj.visible = visible[i]; }); state.canvas.renderAll();
-        post('canvases', { uuid: state.canvasUuid, project_uuid: state.activeProject.uuid, pack_uuid: state.selectedPack ? state.selectedPack.uuid : '', name: state.activeProject.title + ' merch design', document: canvasDocument(), preview: preview }).then(function (canvas) { state.canvasUuid = canvas.uuid; el('sbs-canvas-message').textContent = 'Saved ' + new Date().toLocaleTimeString(); return refreshProjects(); }).then(function () { showMessage('Design saved to the project and added to Creations.'); }).catch(handleError);
+        post('canvases', { uuid: state.canvasUuid, project_uuid: state.activeProject.uuid, pack_uuid: state.selectedPack ? state.selectedPack.uuid : '', name: state.activeProject.title + ' composition', document: canvasDocument(), preview: preview }).then(function (canvas) { state.canvasUuid = canvas.uuid; el('sbs-canvas-message').textContent = 'Saved ' + new Date().toLocaleTimeString(); return refreshProjects(); }).then(function () { showMessage('Composition saved to the project and added to Creations.'); }).catch(handleError);
     }
     function loadLatestCanvas() {
         if (!state.activeProject || !state.canvas) { return; }
@@ -1118,8 +1118,8 @@
     function pngBlob(canvas) {
         return new Promise(function (resolve, reject) {
             canvas.toBlob(function (blob) {
-                if (blob && blob.size) { pngWithResolution(blob, Number(el('sbs-print-dpi').value)).then(resolve,reject); }
-                else { reject(new Error('The browser could not create the PNG. Try a smaller print size.')); }
+                if (blob && blob.size) { resolve(blob); }
+                else { reject(new Error('The browser could not create this composition PNG. Try reducing the canvas dimensions or image complexity.')); }
             }, 'image/png');
         });
     }
@@ -1128,7 +1128,7 @@
         var heading = document.createElement('h2');
         heading.id = 'sbs-export-downloads-title'; heading.textContent = 'Your downloads are ready';
         var note = document.createElement('p');
-        note.textContent = 'Download each file below. These are copies; the original artwork is unchanged. Check the PNGs before printing. Preparing another export replaces these links.';
+        note.textContent = 'Download each file below. These are composition copies at the artboard dimensions; no print size or PPI has been prepared. Use Artwork Finishing for print checks. Preparing another export replaces these links.';
         box.append(heading, note);
         files.forEach(function (file) {
             var url = URL.createObjectURL(file.blob), link = document.createElement('a');
@@ -1141,17 +1141,8 @@
     }
     async function exportCanvas() {
         clearExportDownloads();
-        var report=runPrintPreflight(),override=el('sbs-manual-override').checked;
-        if (report.errors.length) { showMessage('Print export blocked: '+report.errors.join('; '),true); return; }
-        if (report.warnings.length && !override) { showMessage('Print export blocked pending review. Check the manual override box to acknowledge unresolved warnings.',true); return; }
-        report.manual_override=override;
         ensureCanvas();
-        var targetW = Math.round(Number(el('sbs-print-width').value) * Number(el('sbs-print-dpi').value));
-        var targetH = Math.round(Number(el('sbs-print-height').value) * Number(el('sbs-print-dpi').value));
-        if (!targetW || !targetH || targetW < 1 || targetH < 1) { showMessage('Enter valid print dimensions and resolution.', true); return; }
-        var ratioW = targetW / state.canvas.width, ratioH = targetH / state.canvas.height;
-        if (Math.abs(ratioW-ratioH)>0.001) { showMessage('Print aspect ratio does not match the canvas. Correct the print width and height before export to avoid incorrect dimensions.', true); return; }
-        if (targetW * targetH > 60000000 && !window.confirm('This export is over 60 megapixels and may exceed browser memory. Continue?')) { return; }
+        var exportWidth=state.canvas.width,exportHeight=state.canvas.height;
         var guides = state.canvas.getObjects().filter(function (obj) { return obj.sbsType === 'guide'; });
         var logos = state.canvas.getObjects().filter(function (obj) { return obj.sbsType === 'exact_asset'; });
         var hidden = guides.map(function (obj) { return obj.visible; });
@@ -1162,18 +1153,17 @@
         var basename = ((state.activeProject && state.activeProject.title) || 'smutty-bear-artwork').replace(/[^A-Za-z0-9_-]+/g, '-');
         function snapshot() {
             state.canvas.renderAll();
-            return state.canvas.toCanvasElement(ratioW, { enableRetinaScaling: false });
+            return state.canvas.toCanvasElement(1, { enableRetinaScaling: false });
         }
         buttonBusy(button, true);
         try {
-            var files = [{ name: basename + '-branded.png', label: 'Download branded PNG', blob: await pngBlob(snapshot()) }];
+            var files = [{ name: basename + '-composition.png', label: 'Download composition PNG ('+exportWidth+' × '+exportHeight+' px)', blob: await pngBlob(snapshot()) }];
             if (both) {
                 logos.forEach(function (obj) { obj.visible = false; });
-                files.push({ name: basename + '-logo-free.png', label: 'Download logo-free PNG', blob: await pngBlob(snapshot()) });
+                files.push({ name: basename + '-logo-free-composition.png', label: 'Download logo-free composition PNG', blob: await pngBlob(snapshot()) });
             }
-            files.push({ name: basename + '-print-preflight.json', label: 'Download print check report', blob: new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }) });
             showExportDownloads(files);
-            showMessage('Downloads ready. Select each file to save it. Print warnings remain in the report.');
+            showMessage('Composition PNG ready at the artboard size ('+exportWidth+' × '+exportHeight+' px). It has no print-size or PPI preparation; use Artwork Finishing for print checks.');
         } catch (error) { clearExportDownloads(); showMessage('Export failed. ' + (error.message || 'Check browser memory and image access.'), true); }
         finally {
             logos.forEach(function (obj,i) { obj.visible = logoStates[i]; });
@@ -1226,7 +1216,7 @@
             selectPack(project.pack_uuid);resetCanvasProject();state.activeProject=project;state.selectedGeneration=project.generations.find(function(g){return g.uuid===generationUuid;});renderProjects();renderCanvasOptions();activateTab('projects');
         }});
         bindLogoControls();
-        el('sbs-run-preflight').addEventListener('click',runPrintPreflight);
+        if (el('sbs-run-preflight')) { el('sbs-run-preflight').addEventListener('click',runPrintPreflight); }
         el('sbs-visual-treatment').addEventListener('change',updatePrintReadout);
         el('sbs-print-method').addEventListener('change',function () {
             var dtf = this.value === 'dtf';
@@ -1247,9 +1237,9 @@
             'sbs-upscale-4': 'AI upscale 4× uses Replicate to enlarge the selected image to approximately four times its width and height (sixteen times as many pixels). It may introduce invented details; inspect the result carefully.',
             'sbs-polish': 'High-quality polish creates a new AI-edited version aimed at improving edges, linework and texture while asking the model to retain the composition. It is not just a resolution increase; details can change.',
             'sbs-refine': 'Refine selected creates a new image using the instruction entered above. Select a draft first and describe the specific change you want.',
-            'sbs-canvas-export': 'Export PNG renders the assembled merchandise design as a PNG using the current print settings. Inspect the exported pixel dimensions and transparency before printing.',
-            'sbs-canvas-save': 'Save design stores the editable merchandise composition so it can be reopened later.',
-            'sbs-guide-open': 'Open the illustrated guide and workflow diagrams for character development, reference assets, image creation and merchandise.'
+            'sbs-canvas-export': 'Export PNG renders the assembled composition at its artboard dimensions. It does not set print size or PPI; use Artwork Finishing for print preparation.',
+            'sbs-canvas-save': 'Save design stores the editable composition so it can be reopened later.',
+            'sbs-guide-open': 'Open the illustrated guide and workflow diagrams for character development, reference assets, image creation and composition.'
         };
         if (details[id]) { return details[id]; }
         var explicit = button.getAttribute('title');

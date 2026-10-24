@@ -6,7 +6,7 @@ final class SBS_Finishing
 {
     public static function register_routes()
     {
-        foreach (array('' => array('GET','listing'), '/upload' => array('POST','upload'), '/freestyle-sources' => array('GET','freestyle_sources'), '/freestyle-source' => array('POST','import_freestyle'), '/(?P<uuid>[a-f0-9-]{36})' => array('GET','get'), '/(?P<uuid>[a-f0-9-]{36})/action' => array('POST','action')) as $path => $route) {
+        foreach (array('' => array('GET','listing'), '/upload' => array('POST','upload'), '/freestyle-sources' => array('GET','freestyle_sources'), '/freestyle-source' => array('POST','import_freestyle'), '/(?P<uuid>[a-f0-9-]{36})' => array('GET','get'), '/(?P<uuid>[a-f0-9-]{36})/rename' => array('POST','rename'), '/(?P<uuid>[a-f0-9-]{36})/action' => array('POST','action')) as $path => $route) {
             register_rest_route(SBS_REST::NS, '/finishing'.$path, array('methods'=>$route[0], 'callback'=>array(__CLASS__,$route[1]), 'permission_callback'=>array(__CLASS__,'permission')));
         }
     }
@@ -104,6 +104,19 @@ final class SBS_Finishing
     public static function get($request)
     {
         $path=self::path($request['uuid']); if(is_wp_error($path)){return $path;}$r=self::read($path);if(!is_wp_error($r)){$r['qa_manifest']=SBS_Print_QA::manifest($r);}return $r;
+    }
+    public static function rename($request)
+    {
+        $path=self::path($request['uuid']);if(is_wp_error($path)){return $path;}
+        $lock=fopen($path.'.lock','c');if(!$lock||!flock($lock,LOCK_EX|LOCK_NB)){if($lock){fclose($lock);}return self::error('busy','Workspace is busy. Refresh and try again.',409);}
+        try {
+            $r=self::read($path);if(is_wp_error($r)){return $r;}
+            if((int)$request->get_param('revision')!==(int)$r['revision']){return self::error('conflict','Workspace changed. Refresh before renaming.',409);}
+            $title=sanitize_text_field((string)$request->get_param('title'));
+            if($title===''||strlen($title)>190){return self::error('title','Enter a title between 1 and 190 bytes.');}
+            $r['title']=$title;$r['revision']++;$r['updated_at']=gmdate('c');$r['audit'][]=array('at'=>gmdate('c'),'action'=>'Catalogue title renamed');
+            return self::write($path,$r);
+        } finally {flock($lock,LOCK_UN);fclose($lock);}
     }
     public static function links($ideas,$sb)
     {
