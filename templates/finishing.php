@@ -38,7 +38,7 @@
                 <p class="sbs-af-action-sequence"><strong>Next:</strong> Queue selected stage <span aria-hidden="true">↓</span> Run queued stage.</p>
                 <p id="sbs-af-stage-help" role="status" aria-live="polite">Choosing a stage only selects it. Queue it, then run it. The spinner shows that it is processing; a tick shows that it completed.</p>
                 <button id="sbs-af-prepare" class="sbs-button" type="button" disabled>2. Queue selected stage</button>
-                <p class="sbs-af-then" aria-hidden="true">↓ Then</p>
+                <p class="sbs-af-then" aria-hidden="true">Then ↓</p>
                 <button id="sbs-af-run" class="sbs-button primary" type="button" disabled>3. Run queued stage</button>
                 <button id="sbs-af-cancel" class="sbs-button" type="button" disabled>Cancel queued stage or upscale</button>
                 <p>Cancel before running. To retry, queue the stage again.</p>
