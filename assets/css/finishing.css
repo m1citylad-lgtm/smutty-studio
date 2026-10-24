@@ -137,7 +137,7 @@ body#sbs-studio-page .sbs-af-catalogue-selection { grid-column:1/-1; display:fle
 body#sbs-studio-page .sbs-af-catalogue-pick { display:flex; align-items:center; gap:8px; margin:0; }
 body#sbs-studio-page .sbs-af-catalogue-pick input[type="checkbox"] { flex:0 0 24px; margin:0; }
 body#sbs-studio-page .sbs-af-catalogue-title-row { grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; gap:16px; min-width:0; }
-body#sbs-studio-page .sbs-af-catalogue-title-row h2 { min-width:0; margin:0; overflow-wrap:normal; word-break:normal; }
+body#sbs-studio-page .sbs-af-catalogue-title-row h2 { min-width:0; margin:0; overflow-wrap:anywhere; }
 body#sbs-studio-page .sbs-af-catalogue-details { grid-column:1; grid-row:3; min-width:0; }
 body#sbs-studio-page .sbs-af-catalogue-field { grid-template-columns:minmax(0,130px) minmax(0,1fr); gap:8px; margin:4px 0; }
 body#sbs-studio-page .sbs-af-catalogue-field strong { overflow-wrap:normal; word-break:normal; }
