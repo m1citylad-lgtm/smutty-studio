@@ -37,6 +37,7 @@ jobs:
           node --check assets/js/freestyle.js
           node --check assets/js/finishing.js
           node tools/test-finishing.cjs
+          node tools/test-flat-background.cjs
           node tools/test-export.cjs
           node tools/test-development.cjs
           php tools/test-development.php

@@ -75,7 +75,19 @@ body#sbs-studio-page .sbs-context-select select {
 /* Keep native menus dark and readable where the browser allows option styling.
    Android may draw the expanded native menu itself; its system presentation is
    retained rather than replacing the accessible native select. */
-body#sbs-studio-page select { color-scheme: dark; }
+body#sbs-studio-page select {
+    color-scheme: dark;
+    -webkit-appearance: none;
+    appearance: none;
+    /* Keep the native select interaction and accessibility while moving its
+       visible, clickable indicator into the left edge. */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23fff3d4' d='M2 5l6 6 6-6z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 12px center;
+    background-size: 14px 14px;
+    padding-left: 40px;
+    padding-right: 12px;
+}
 body#sbs-studio-page select option {
     background: #101827;
     color: #fff3d4;

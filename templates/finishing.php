@@ -20,13 +20,19 @@
             <div class="sbs-grid two"><label for="sbs-af-width">Print width (inches)<input id="sbs-af-width" type="number" min="1" max="30" step="0.25" value="15"></label><label for="sbs-af-height">Print height (inches)<input id="sbs-af-height" type="number" min="1" max="30" step="0.25" value="18"></label></div>
             <label><input id="sbs-af-print-canvas" type="checkbox"> For Prepare print PNG: fit on a transparent print-size canvas, centred without stretching or enlarging the artwork.</label>
             <p>Prepare print PNG uses the selected candidate, if present. Untagged sources are assumed sRGB; confirm colours manually. Inspect and Fit down stay local. AI upscale sends a copy to Replicate and may cost credits. Original stays unchanged. 300 PPI is a target, not a quality guarantee.</p>
-            <fieldset class="sbs-af-flat-background"><legend>Optional: remove a plain background</legend>
-                <p>Local, non-AI operation. It removes only the selected colour connected to the image edge. It is not a checkerboard or complex-scene remover; it can leave fringes or remove edge-connected artwork. Inspect the copy before using it.</p>
-                <div class="sbs-grid two"><label for="sbs-af-flat-colour">Background colour<input id="sbs-af-flat-colour" type="color" value="#ffffff"></label><label for="sbs-af-flat-tolerance">Colour tolerance (0 = exact, 100 = broader)<input id="sbs-af-flat-tolerance" type="number" min="0" max="100" value="18"></label></div>
-                <button id="sbs-af-flat-remove" type="button" class="sbs-button" disabled>Remove matching edge colour into a copy</button>
+            <details class="sbs-af-flat-background"><summary>Optional: remove a plain background</summary>
+                <div class="sbs-af-flat-background-content">
+                <p>Local, non-AI operation. It removes selected sampled colours only where connected to the image edge. It can leave fringes or remove edge-touching artwork. Sampling can be uncertain; inspect the preview and saved copy. It does not detect every checkerboard and is not a complex-scene remover.</p>
+                <button id="sbs-af-flat-sample" type="button" class="sbs-button" disabled>Sample image corners</button>
+                <p id="sbs-af-flat-samples" role="status" aria-live="polite">Choose or resume artwork, then sample its image pixels. The preview background is not sampled.</p>
+                <div class="sbs-grid two"><label for="sbs-af-flat-colour">Background colour 1<input id="sbs-af-flat-colour" type="color" value="#ffffff"></label><label for="sbs-af-flat-colour-2">Background colour 2<input id="sbs-af-flat-colour-2" type="color" value="#d0d0d0"></label><label class="sbs-check"><input id="sbs-af-flat-use-second" type="checkbox"> Also remove the second colour</label><label for="sbs-af-flat-tolerance">Colour tolerance (0 = exact, 100 = broader)<input id="sbs-af-flat-tolerance" type="number" min="0" max="100" value="18"></label></div>
+                <button id="sbs-af-flat-preview" type="button" class="sbs-button" disabled>Preview edge-colour removal</button>
+                <div id="sbs-af-flat-preview-box" class="sbs-af-flat-preview" hidden><strong>Preview only — source unchanged</strong><img id="sbs-af-flat-preview-image" alt="Preview of proposed edge-connected background removal"><p id="sbs-af-flat-preview-summary"></p></div>
+                <button id="sbs-af-flat-remove" type="button" class="sbs-button" disabled>Save preview as separate PNG copy</button>
                 <button id="sbs-af-flat-undo" type="button" class="sbs-button" disabled>Undo — restore source version</button>
                 <p id="sbs-af-flat-status" role="status" aria-live="polite" aria-atomic="true">Choose or resume artwork to use this option.</p>
-            </fieldset>
+                </div>
+            </details>
             <label for="sbs-af-notes">Correction notes for this version<textarea id="sbs-af-notes" rows="4" maxlength="6000" spellcheck="true" autocapitalize="sentences" placeholder="Dictate details to check. Notes are recorded; they do not instruct AI or redraw this image."></textarea></label>
             <p id="sbs-af-stage-help">Choose a stage. Queue it, then run it. The original stays unchanged.</p>
             <button id="sbs-af-prepare" class="sbs-button" type="button" disabled>2. Queue selected stage</button>
@@ -44,7 +50,7 @@
         <p id="sbs-af-zoom-help">Preview zoom only; it does not change the image.</p>
         <p id="sbs-af-proof-help">Check the image on light and dark backgrounds.</p>
         <p>These on-screen colours check contrast only. They are not physical print proofs or a colour-match guarantee.</p>
-        <div class="sbs-af-compare" id="sbs-af-compare"><figure><figcaption>Untouched original</figcaption><div class="sbs-af-viewport" tabindex="0" aria-label="Original image — scroll when magnified"><img id="sbs-af-original" alt="" hidden></div><div id="sbs-af-original-transparency" class="sbs-transparency-indicator" role="status" aria-live="polite" aria-atomic="true" data-state="unknown"><span class="sbs-transparency-bar" aria-hidden="true"></span><span class="sbs-transparency-label">Transparency: Not checked</span></div></figure><figure><figcaption>Selected candidate</figcaption><div class="sbs-af-viewport" tabindex="0" aria-label="Candidate image — scroll when magnified"><img id="sbs-af-candidate" alt="" hidden></div><div id="sbs-af-candidate-transparency" class="sbs-transparency-indicator" role="status" aria-live="polite" aria-atomic="true" data-state="unknown"><span class="sbs-transparency-bar" aria-hidden="true"></span><span class="sbs-transparency-label">Transparency: Not checked</span></div><a id="sbs-af-candidate-download" class="sbs-button" hidden download>Download selected candidate</a></figure></div>
+        <div class="sbs-af-compare" id="sbs-af-compare"><figure><figcaption>Untouched original</figcaption><div class="sbs-af-viewport" tabindex="0" aria-label="Original image viewport — scroll to inspect"><img id="sbs-af-original" alt="" hidden></div><div id="sbs-af-original-transparency" class="sbs-transparency-indicator" role="status" aria-live="polite" aria-atomic="true" data-state="unknown"><span class="sbs-transparency-bar" aria-hidden="true"></span><span class="sbs-transparency-label">Transparency: Not checked</span></div></figure><figure><figcaption>Selected candidate</figcaption><div class="sbs-af-viewport" tabindex="0" aria-label="Candidate image viewport — scroll to inspect"><img id="sbs-af-candidate" alt="" hidden></div><div id="sbs-af-candidate-transparency" class="sbs-transparency-indicator" role="status" aria-live="polite" aria-atomic="true" data-state="unknown"><span class="sbs-transparency-bar" aria-hidden="true"></span><span class="sbs-transparency-label">Transparency: Not checked</span></div><a id="sbs-af-candidate-download" class="sbs-button" hidden download>Download selected candidate</a></figure></div>
         <p class="sbs-transparency-key">Red = opaque · Amber = partial alpha · Green = transparent with no partial alpha · Grey = not checked</p>
         <section id="sbs-af-print-proof" class="sbs-af-print-proof" aria-labelledby="sbs-af-print-proof-title" hidden>
             <h3 id="sbs-af-print-proof-title">Garment-colour print check</h3>
@@ -133,5 +139,17 @@
 <section class="sbs-panel sbs-af" data-panel="catalogue" aria-labelledby="sbs-af-catalogue-title">
     <h1 id="sbs-af-catalogue-title">Artwork Catalogue</h1>
     <p>Local workspaces are processing records, not production approvals or a second catalogue. Studio does not update Drive registers.</p>
-        <div id="sbs-af-local-catalogue"><label for="sbs-af-search">Search by artwork title or local workspace reference<input id="sbs-af-search" type="search"></label><p id="sbs-af-counts" role="status"></p><div id="sbs-af-records"></div></div>
+        <div id="sbs-af-local-catalogue">
+            <label for="sbs-af-search">Search by artwork title or local workspace reference<input id="sbs-af-search" type="search"></label>
+            <div class="sbs-af-catalogue-filters">
+                <label for="sbs-af-filter-status">Status<select id="sbs-af-filter-status"><option value="">Any status</option></select></label>
+                <label for="sbs-af-filter-next">Next task<select id="sbs-af-filter-next"><option value="">Any next task</option></select></label>
+                <label for="sbs-af-filter-alpha">Transparency<select id="sbs-af-filter-alpha"><option value="">Any</option><option value="opaque">Opaque</option><option value="partial">Partial alpha</option><option value="transparent">Transparent</option><option value="unknown">Not checked</option></select></label>
+            </div>
+            <div class="sbs-af-catalogue-batch"><button id="sbs-af-delete-selected" class="sbs-button" type="button" disabled>Delete selected records</button><span id="sbs-af-delete-status" role="status" aria-live="polite"></span></div>
+            <p id="sbs-af-counts" role="status" aria-live="polite"></p><div id="sbs-af-records"></div>
+        </div>
+        <div id="sbs-af-catalogue-viewer" class="sbs-af-catalogue-viewer" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-catalogue-viewer-title">
+            <div class="sbs-af-catalogue-viewer-panel"><button id="sbs-af-catalogue-viewer-close" class="sbs-button" type="button">Close artwork view</button><h2 id="sbs-af-catalogue-viewer-title"></h2><img id="sbs-af-catalogue-viewer-image" alt="Enlarged catalogue artwork"></div>
+        </div>
     </section>
