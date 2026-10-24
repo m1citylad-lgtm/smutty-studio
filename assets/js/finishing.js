@@ -13,7 +13,7 @@
     function init() {
         var root=document.getElementById('sbs-app');if(!root || root.getAttribute('data-authenticated')!=='1')return;
         var current=null, records=[], busy=false, selectedFile=null, exportPickerOpen=false, proofPreviewUrl=null, proofSourceKey='', proofRenderedKey='', activePrintQA=null, activeProofAssetUrl='', flatPreviewBlob=null, flatPreviewUrl=null, flatPreviewKey='';
-        var el=function(id){return document.getElementById(id);},catalogueReturnFocus=null;
+        var el=function(id){return document.getElementById(id);},catalogueReturnFocus=null,catalogueSelected=new Set();
         function message(text,error){el('sbs-af-progress').textContent=text;el('sbs-af-progress').setAttribute('role',error?'alert':'status');}
         function uploadMessage(text,state){var status=el('sbs-af-upload-status');status.textContent=text;status.dataset.state=state||'info';status.setAttribute('role',state==='error'?'alert':'status');}
         async function api(path,data){
@@ -38,6 +38,8 @@
             el('sbs-af-versions').disabled=busy;el('sbs-af-resume').disabled=busy;
             document.querySelectorAll('#sbs-af-upload input,#sbs-af-upload button').forEach(function(n){n.disabled=busy;});
             document.querySelectorAll('[data-af-open]').forEach(function(n){n.disabled=busy;});
+            document.querySelectorAll('[data-af-delete],[data-af-record-select]').forEach(function(n){n.disabled=busy;});
+            el('sbs-af-delete-selected').disabled=busy||catalogueSelected.size===0;
             el('sbs-af-progress-bar').hidden=!busy;
         }
         function updateStepButtons(){
@@ -284,6 +286,24 @@
             updateStepButtons();renderAiReview(v);renderHandoff(v);
             controls();
         }
+        async function deleteRecords(uuids){
+            uuids=Array.from(new Set(uuids||[]));if(!uuids.length||busy)return;
+            var status=el('sbs-af-delete-status');
+            operation(async function(){
+                status.textContent='Checking exact record and file dependencies…';
+                var plan=await api('/delete-plan',{uuids:uuids});
+                if(!plan.safe){status.textContent='Nothing was deleted. Selected: '+plan.record_count+' record(s), '+plan.file_count+' associated file(s). Files pending, shared or not safely verified: '+(plan.blocked||[]).join('; ');return;}
+                var titleList=(plan.records||[]).map(function(r){return r.title;}).join(', ');
+                var prompt='Delete '+plan.record_count+' catalogue record(s) and '+plan.file_count+' associated artwork/file(s)?\n\n'+titleList+'\n\nThis cannot be undone. Projects, shared files and backups are checked separately and will be preserved.';
+                if(!window.confirm(prompt)){status.textContent='Deletion cancelled. Nothing changed.';return;}
+                var revisions={};(plan.records||[]).forEach(function(r){revisions[r.uuid]=r.revision;});
+                var result=await api('/delete',{uuids:uuids,revisions:revisions,confirmed:true,record_count:plan.record_count,file_count:plan.file_count});
+                uuids.forEach(function(uuid){catalogueSelected.delete(uuid);});if(current&&uuids.includes(current.uuid)){current=null;}
+                await refresh();render();
+                if(result.cleanup_pending&&result.cleanup_pending.length){status.textContent='Deleted '+result.deleted_records+' record(s) and '+result.deleted_files+' file(s). Cleanup still needs attention for '+result.cleanup_pending.length+' staged file(s): '+result.cleanup_pending.join(', ');}
+                else{status.textContent='Deleted '+result.deleted_records+' catalogue record(s) and '+result.deleted_files+' associated file(s). Unselected records, shared assets, other projects and backups were preserved.';}
+            },'Checking the selected catalogue records…',null,function(error){status.textContent='Deletion not completed: '+error.message;});
+        }
         function catalogue(){
             var list=el('sbs-af-records'),status=el('sbs-af-filter-status'),next=el('sbs-af-filter-next');list.replaceChildren();
             function fill(select,values,placeholder){var selected=select.value,unique=Array.from(new Set(values.filter(Boolean))).sort();select.replaceChildren(new Option(placeholder,''));unique.forEach(function(value){select.add(new Option(value,value));});if(unique.includes(selected))select.value=selected;}
@@ -291,17 +311,19 @@
             function alpha(r){var value=String((r.original_qa||{}).alpha||'').toLowerCase();return value.indexOf('partial')>=0?'partial':value.indexOf('no transparency')>=0?'opaque':value.indexOf('transparency detected')>=0?'transparent':'unknown';}
             var found=records.filter(function(r){return matches(r,el('sbs-af-search').value)&&(!status.value||r.status===status.value)&&(!next.value||r.next_action===next.value)&&(!el('sbs-af-filter-alpha').value||alpha(r)===el('sbs-af-filter-alpha').value);}),counts={};records.forEach(function(r){counts[r.status]=(counts[r.status]||0)+1;});
             el('sbs-af-counts').textContent=found.length+' of '+records.length+' local workspaces shown (newest update first). '+Object.keys(counts).map(function(k){return k+': '+counts[k];}).join('; ');
+            el('sbs-af-delete-selected').textContent='Delete '+catalogueSelected.size+' selected record(s)';el('sbs-af-delete-selected').disabled=busy||catalogueSelected.size===0;
             found.forEach(function(r){
                 var article=document.createElement('article');article.className='sbs-af-catalogue-row sbs-card';
                 var details=document.createElement('div');details.className='sbs-af-catalogue-details';
-                var title=document.createElement('h2');title.textContent=r.title;details.appendChild(title);
+                var title=document.createElement('h2');title.textContent=r.title;var pick=document.createElement('label');pick.className='sbs-af-catalogue-pick';var check=document.createElement('input');check.type='checkbox';check.checked=catalogueSelected.has(r.uuid);check.setAttribute('data-af-record-select','1');check.setAttribute('aria-label','Select '+r.title+' for deletion');check.addEventListener('change',function(){if(this.checked)catalogueSelected.add(r.uuid);else catalogueSelected.delete(r.uuid);el('sbs-af-delete-selected').textContent='Delete '+catalogueSelected.size+' selected record(s)';el('sbs-af-delete-selected').disabled=busy||catalogueSelected.size===0;});pick.append(check,document.createTextNode('Select record'));details.append(pick,title);
                 [["Workspace",r.uuid],["Status",r.status],["Next task",r.next_action],["Transparency",(r.original_qa||{}).alpha||'Not checked'],["Updated",r.updated_at],["Metadata",r.metadata_status]].forEach(function(pair){var line=document.createElement('p');line.className='sbs-af-catalogue-field';var label=document.createElement('strong');label.textContent=pair[0];var value=document.createElement('span');value.textContent=pair[1]||'—';line.append(label,value);details.appendChild(line);});
                 var thumb=document.createElement('button');thumb.type='button';thumb.className='sbs-af-catalogue-thumbnail';thumb.setAttribute('aria-label','Enlarge artwork for '+r.title);thumb.disabled=!r.original||!r.original.url;
                 if(r.original&&r.original.url){var img=document.createElement('img');img.src=r.original.url;img.alt='';img.loading='lazy';thumb.appendChild(img);}else{thumb.textContent='No preview';}
                 thumb.addEventListener('click',function(){if(!r.original||!r.original.url)return;catalogueReturnFocus=this;var modal=el('sbs-af-catalogue-viewer');el('sbs-af-catalogue-viewer-title').textContent=r.title;el('sbs-af-catalogue-viewer-image').src=r.original.url;modal.hidden=false;el('sbs-af-catalogue-viewer-close').focus();});
                 var actions=document.createElement('div');actions.className='sbs-af-catalogue-actions';var open=document.createElement('button');open.className='sbs-button';open.type='button';open.setAttribute('data-af-open',r.uuid);open.textContent='Open in Finishing';open.disabled=busy;open.addEventListener('click',function(){if(busy)return;current=r;render();document.querySelector('[data-primary-tab="finishing"]').click();el('sbs-af-title').focus();});
                 var rename=document.createElement('button');rename.className='sbs-button';rename.type='button';rename.textContent='Rename';rename.disabled=busy;rename.addEventListener('click',function(){var value=window.prompt('Rename this catalogue record. Artwork bytes and history will stay unchanged.',r.title);if(value===null||!value.trim()||value.trim()===r.title)return;operation(async function(){await api('/'+r.uuid+'/rename',{revision:r.revision,title:value.trim()});await refresh();message('Catalogue title updated. Artwork bytes and history were not changed.');},'Saving catalogue title…',rename);});
-                actions.append(open,rename);article.append(details,thumb,actions);list.appendChild(article);
+                var remove=document.createElement('button');remove.className='sbs-button sbs-danger-tool';remove.type='button';remove.textContent='Delete record';remove.setAttribute('data-af-delete',r.uuid);remove.disabled=busy;remove.addEventListener('click',function(){deleteRecords([r.uuid]);});
+                actions.append(open,rename,remove);article.append(details,thumb,actions);list.appendChild(article);
             });
         }
         async function refresh(){var data=await api('');records=data.records;var select=el('sbs-af-resume');select.replaceChildren();var empty=document.createElement('option');empty.value='';empty.textContent='Choose a workspace';select.appendChild(empty);records.forEach(function(r){var o=document.createElement('option');o.value=r.uuid;o.textContent=r.title+' — '+r.status;select.appendChild(o);});if(current){current=records.find(function(r){return r.uuid===current.uuid;})||current;select.value=current.uuid;}catalogue();}
@@ -360,6 +382,7 @@
         el('sbs-af-proof').addEventListener('change',function(){el('sbs-af-compare').setAttribute('data-proof',this.value);});
         el('sbs-af-search').addEventListener('input',catalogue);
         ['sbs-af-filter-status','sbs-af-filter-next','sbs-af-filter-alpha'].forEach(function(id){el(id).addEventListener('change',catalogue);});
+        el('sbs-af-delete-selected').addEventListener('click',function(){deleteRecords(Array.from(catalogueSelected));});
         function closeCatalogueViewer(){el('sbs-af-catalogue-viewer').hidden=true;el('sbs-af-catalogue-viewer-image').removeAttribute('src');if(catalogueReturnFocus&&catalogueReturnFocus.isConnected)catalogueReturnFocus.focus();}
         el('sbs-af-catalogue-viewer-close').addEventListener('click',closeCatalogueViewer);
         el('sbs-af-catalogue-viewer').addEventListener('click',function(event){if(event.target===this)closeCatalogueViewer();});
