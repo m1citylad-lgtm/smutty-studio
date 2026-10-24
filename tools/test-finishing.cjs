@@ -220,8 +220,8 @@ assert.match(finishing, /Choose a folder for the ZIP/);
 assert.match(finishing, /response\.body\.pipeTo/);
 
 // Replicate upscale is explicitly supported by the existing adapter and remains a separate review candidate.
-assert.match(template, /data-af-method="upscale" aria-pressed="false">Choose Step 2: AI upscale/);
-assert.match(template, /data-af-method="inspect" aria-pressed="true">Choose Step 1: Inspect/);
+assert.match(template, /data-af-method="upscale" aria-pressed="false"><span class="sbs-af-stage-button-label">Choose Step 2: AI upscale<\/span>/);
+assert.match(template, /data-af-method="inspect" aria-pressed="true"><span class="sbs-af-stage-button-label">Choose Step 1: Inspect<\/span>/);
 assert.match(template, /No particular stage is mandatory/);
 assert.doesNotMatch(template, /id="sbs-af-method"/);
 assert.match(finishing, /method:selectedMethod/);
