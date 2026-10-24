@@ -146,6 +146,7 @@
                 <label for="sbs-af-filter-next">Next task<select id="sbs-af-filter-next"><option value="">Any next task</option></select></label>
                 <label for="sbs-af-filter-alpha">Transparency<select id="sbs-af-filter-alpha"><option value="">Any</option><option value="opaque">Opaque</option><option value="partial">Partial alpha</option><option value="transparent">Transparent</option><option value="unknown">Not checked</option></select></label>
             </div>
+            <div class="sbs-af-catalogue-batch"><button id="sbs-af-delete-selected" class="sbs-button" type="button" disabled>Delete selected records</button><span id="sbs-af-delete-status" role="status" aria-live="polite"></span></div>
             <p id="sbs-af-counts" role="status" aria-live="polite"></p><div id="sbs-af-records"></div>
         </div>
         <div id="sbs-af-catalogue-viewer" class="sbs-af-catalogue-viewer" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-catalogue-viewer-title">
