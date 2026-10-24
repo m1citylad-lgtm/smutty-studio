@@ -12,7 +12,7 @@
     }
     function init() {
         var root=document.getElementById('sbs-app');if(!root || root.getAttribute('data-authenticated')!=='1')return;
-        var current=null, records=[], busy=false, selectedFile=null, exportPickerOpen=false, proofPreviewUrl=null, proofSourceKey='', proofRenderedKey='', activePrintQA=null, activeProofAssetUrl='', flatPreviewBlob=null, flatPreviewUrl=null, flatPreviewKey='';
+        var current=null, records=[], busy=false, selectedFile=null, selectedMethod='inspect', exportPickerOpen=false, proofPreviewUrl=null, proofSourceKey='', proofRenderedKey='', activePrintQA=null, activeProofAssetUrl='', flatPreviewBlob=null, flatPreviewUrl=null, flatPreviewKey='';
         var el=function(id){return document.getElementById(id);},catalogueReturnFocus=null,catalogueSelected=new Set();
         function message(text,error){el('sbs-af-progress').textContent=text;el('sbs-af-progress').setAttribute('role',error?'alert':'status');}
         function uploadMessage(text,state){var status=el('sbs-af-upload-status');status.textContent=text;status.dataset.state=state||'info';status.setAttribute('role',state==='error'?'alert':'status');}
@@ -43,10 +43,11 @@
             el('sbs-af-delete-selected').disabled=busy||catalogueSelected.size===0;
             el('sbs-af-progress-bar').hidden=!busy;
         }
+        function stageLabel(method){return ({inspect:'Inspect',resize:'Fit down to print box',print_png:'Prepare print PNG',upscale:'AI upscale'})[method]||'selected stage';}
         function updateStepButtons(){
-            var queued=!!(current&&current.pending),hasVersion=!!(current&&current.current_version),approved=!!(current&&current.approval&&current.approval.version===current.current_version);
-            el('sbs-af-prepare').textContent=queued?'✓ 2. Stage queued':'2. Queue selected stage';
-            el('sbs-af-run').textContent=!queued&&hasVersion?'✓ 3. Stage complete':'3. Run queued stage';
+            var queued=!!(current&&current.pending),hasVersion=!!(current&&current.current_version),approved=!!(current&&current.approval&&current.approval.version===current.current_version),queuedLabel=queued?stageLabel(current.pending.method):stageLabel(selectedMethod);
+            el('sbs-af-prepare').textContent=queued?'✓ 2. '+stageLabel(current.pending.method)+' queued':'2. Queue '+stageLabel(selectedMethod);
+            el('sbs-af-run').textContent=queued&&current.pending.replicate_prediction_id?'3. Waiting for Replicate result':queued?'3. Run '+stageLabel(current.pending.method):hasVersion?'✓ 3. Stage complete':'3. Run '+queuedLabel;
             el('sbs-af-approve').textContent=approved?'✓ 6. Approved locally':'6. Approve this local version';
         }
         function buttonBusy(button,on){if(!button)return;if(on){if(!button.hasAttribute('aria-busy')){button.dataset.previousLabel=button.textContent;button.setAttribute('aria-busy','true');}button.disabled=true;}else{button.removeAttribute('aria-busy');if(button.dataset.previousLabel){button.textContent=button.dataset.previousLabel;delete button.dataset.previousLabel;}}}
@@ -363,7 +364,8 @@
         el('sbs-af-file').addEventListener('change',function(){chooseFile(this);});
         el('sbs-af-gallery-file').addEventListener('change',function(){chooseFile(this);});
         el('sbs-af-upload').addEventListener('submit',function(event){event.preventDefault();var submitter=event.submitter||this.querySelector('button[type=submit]'),uploaded=null;uploadMessage('Saving the untouched original in private Studio storage…');operation(async function(){var f=selectedFile||el('sbs-af-file').files[0]||el('sbs-af-gallery-file').files[0];if(!f)throw new Error('Choose one image using Photos / Gallery or Files / My Files first.');if(f.size>20*1024*1024)throw new Error('This file is '+fileSize(f.size)+'. The limit is 20 MB. Choose a smaller copy; your original file will not be changed.');var data=new FormData();data.append('file',f);data.append('title',el('sbs-af-name').value);current=await api('/upload',data);uploaded=current;await refresh();render();selectedFile=null;el('sbs-af-upload').reset();var saved='Saved successfully: “'+current.title+'”. Workspace '+current.uuid+'. The original is unchanged; no AF number was allocated.';message(saved);uploadMessage(saved,'success');},'Uploading original to private Studio storage…',submitter,function(error){if(uploaded){var saved='Original saved successfully: “'+uploaded.title+'”. Workspace '+uploaded.uuid+'. The workspace list did not refresh: '+error.message+' Do not upload it again; press Refresh workspaces.';uploadMessage(saved,'success');}else{uploadMessage('Upload not confirmed: '+error.message,'error');}});});
-        el('sbs-af-prepare').addEventListener('click',function(){var button=this;operation(function(){return action('prepare',{options:{method:el('sbs-af-method').value,width:Number(el('sbs-af-width').value),height:Number(el('sbs-af-height').value),notes:el('sbs-af-notes').value,print_canvas:el('sbs-af-print-canvas').checked}});},'Queueing selected stage…',button);});
+        document.querySelectorAll('[data-af-method]').forEach(function(button){button.addEventListener('click',function(){selectedMethod=button.getAttribute('data-af-method');document.querySelectorAll('[data-af-method]').forEach(function(other){var active=other===button;other.setAttribute('aria-pressed',active?'true':'false');var card=other.closest('[data-af-stage-card]');if(card)card.classList.toggle('is-selected',active);});el('sbs-af-stage-help').textContent=current?'Selected: '+stageLabel(selectedMethod)+'. Queue this step, then run it. The original remains preserved.':'Selected: '+stageLabel(selectedMethod)+'. Upload or resume artwork first; then queue and run this step.';updateStepButtons();});});
+        el('sbs-af-prepare').addEventListener('click',function(){var button=this;operation(function(){return action('prepare',{options:{method:selectedMethod,width:Number(el('sbs-af-width').value),height:Number(el('sbs-af-height').value),notes:el('sbs-af-notes').value,print_canvas:el('sbs-af-print-canvas').checked}});},'Queueing '+stageLabel(selectedMethod)+'…',button);});
         el('sbs-af-flat-sample').addEventListener('click',sampleFlatBackground);
         el('sbs-af-flat-preview').addEventListener('click',function(){var button=this;operation(previewFlatBackground,'Preparing a local pixel preview…',button);});
         el('sbs-af-flat-remove').addEventListener('click',removeFlatBackground);

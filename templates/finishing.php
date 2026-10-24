@@ -16,10 +16,16 @@
             <button id="sbs-af-refresh" class="sbs-button" type="button">Refresh workspaces</button>
         </section>
         <section class="sbs-card"><h2>2. Choose a stage</h2>
-            <label for="sbs-af-method">Processing option<select id="sbs-af-method"><option value="inspect">Inspect — exact byte copy, no image changes</option><option value="resize">Fit down to print box — preserve aspect ratio, no crop</option><option value="print_png">Prepare print PNG — sRGB, RGBA, 300 PPI</option><option value="upscale">AI upscale — Replicate Real-ESRGAN (automatic 2× or 4×)</option></select></label>
+            <h3 id="sbs-af-stage-options-title">Choose one finishing step</h3>
+<div class="sbs-af-stage-options" role="group" aria-labelledby="sbs-af-stage-options-title">
+ <article class="sbs-af-stage-card is-selected" data-af-stage-card="inspect"><div><h4>Inspect</h4><p><strong>Optional — recommended first.</strong> Checks pixel size, effective PPI, colour profile, transparency samples and other technical points. Saves a byte-identical candidate and report; it does not alter the artwork.</p></div><button class="sbs-button" type="button" data-af-method="inspect" aria-pressed="true">Choose Inspect</button></article>
+ <article class="sbs-af-stage-card" data-af-stage-card="resize"><div><h4>Fit down to print box</h4><p><strong>Optional — use only when needed.</strong> Shrinks artwork to fit the selected print dimensions, preserving proportions. It never crops or enlarges the image and saves a separate PNG candidate.</p></div><button class="sbs-button" type="button" data-af-method="resize" aria-pressed="false">Choose Fit down</button></article>
+ <article class="sbs-af-stage-card" data-af-stage-card="print_png"><div><h4>Prepare print PNG</h4><p><strong>Optional — for a standardised print file.</strong> Creates an 8-bit RGBA PNG with sRGB and 300-PPI metadata, using the selected candidate or the original. It does not add image detail. The canvas option below can centre artwork on a transparent print-size canvas and only scales it down.</p></div><button class="sbs-button" type="button" data-af-method="print_png" aria-pressed="false">Choose print PNG</button></article>
+ <article class="sbs-af-stage-card" data-af-stage-card="upscale"><div><h4>AI upscale</h4><p><strong>Optional — only if pixel dimensions are too low.</strong> Sends a copy of the untouched original to Replicate Real-ESRGAN for automatic 2× or 4× upscaling. It may use paid credits. Skip it when the artwork already meets the chosen print-size target.</p></div><button class="sbs-button" type="button" data-af-method="upscale" aria-pressed="false">Choose AI upscale</button></article>
+</div>
             <div class="sbs-grid two"><label for="sbs-af-width">Print width (inches)<input id="sbs-af-width" type="number" min="1" max="30" step="0.25" value="15"></label><label for="sbs-af-height">Print height (inches)<input id="sbs-af-height" type="number" min="1" max="30" step="0.25" value="18"></label></div>
-            <label><input id="sbs-af-print-canvas" type="checkbox"> For Prepare print PNG: fit on a transparent print-size canvas, centred without stretching or enlarging the artwork.</label>
-            <p>Prepare print PNG uses the selected candidate, if present. Untagged sources are assumed sRGB; confirm colours manually. Inspect and Fit down stay local. AI upscale sends a copy to Replicate and may cost credits. Original stays unchanged. 300 PPI is a target, not a quality guarantee.</p>
+            <label><input id="sbs-af-print-canvas" type="checkbox"> Prepare print PNG only: fit on a transparent print-size canvas, centred without stretching or enlarging the artwork.</label>
+            <p>Untagged sources are assumed sRGB; confirm colours manually. 300 PPI is a target, not a quality or detail guarantee. The untouched original is retained.</p>
             <details class="sbs-af-flat-background"><summary>Optional: remove a plain background</summary>
                 <div class="sbs-af-flat-background-content">
                 <p>Local, non-AI operation. It removes selected sampled colours only where connected to the image edge. It can leave fringes or remove edge-touching artwork. Sampling can be uncertain; inspect the preview and saved copy. It does not detect every checkerboard and is not a complex-scene remover.</p>
@@ -34,7 +40,7 @@
                 </div>
             </details>
             <label for="sbs-af-notes">Correction notes for this version<textarea id="sbs-af-notes" rows="4" maxlength="6000" spellcheck="true" autocapitalize="sentences" placeholder="Dictate details to check. Notes are recorded; they do not instruct AI or redraw this image."></textarea></label>
-            <p id="sbs-af-stage-help">Choose a stage. Queue it, then run it. The original stays unchanged.</p>
+            <p id="sbs-af-stage-help" role="status" aria-live="polite">No particular stage is mandatory. Inspect is the recommended first step. Choose a workspace, select a step, then queue and run it. One candidate is needed before approval; Inspect creates one without changing the artwork bytes.</p>
             <button id="sbs-af-prepare" class="sbs-button" type="button" disabled>2. Queue selected stage</button>
             <p class="sbs-af-then" aria-hidden="true">Then ↓</p>
             <button id="sbs-af-run" class="sbs-button primary" type="button" disabled>3. Run queued stage</button>

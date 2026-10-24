@@ -164,3 +164,13 @@ body#sbs-studio-page .sbs-af-catalogue-row .sbs-danger-tool { justify-self:end; 
     body#sbs-studio-page .sbs-af-catalogue-field { grid-template-columns:minmax(0,130px) minmax(0,1fr); }
     body#sbs-studio-page .sbs-af-catalogue-preview { max-width:260px; }
 }
+
+/* Clear, independent finishing choices. */
+.sbs-af-stage-options{display:grid;gap:12px;margin:12px 0}
+.sbs-af-stage-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px 16px;padding:14px;border:2px solid #b69c65;border-radius:10px;background:#17182b;color:#fff3d7;min-width:0}
+.sbs-af-stage-card.is-selected{border-color:#f0ad64;box-shadow:0 0 0 2px #f0ad6444}
+.sbs-af-stage-card h4{margin:.1rem 0 .35rem;color:#ffe08a}
+.sbs-af-stage-card p{margin:0;line-height:1.5}
+.sbs-af-stage-card button{grid-column:2;grid-row:1;white-space:normal}
+#sbs-af-stage-options-title{margin-bottom:.35rem}
+@media(max-width:750px){.sbs-af-stage-card{grid-template-columns:minmax(0,1fr)}.sbs-af-stage-card button{grid-column:1;grid-row:auto;justify-self:start}}
