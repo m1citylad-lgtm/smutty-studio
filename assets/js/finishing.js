@@ -12,7 +12,7 @@
     }
     function init() {
         var root=document.getElementById('sbs-app');if(!root || root.getAttribute('data-authenticated')!=='1')return;
-        var current=null, records=[], busy=false, selectedFile=null, selectedMethod='inspect', exportPickerOpen=false, proofPreviewUrl=null, proofSourceKey='', proofRenderedKey='', activePrintQA=null, activeProofAssetUrl='', flatPreviewBlob=null, flatPreviewUrl=null, flatPreviewKey='';
+        var current=null, records=[], busy=false, activeStageMethod='', selectedFile=null, selectedMethod='inspect', exportPickerOpen=false, proofPreviewUrl=null, proofSourceKey='', proofRenderedKey='', activePrintQA=null, activeProofAssetUrl='', flatPreviewBlob=null, flatPreviewUrl=null, flatPreviewKey='';
         var el=function(id){return document.getElementById(id);},catalogueReturnFocus=null,catalogueSelected=new Set();
         function message(text,error){el('sbs-af-progress').textContent=text;el('sbs-af-progress').setAttribute('role',error?'alert':'status');}
         function uploadMessage(text,state){var status=el('sbs-af-upload-status');status.textContent=text;status.dataset.state=state||'info';status.setAttribute('role',state==='error'?'alert':'status');}
@@ -44,14 +44,26 @@
             el('sbs-af-progress-bar').hidden=!busy;
         }
         function stageLabel(method){return ({inspect:'Inspect',resize:'Fit down to print box',print_png:'Prepare print PNG',upscale:'AI upscale'})[method]||'selected stage';}
+        function updateStageButtons(){
+            document.querySelectorAll('[data-af-method]').forEach(function(button){
+                var method=button.getAttribute('data-af-method'),spinner=button.querySelector('.sbs-af-stage-spinner'),done=button.querySelector('.sbs-af-stage-done');
+                var running=!!(busy&&activeStageMethod===method),completed=!!(current&&current.versions&&current.versions.some(function(version){return version.options&&version.options.method===method;}));
+                if(spinner)spinner.hidden=!running;
+                if(done)done.hidden=running||!completed;
+                if(running){button.setAttribute('aria-busy','true');button.setAttribute('aria-label',button.querySelector('.sbs-af-stage-button-label').textContent+' — running');}
+                else{button.removeAttribute('aria-busy');button.setAttribute('aria-label',button.querySelector('.sbs-af-stage-button-label').textContent+(completed?' — completed':''));}
+                button.dataset.stageState=running?'running':completed?'complete':'idle';
+            });
+        }
         function updateStepButtons(){
             var queued=!!(current&&current.pending),hasVersion=!!(current&&current.current_version),approved=!!(current&&current.approval&&current.approval.version===current.current_version),queuedLabel=queued?stageLabel(current.pending.method):stageLabel(selectedMethod);
             el('sbs-af-prepare').textContent=queued?'✓ 2. '+stageLabel(current.pending.method)+' queued':'2. Queue '+stageLabel(selectedMethod);
             el('sbs-af-run').textContent=queued&&current.pending.replicate_prediction_id?'3. Waiting for Replicate result':queued?'3. Run '+stageLabel(current.pending.method):hasVersion?'✓ 3. Stage complete':'3. Run '+queuedLabel;
             el('sbs-af-approve').textContent=approved?'✓ 6. Approved locally':'6. Approve this local version';
+            updateStageButtons();
         }
         function buttonBusy(button,on){if(!button)return;if(on){if(!button.hasAttribute('aria-busy')){button.dataset.previousLabel=button.textContent;button.setAttribute('aria-busy','true');}button.disabled=true;}else{button.removeAttribute('aria-busy');if(button.dataset.previousLabel){button.textContent=button.dataset.previousLabel;delete button.dataset.previousLabel;}}}
-        async function operation(fn,text,button,onError){if(busy)return;busy=true;buttonBusy(button,true);controls();message(text);try{await fn();}catch(error){message(error.message,true);if(onError)onError(error);}finally{busy=false;el('sbs-af-progress-bar').removeAttribute('value');controls();buttonBusy(button,false);updateStepButtons();}}
+        async function operation(fn,text,button,onError){if(busy)return;activeStageMethod=button&&button.id==='sbs-af-run'&&current&&current.pending?current.pending.method:'';busy=true;buttonBusy(button,true);controls();updateStepButtons();message(text);try{await fn();}catch(error){message(error.message,true);if(onError)onError(error);}finally{busy=false;activeStageMethod='';el('sbs-af-progress-bar').removeAttribute('value');controls();buttonBusy(button,false);updateStepButtons();}}
         function fileSize(size){return (size/(1024*1024)).toFixed(2)+' MB';}
         function flatColors(){var colors=[[1,3,5].map(function(n){return parseInt(el('sbs-af-flat-colour').value.slice(n,n+2),16);})];if(el('sbs-af-flat-use-second').checked){colors.push([1,3,5].map(function(n){return parseInt(el('sbs-af-flat-colour-2').value.slice(n,n+2),16);}));}return colors;}
         function flatKey(){return JSON.stringify([current&&current.uuid,current&&current.current_version||'original',flatColors(),Number(el('sbs-af-flat-tolerance').value)]);}
@@ -410,6 +422,7 @@
         if(root.getAttribute('data-open-settings')==='1')google(async function(){googlePaint(await api('/google/status'));},'Checking saved Google settings…');
         window.addEventListener('sbs-finishing-open',function(event){if(!event.detail)return;current=event.detail;render();message('Freestyle image copied byte for byte. Source settings, instructions and history are saved. This image is not approved for printing.');});
         render();
+        refresh().then(function(){render();message('Local workspaces loaded.');}).catch(function(error){render();message('Workspaces could not be loaded at startup: '+error.message,true);});
     }
     if(typeof window!=='undefined')window.SBSFinishing={matches:matches,canApprove:canApprove,classifyTransparency:classifyTransparency,init:init};
     if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();}
