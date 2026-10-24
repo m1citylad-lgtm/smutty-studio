@@ -144,8 +144,9 @@
             <button id="sbs-af-edit-save" class="sbs-button primary" type="button" disabled>Save as new version</button>
         </div>
         <label>Zoom <input id="sbs-af-editor-zoom" type="range" min="50" max="400" value="100"><output id="sbs-af-editor-zoom-value">100%</output></label>
+        <label for="sbs-af-editor-background">Background <select id="sbs-af-editor-background"><option value="checkerboard" selected>Dark checkerboard</option><option value="white">White</option><option value="black">Black</option></select></label>
         <label>Brush strength <input id="sbs-af-brush-strength" type="range" min="10" max="100" value="100"><output id="sbs-af-brush-strength-value">100%</output></label>
-        <p id="sbs-af-editor-status" role="status" aria-live="polite">Loading candidate…</p><div id="sbs-af-editor-viewport" class="sbs-af-editor-viewport" tabindex="0" aria-label="Artwork editor canvas; zoom and scroll to inspect"><canvas id="sbs-af-editor-canvas"></canvas></div>
+        <p id="sbs-af-editor-status" role="status" aria-live="polite">Loading candidate…</p><div id="sbs-af-editor-viewport" class="sbs-af-editor-viewport" tabindex="0" aria-label="Artwork editor canvas. One finger edits; two fingers pan and pinch to zoom. Scroll bars also move the image horizontally and vertically."><canvas id="sbs-af-editor-canvas"></canvas></div>
     </div>
     <div id="sbs-af-trim-dialog" class="sbs-af-editor" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-trim-title">
         <header class="sbs-af-editor-head"><div><h2 id="sbs-af-trim-title">Preview transparent-margin trim</h2><p id="sbs-af-trim-summary"></p></div><button id="sbs-af-trim-close" class="sbs-af-ai-focus-close" type="button" aria-label="Cancel trim preview">×</button></header>
