@@ -258,7 +258,7 @@ assert.match(finishing, /SMUTTY STUDIO — CHATGPT ARTWORK HANDOFF/);
 assert.match(finishing, /navigator\.clipboard\.writeText/);
 assert.match(finishing, /PPI: '\+ppi\.toFixed\(1\)\+' \| Target: 300 \| Now: '\+size\+' \| Max:/);
 assert.match(finishing, /Comparison not completed: '\+error\.message/);
-assert.match(finishing, /✓ 2\. Stage queued/);
+assert.match(finishing, /✓ 2\. '\+stageLabel\(current\.pending\.method\)\+' queued/);
 assert.match(finishing, /✓ 3\. Stage complete/);
 assert.match(finishing, /✓ 6\. Approved locally/);
 assert.match(finishing, /Please compare the attached original\/ and candidate\//);
