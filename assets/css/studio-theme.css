@@ -419,3 +419,19 @@ body#sbs-studio-page [data-panel="characters"] .sbs-character-properties .sbs-st
     color: var(--sbs-text);
     box-shadow: none;
 }
+
+
+/* Keep all static Character Description guidance on the standard panel background. */
+body#sbs-studio-page [data-panel="characters"] .sbs-tab-help,
+body#sbs-studio-page [data-panel="characters"] .sbs-tab-help > *,
+body#sbs-studio-page [data-panel="characters"] .sbs-character-properties .sbs-workflow-part,
+body#sbs-studio-page [data-panel="characters"] .sbs-character-properties .sbs-stage-decision {
+    background: transparent !important;
+    background-image: none !important;
+    border: 0 !important;
+    border-left: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    color: var(--sbs-text) !important;
+    font-size: 18px !important;
+}
