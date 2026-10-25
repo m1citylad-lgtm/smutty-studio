@@ -137,7 +137,7 @@ assert.match(backend, /freestyle_brief/);
 assert.match(backend, /'lineage'=>\$lineage/);assert.match(printQa, /'freestyle_source'=>\$record\['freestyle_source'\]/);
 assert.ok(backend.includes("hash('sha256',$bytes)!==$source['sha256']"));
 assert.match(backend, /not approved for printing/i);
-assert.match(finishing, /freestyle\.settings/);assert.match(finishing, /freestyle\.lineage/);assert.match(finishing, /Estimated cost: \$/);
+assert.match(finishing, /freestyle\.settings/);assert.match(finishing, /freestyle\.lineage/);assert.match(finishing, /AI upscale may use paid credits/);
 assert.match(studioTemplate, /data-panel="create" hidden/);
 assert.match(studioTemplate, /data-tab="create" hidden/);
 assert.match(studioTemplate, /Composition Tool/);
