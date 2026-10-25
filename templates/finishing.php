@@ -132,7 +132,7 @@
             <button id="sbs-af-ai-focus-original" type="button" class="sbs-button">Original</button>
             <button id="sbs-af-ai-focus-candidate" type="button" class="sbs-button">Candidate</button>
         </div>
-        <div id="sbs-af-ai-focus-stage" class="sbs-af-ai-focus-stage" tabindex="0" aria-label="Four-times image view. Scroll to pan around the image."></div>
+        <div id="sbs-af-ai-focus-stage" class="sbs-af-ai-focus-stage" tabindex="0" aria-label="Issue comparison. Pinch to zoom, drag to pan, tap to switch between original and candidate. Scroll bars are also available."><svg id="sbs-af-ai-focus-marker" class="sbs-af-ai-focus-marker" hidden viewBox="0 0 48 48" aria-hidden="true"><path d="M4 4 L42 42 M26 42 L42 42 L42 26"></path><circle cx="42" cy="42" r="3"></circle></svg></div>
     </div>
     <div id="sbs-af-editor" class="sbs-af-editor" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-editor-title">
         <header class="sbs-af-editor-head"><div><h2 id="sbs-af-editor-title">Clean transparent artwork</h2><p>Changes apply to a new copy. The selected candidate and original stay in history.</p></div><button id="sbs-af-editor-close" class="sbs-af-ai-focus-close" type="button" aria-label="Close editor">×</button></header>
@@ -140,11 +140,11 @@
         <div class="sbs-af-editor-settings">
             <label>Brush <input id="sbs-af-brush-width" type="range" min="1" max="120" value="24"><output id="sbs-af-brush-width-value">24 px</output></label>
             <label>Soft edge <input id="sbs-af-brush-soft" type="range" min="0" max="100" value="35"><output id="sbs-af-brush-soft-value">35%</output></label>
-            <label>Zoom <input id="sbs-af-editor-zoom" type="range" min="50" max="400" value="100"><output id="sbs-af-editor-zoom-value">100%</output></label>
+            <label>Zoom <input id="sbs-af-editor-zoom" type="range" min="50" max="1000" value="100"><output id="sbs-af-editor-zoom-value">100%</output></label>
             <label for="sbs-af-editor-background">Background <select id="sbs-af-editor-background"><option value="checkerboard" selected>Dark checkerboard</option><option value="white">White</option><option value="black">Black</option></select></label>
             <label>Strength <input id="sbs-af-brush-strength" type="range" min="10" max="100" value="100"><output id="sbs-af-brush-strength-value">100%</output></label>
         </div>
-        <p id="sbs-af-editor-status" role="status" aria-live="polite">Loading candidate…</p><div id="sbs-af-editor-viewport" class="sbs-af-editor-viewport" tabindex="0" aria-label="Artwork editor canvas. One finger edits; two fingers pan and pinch to zoom. Scroll bars also move the image horizontally and vertically."><canvas id="sbs-af-editor-canvas"></canvas></div>
+        <p id="sbs-af-editor-status" role="status" aria-live="polite">Loading candidate…</p><div id="sbs-af-editor-viewport" class="sbs-af-editor-viewport" tabindex="0" aria-label="Artwork editor canvas. One finger edits; two fingers pan and pinch to zoom. Scroll bars also move the image horizontally and vertically."><canvas id="sbs-af-editor-canvas"></canvas><div id="sbs-af-brush-cursor" hidden aria-hidden="true"></div></div>
     </div>
     <div id="sbs-af-trim-dialog" class="sbs-af-editor" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-trim-title">
         <header class="sbs-af-editor-head"><div><h2 id="sbs-af-trim-title">Preview transparent-margin trim</h2><p id="sbs-af-trim-summary"></p></div><button id="sbs-af-trim-close" class="sbs-af-ai-focus-close" type="button" aria-label="Cancel trim preview">×</button></header>
