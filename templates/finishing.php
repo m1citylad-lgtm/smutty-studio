@@ -14,6 +14,7 @@
             </form>
             <label for="sbs-af-resume">Resume local artwork<select id="sbs-af-resume"><option value="">Choose a workspace</option></select></label>
             <button id="sbs-af-refresh" class="sbs-button" type="button" aria-live="polite"><span id="sbs-af-refresh-label">Refresh workspaces</span><span id="sbs-af-refresh-spinner" aria-hidden="true" hidden> ⌛</span><span id="sbs-af-refresh-done" aria-hidden="true" hidden> ✓</span></button>
+            <p id="sbs-af-workspace-status" class="sbs-af-workspace-status" role="status" aria-live="polite">Saved workspaces have not been checked yet.</p>
             <section class="sbs-af-print-settings" aria-label="Print target settings">
                 <h3>Print target</h3>
                 <div class="sbs-grid two sbs-af-print-target"><label for="sbs-af-width">Print width (inches)<input id="sbs-af-width" type="number" min="1" max="30" step="0.25" value="14"></label><label for="sbs-af-height">Print height (inches)<input id="sbs-af-height" type="number" min="1" max="30" step="0.25" value="16"></label></div>

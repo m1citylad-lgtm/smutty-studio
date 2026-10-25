@@ -22,6 +22,18 @@
         clearTimeout(box._timer);
         box._timer = setTimeout(function () { box.hidden = true; }, 7000);
     }
+    function showSessionExpired() {
+        var login = el('sbs-login'), workspace = el('sbs-workspace'), nav = el('sbs-primary-nav'), guide = el('sbs-guide-open');
+        if (workspace) { workspace.hidden = true; }
+        if (nav) { nav.hidden = true; }
+        if (guide) { guide.hidden = true; }
+        if (login) {
+            login.hidden = false;
+            var message = login.querySelector('.sbs-form-message');
+            if (message) { message.textContent = 'Studio session expired. Sign in again to reload your saved workspaces.'; }
+        }
+    }
+
     function api(path, options) {
         options = options || {};
         var headers = options.headers || {};
@@ -33,7 +45,7 @@
             return response.text().then(function (text) {
                 var data;
                 try { data = text ? JSON.parse(text) : {}; } catch (e) { data = { message: text || 'Unexpected server response.' }; }
-                if (!response.ok) { throw new Error(data.message || 'Request failed.'); }
+                if (!response.ok) { if (response.status === 401 && data.code === 'studio_auth_required') { showSessionExpired(); } throw new Error(data.message || 'Request failed.'); }
                 return data;
             });
         });
