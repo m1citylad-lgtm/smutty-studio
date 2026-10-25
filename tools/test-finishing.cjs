@@ -267,6 +267,7 @@ assert.match(finishing, /View area/);
 assert.match(finishing, /openAiFocus\(finding,zoomButton\)/);
 assert.match(finishing, /AI-estimated location\. A yellow outline marks the approximate area/);
 assert.match(finishing, /function updateAiFocusMarker\(width,height\)/);
+assert.match(finishing, /marker\.removeAttribute\('hidden'\)/, 'SVG issue outline must be unhidden with an SVG attribute');
 assert.match(template, /<rect x="4" y="4" width="92" height="92" rx="8"><\/rect>/);
 assert.match(finishing, /base\*4/);
 assert.match(finishing, /aiFocusStage\.appendChild\(aiFocusImage\)/);
