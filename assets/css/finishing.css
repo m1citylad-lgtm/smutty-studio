@@ -61,6 +61,7 @@
 .sbs-af-viewing{align-self:center;padding:.45rem .7rem;border:2px solid #ffb12d;border-radius:999px;background:#173356;color:#fff}
 .sbs-af-finding-actions{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.5rem}
 .sbs-af-finding-decision{font-weight:700}
+.sbs-af-finding-status{font-weight:800;letter-spacing:.03em}
 #sbs-af-ai-status{min-height:1.5em;color:#ffe08a;font-weight:700}
 #sbs-af-ai-status[data-state="error"]{color:#ffb09c}
 #sbs-af-ai-status[data-state="success"]{color:#9de0af}

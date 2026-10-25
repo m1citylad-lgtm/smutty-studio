@@ -98,6 +98,9 @@ New OpenAI generations retain requested model/quality/size separately from provi
 Validation: the existing release gates plus real PNG conversion, alpha/white-ink preservation, no-upscale canvas, selected-candidate lineage, QA reuse/invalidation and checksum-verified ZIP tests run with both Imagick and GD-only.
 
 
-### Print fit and in-context review decisions (v0.2.86)
+### Print fit and in-context review decisions (v0.2.87)
 
 Artwork Finishing now defaults to a 16 × 18 inch chest-print box and calculates effective PPI after proportional fit, alongside the artwork's maximum 300-PPI dimensions. The resolution guide is green at 300 PPI or above, amber from 250–299 PPI, and red below 250 PPI. Technical and AI findings share one review area, where each finding can be recorded as intentional, false alarm or unresolved, opened for in-place correction, or used to reject the candidate while preserving its history. Local approval remains separate from production approval.
+
+
+The review controls are present even when the optional AI comparison is not run. Approval is disabled until each current sampled or AI finding is explicitly marked intentional or false alarm; an unresolved finding keeps approval blocked.
