@@ -16,7 +16,7 @@
             <button id="sbs-af-refresh" class="sbs-button" type="button" aria-live="polite"><span id="sbs-af-refresh-label">Refresh workspaces</span><span id="sbs-af-refresh-spinner" aria-hidden="true" hidden> ⌛</span><span id="sbs-af-refresh-done" aria-hidden="true" hidden> ✓</span></button>
             <section class="sbs-af-print-settings" aria-label="Print target settings">
                 <h3>Print target</h3>
-                <div class="sbs-grid two sbs-af-print-target"><label for="sbs-af-width">Print width (inches)<input id="sbs-af-width" type="number" min="1" max="30" step="0.25" value="15"></label><label for="sbs-af-height">Print height (inches)<input id="sbs-af-height" type="number" min="1" max="30" step="0.25" value="18"></label></div>
+                <div class="sbs-grid two sbs-af-print-target"><label for="sbs-af-width">Print width (inches)<input id="sbs-af-width" type="number" min="1" max="30" step="0.25" value="16"></label><label for="sbs-af-height">Print height (inches)<input id="sbs-af-height" type="number" min="1" max="30" step="0.25" value="18"></label></div>
                 <label class="sbs-af-print-canvas-label"><input id="sbs-af-print-canvas" type="checkbox"> For Step 3 only: fit artwork on a transparent print-size canvas, centred without stretching or enlarging.</label>
                 <p>Set these dimensions before running Inspect, Fit down or Prepare print PNG. 300 PPI is a target, not a quality or detail guarantee.</p>
             </section>
@@ -75,7 +75,7 @@
         <section id="sbs-af-print-proof" class="sbs-af-print-proof" aria-labelledby="sbs-af-print-proof-title" hidden>
             <h3 id="sbs-af-print-proof-title">Garment-colour print check</h3>
             <p id="sbs-af-print-proof-help">Tap a proof to inspect it full screen. Screen colours may differ from print.</p>
-            <p id="sbs-af-print-status" role="status" aria-live="polite" aria-atomic="true">Select artwork to run the pixel-size check.</p>
+            <p id="sbs-af-proof-status" role="status" aria-live="polite" aria-atomic="true">Select artwork to run the pixel-size check.</p>
             <div class="sbs-af-proof-grid" role="group" aria-label="Garment-colour proof backgrounds">
                 <figure><figcaption>1. BLACK</figcaption><button type="button" class="sbs-af-proof-swatch" data-proof-color="black" aria-label="Inspect artwork on black"><img data-af-proof-image="black" alt="" hidden></button></figure>
                 <figure><figcaption>2. WHITE</figcaption><button type="button" class="sbs-af-proof-swatch" data-proof-color="white" aria-label="Inspect artwork on white"><img data-af-proof-image="white" alt="" hidden></button></figure>
@@ -94,6 +94,7 @@
         <div id="sbs-af-progress" role="status" aria-live="polite" aria-atomic="true">No operation running.</div>
         <progress id="sbs-af-progress-bar" aria-label="Local finishing operation" hidden></progress>
         <button id="sbs-af-refresh-qa" class="sbs-button" type="button">Refresh technical checks — no image changes</button><p>Refreshing checks clears local approval so you can review any new findings.</p>
+        <p id="sbs-af-print-status" class="sbs-af-print-status" role="status" aria-live="polite" data-state="warning">Enter a print size to see the PPI estimate.</p>
         <div id="sbs-af-qa"></div>
         <section id="sbs-af-ai-review" class="sbs-af-ai-review" aria-labelledby="sbs-af-ai-review-title" hidden>
             <h3 id="sbs-af-ai-review-title">AI quality check</h3>
@@ -129,10 +130,12 @@
             <button id="sbs-af-ai-focus-close" class="sbs-af-ai-focus-close" type="button" aria-label="Close issue view">×</button>
         </div>
         <div class="sbs-af-ai-focus-switch" role="group" aria-label="Image to inspect">
+            <strong id="sbs-af-ai-focus-viewing" class="sbs-af-viewing">Viewing: Candidate</strong>
             <button id="sbs-af-ai-focus-original" type="button" class="sbs-button">Original</button>
             <button id="sbs-af-ai-focus-candidate" type="button" class="sbs-button">Candidate</button>
         </div>
         <div id="sbs-af-ai-focus-stage" class="sbs-af-ai-focus-stage" tabindex="0" aria-label="Issue comparison. Pinch to zoom, drag to pan, tap to switch between original and candidate. Scroll bars are also available."><svg id="sbs-af-ai-focus-marker" class="sbs-af-ai-focus-marker" hidden viewBox="0 0 48 48" aria-hidden="true"><path d="M4 4 L42 42 M26 42 L42 42 L42 26"></path><circle cx="42" cy="42" r="3"></circle></svg></div>
+        <div class="sbs-af-finding-actions" role="group" aria-label="Review this finding"><button type="button" class="sbs-button" data-af-finding-decision="intentional">Accept as intentional</button><button type="button" class="sbs-button" data-af-finding-decision="false_alarm">False alarm</button><button id="sbs-af-focus-fix" type="button" class="sbs-button">Fix here</button><button type="button" class="sbs-button" data-af-finding-decision="unresolved">Leave unresolved</button></div>
     </div>
     <div id="sbs-af-editor" class="sbs-af-editor" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-editor-title">
         <header class="sbs-af-editor-head"><div><h2 id="sbs-af-editor-title">Clean transparent artwork</h2><p>Changes apply to a new copy. The selected candidate and original stay in history.</p></div><button id="sbs-af-editor-close" class="sbs-af-ai-focus-close" type="button" aria-label="Close editor">×</button></header>

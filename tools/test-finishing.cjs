@@ -34,8 +34,8 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0\.2\.85/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.85'\)/);
+assert.match(plugin, /Version: 0\.2\.86/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.86'\)/);
 assert.match(studio, /button\.closest\('\.sbs-character-page-menu'\)\) \{ return; \}/, 'Character menu entries must not receive information buttons');
 const mainNav = studioTemplate.match(/<nav id="sbs-primary-nav"[\s\S]*?<\/nav>/)[0];
 assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="freestyle"'));
@@ -198,7 +198,7 @@ assert.ok(template.indexOf('data-proof-color="black"') < template.indexOf('data-
 assert.ok(template.indexOf('data-proof-color="white"') < template.indexOf('data-proof-color="red"'));
 assert.ok(template.indexOf('data-proof-color="red"') < template.indexOf('data-proof-color="navy"'));
 assert.match(finishing, /function refreshPrintStatus/);
-assert.match(finishing, /PPI: '\+ppi\.toFixed\(1\)\+' \| Target: 300 \| Now: '\+size\+' \| Max:/);
+assert.match(finishing, /var pxW=Number\(q\.width\),pxH=Number\(q\.height\),ppi=Math\.max/);
 assert.match(finishing, /canvas\.toBlob/);
 assert.match(css, /grid-auto-flow:column;grid-auto-columns:minmax\(82vw,1fr\);overflow-x:auto/);
 assert.match(css, /\.sbs-af-review-controls\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
@@ -256,7 +256,7 @@ assert.match(finishing, /PASS — digital checks clear; print quality is not gua
 assert.match(finishing, /REVIEW — .*need attention/);
 assert.match(finishing, /SMUTTY STUDIO — CHATGPT ARTWORK HANDOFF/);
 assert.match(finishing, /navigator\.clipboard\.writeText/);
-assert.match(finishing, /PPI: '\+ppi\.toFixed\(1\)\+' \| Target: 300 \| Now: '\+size\+' \| Max:/);
+assert.match(finishing, /var pxW=Number\(q\.width\),pxH=Number\(q\.height\),ppi=Math\.max/);
 assert.match(finishing, /Comparison not completed: '\+error\.message/);
 assert.match(finishing, /✓ 2\. '\+stageLabel\(current\.pending\.method\)\+' queued/);
 assert.match(finishing, /✓ 3\. Stage complete/);
@@ -287,8 +287,8 @@ assert.match(finishing, /className='sbs-af-review-points'/);
 assert.match(finishing, /className='sbs-af-review-points sbs-af-ai-findings'/);
 assert.match(css, /\.sbs-af-review-points\{[^}]*color:#ffe08a/);
 assert.match(css, /\.sbs-af-proof-grid \.sbs-info-button,\.sbs-af-proof-viewer \.sbs-info-button\{display:none!important\}/);
-assert.match(finishing, /PPI: '\+ppi\.toFixed\(1\)\+' \| Target: 300 \| Now: '\+size\+' \| Max:/);
-assert.match(finishing, /var suggestedWidth=Number\(q\.width\)\/300,suggestedHeight=Number\(q\.height\)\/300/);
+assert.match(finishing, /var pxW=Number\(q\.width\),pxH=Number\(q\.height\),ppi=Math\.max/);
+assert.match(finishing, /var pxW=Number\(q\.width\),pxH=Number\(q\.height\),ppi=Math\.max/);
 assert.match(css, /#sbs-af-print-status\[data-state="warning"\]::before\{background:#ff5a5f/);
 assert.match(css, /#sbs-af-print-status\{padding:\.2rem 0;border:0/);
 assert.match(studioTemplate, /Set the character's identity/);

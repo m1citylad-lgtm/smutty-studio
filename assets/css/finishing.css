@@ -54,6 +54,13 @@
 #sbs-af-print-status::before{content:"";display:inline-block;width:.62em;height:.62em;margin-right:.55em;border-radius:50%;vertical-align:.02em;background:#eac56c}
 #sbs-af-print-status[data-state="warning"]::before{background:#ff5a5f;box-shadow:0 0 0 2px #fff3d7}
 #sbs-af-print-status[data-state="ok"]::before{background:#55d68b}
+#sbs-af-print-status[data-state="review"]{padding:.65rem .8rem;background:#79530d;color:#fff}
+#sbs-af-print-status[data-state="review"]::before{background:#ffca4c}
+#sbs-af-print-status[data-state="fail"]{padding:.65rem .8rem;background:#761d25;color:#fff;border:2px solid #ff7777}
+#sbs-af-print-status[data-state="fail"]::before{width:1cm;height:1cm;background:#ff343b;box-shadow:0 0 0 2px #fff}
+.sbs-af-viewing{align-self:center;padding:.45rem .7rem;border:2px solid #ffb12d;border-radius:999px;background:#173356;color:#fff}
+.sbs-af-finding-actions{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.5rem}
+.sbs-af-finding-decision{font-weight:700}
 #sbs-af-ai-status{min-height:1.5em;color:#ffe08a;font-weight:700}
 #sbs-af-ai-status[data-state="error"]{color:#ffb09c}
 #sbs-af-ai-status[data-state="success"]{color:#9de0af}
