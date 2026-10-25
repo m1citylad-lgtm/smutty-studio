@@ -183,10 +183,10 @@
         function aiFocusClampScroll(){aiFocusStage.scrollLeft=Math.max(0,Math.min(aiFocusStage.scrollWidth-aiFocusStage.clientWidth,aiFocusStage.scrollLeft));aiFocusStage.scrollTop=Math.max(0,Math.min(aiFocusStage.scrollHeight-aiFocusStage.clientHeight,aiFocusStage.scrollTop));}
         function updateAiFocusMarker(width,height){
             var marker=el('sbs-af-ai-focus-marker');
-            if(!aiFocusData||!aiFocusData.focus||!width||!height){marker.hidden=true;return;}
+            if(!aiFocusData||!aiFocusData.focus||!width||!height){marker.setAttribute('hidden','');return;}
             var side=Math.max(64,Math.min(180,Math.min(width,height)*.08));
             marker.style.width=side+'px';marker.style.height=side+'px';
-            marker.style.left=(aiFocusData.focus.x*width-side/2)+'px';marker.style.top=(aiFocusData.focus.y*height-side/2)+'px';marker.hidden=false;
+            marker.style.left=(aiFocusData.focus.x*width-side/2)+'px';marker.style.top=(aiFocusData.focus.y*height-side/2)+'px';marker.removeAttribute('hidden');
         }
         function positionAiFocusImage(){
             if(aiFocus.hidden||!aiFocusImage||!aiFocusImage.complete||!aiFocusImage.naturalWidth)return;
@@ -217,7 +217,7 @@
             if(finding.method==='sampled_alpha')aiFocusNoteBase='Approximate sampled point; it may be intentional. A yellow outline marks the nearby area, not the defect boundary. Starts at 4×; pinch to zoom, drag to pan, tap to compare.';updateAiFocusNote();
             aiFocus.hidden=false;document.body.style.overflow='hidden';setAiFocusSide('candidate');el('sbs-af-ai-focus-close').focus();
         }
-        function closeAiFocus(){if(aiFocus.hidden)return;aiFocus.hidden=true;if(aiFocusMoveState){aiFocusMoveState.parent.insertBefore(aiFocusMoveState.node,aiFocusMoveState.next&&aiFocusMoveState.next.parentNode===aiFocusMoveState.parent?aiFocusMoveState.next:null);aiFocusMoveState.node.style.cssText=aiFocusMoveState.cssText;aiFocusMoveState.node.alt=aiFocusMoveState.alt;aiFocusMoveState.node.hidden=aiFocusMoveState.hidden;aiFocusMoveState.node.onload=aiFocusMoveState.onload;aiFocusMoveState=null;}aiFocusImage=null;aiFocusStage.scrollLeft=0;aiFocusStage.scrollTop=0;aiFocusData=null;aiFocusCenter=null;aiFocusPointers.clear();aiFocusGesture=null;aiFocusTap=null;el('sbs-af-ai-focus-marker').hidden=true;document.body.style.overflow='';if(aiFocusOpener&&aiFocusOpener.focus)aiFocusOpener.focus();}
+        function closeAiFocus(){if(aiFocus.hidden)return;aiFocus.hidden=true;if(aiFocusMoveState){aiFocusMoveState.parent.insertBefore(aiFocusMoveState.node,aiFocusMoveState.next&&aiFocusMoveState.next.parentNode===aiFocusMoveState.parent?aiFocusMoveState.next:null);aiFocusMoveState.node.style.cssText=aiFocusMoveState.cssText;aiFocusMoveState.node.alt=aiFocusMoveState.alt;aiFocusMoveState.node.hidden=aiFocusMoveState.hidden;aiFocusMoveState.node.onload=aiFocusMoveState.onload;aiFocusMoveState=null;}aiFocusImage=null;aiFocusStage.scrollLeft=0;aiFocusStage.scrollTop=0;aiFocusData=null;aiFocusCenter=null;aiFocusPointers.clear();aiFocusGesture=null;aiFocusTap=null;el('sbs-af-ai-focus-marker').setAttribute('hidden','');document.body.style.overflow='';if(aiFocusOpener&&aiFocusOpener.focus)aiFocusOpener.focus();}
         el('sbs-af-ai-focus-original').addEventListener('click',function(){setAiFocusSide('original');});el('sbs-af-ai-focus-candidate').addEventListener('click',function(){setAiFocusSide('candidate');});el('sbs-af-ai-focus-close').addEventListener('click',closeAiFocus);
         document.querySelectorAll('[data-af-finding-decision]').forEach(function(button){button.addEventListener('click',function(){if(!aiFocusData||!aiFocusData.finding)return;var finding=aiFocusData.finding;closeAiFocus();reviewFinding(finding,button.getAttribute('data-af-finding-decision'));});});
         el('sbs-af-focus-fix').addEventListener('click',function(){if(!aiFocusData||!aiFocusData.finding)return;var finding=aiFocusData.finding;closeAiFocus();openArtworkEditor(finding);});
