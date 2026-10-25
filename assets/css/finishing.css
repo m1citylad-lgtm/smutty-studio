@@ -52,8 +52,8 @@
 .sbs-af-proof-swatch img{display:block;width:100%;height:auto;max-width:none;flex:0 0 auto}
 #sbs-af-print-status{padding:.2rem 0;border:0;background:transparent;color:#fff3d7;font-weight:700}
 #sbs-af-print-status::before{content:"";display:inline-block;width:.62em;height:.62em;margin-right:.55em;border-radius:50%;vertical-align:.02em;background:#eac56c}
-#sbs-af-print-status[data-state="warning"]::before{background:#ff5a5f;box-shadow:0 0 0 2px #fff3d7}
-#sbs-af-print-status[data-state="ok"]::before{background:#55d68b}
+#sbs-af-print-status[data-state="warning"]{padding:.65rem .8rem;background:#5b4816;color:#fff;border:2px solid #ffca4c;border-radius:8px}#sbs-af-print-status[data-state="warning"]::before{background:#ffca4c;box-shadow:0 0 0 2px #fff3d7}
+#sbs-af-print-status[data-state="ok"]{padding:.65rem .8rem;background:#145c3b;color:#fff;border:2px solid #55d68b;border-radius:8px}#sbs-af-print-status[data-state="ok"]::before{background:#55d68b}
 #sbs-af-print-status[data-state="review"]{padding:.65rem .8rem;background:#79530d;color:#fff}
 #sbs-af-print-status[data-state="review"]::before{background:#ffca4c}
 #sbs-af-print-status[data-state="fail"]{padding:.65rem .8rem;background:#761d25;color:#fff;border:2px solid #ff7777}
@@ -224,7 +224,7 @@ body#sbs-studio-page .sbs-af-catalogue-row .sbs-danger-tool { justify-self:end; 
 .sbs-af-ai-focus-stage::-webkit-scrollbar{width:14px;height:14px}
 .sbs-af-ai-focus-stage::-webkit-scrollbar-track{background:#0b1b35}
 .sbs-af-ai-focus-stage::-webkit-scrollbar-thumb{background:#ffb12d;border:3px solid #0b1b35;border-radius:9px}
-.sbs-af-ai-focus-marker{position:absolute;z-index:2;width:48px;height:48px;overflow:visible;pointer-events:none;fill:rgba(255,177,45,.22);stroke:#ffe08a;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 2px #07101f)}
+.sbs-af-ai-focus-marker{position:absolute;z-index:10;width:96px;height:96px;overflow:visible;pointer-events:none;fill:rgba(255,177,45,.12);stroke:#ffe08a;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 2px #07101f)}
 .sbs-af-ai-focus-marker[hidden]{display:none!important}
 .sbs-af-editor-viewport{position:relative}
 #sbs-af-brush-cursor{position:absolute;z-index:3;box-sizing:border-box;border:2px solid #ffb12d;border-radius:50%;box-shadow:0 0 0 1px #07101f,0 0 0 3px rgba(255,243,212,.7);background:rgba(255,177,45,.08);pointer-events:none;mix-blend-mode:difference}
