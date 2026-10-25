@@ -12,7 +12,7 @@
     }
     function init() {
         var root=document.getElementById('sbs-app');if(!root || root.getAttribute('data-authenticated')!=='1')return;
-        var current=null, records=[], busy=false, activeStageMethod='', selectedFile=null, selectedMethod='inspect', exportPickerOpen=false, proofPreviewUrl=null, proofSourceKey='', proofRenderedKey='', activePrintQA=null, activeProofAssetUrl='', flatPreviewBlob=null, flatPreviewUrl=null, flatPreviewKey='', refreshPromise=null;
+        var current=null, records=[], busy=false, activeStageMethod='', selectedFile=null, selectedMethod='inspect', exportPickerOpen=false, proofPreviewUrl=null, proofSourceKey='', proofRenderedKey='', activePrintQA=null, activeProofAssetUrl='', flatPreviewBlob=null, flatPreviewUrl=null, flatPreviewKey='', refreshPromise=null, stageRunState={};
         var uiStateKey='sbs-af-session-v1:'+location.pathname, savedUiState=(function(){try{return JSON.parse(sessionStorage.getItem(uiStateKey)||'{}');}catch(e){return {};}})(),lastCheckKey='';
         if(savedUiState.stage&&['inspect','upscale','print_png','resize'].includes(savedUiState.stage))selectedMethod=savedUiState.stage;
         var el=function(id){return document.getElementById(id);},catalogueReturnFocus=null,catalogueSelected=new Set();
@@ -30,9 +30,7 @@
         function checks(){var result={};document.querySelectorAll('[data-af-check]').forEach(function(n){result[n.getAttribute('data-af-check')]=n.checked;});return result;}
         function resetChecks(){var key=current?current.uuid+':'+(current.current_version||''):'';if(key!==lastCheckKey){document.querySelectorAll('[data-af-check]').forEach(function(n){n.checked=false;});lastCheckKey=key;}el('sbs-af-package').hidden=true;el('sbs-af-package').removeAttribute('href');}
         function controls(){
-            el('sbs-af-prepare').disabled=busy||!current||!!current.pending;
-            el('sbs-af-run').disabled=busy||!current||!current.pending||!!current.pending.replicate_prediction_id;
-            el('sbs-af-cancel').disabled=busy||!current||!current.pending;
+            document.querySelectorAll('[data-af-method]').forEach(function(button){button.disabled=busy||!current;});
             el('sbs-af-export').disabled=busy||exportPickerOpen||!current||!current.approval;
             el('sbs-af-ai-review-run').disabled=busy||!current||!current.current_version;el('sbs-af-refresh-qa').disabled=busy||!current||!current.current_version;
             var selectedVersion=current&&current.versions.find(function(v){return v.uuid===current.current_version;}),reviewFindings=selectedVersion?Array.from(selectedVersion.qa&&selectedVersion.qa.pixel_review&&selectedVersion.qa.pixel_review.findings||[]).concat(selectedVersion.ai_review&&selectedVersion.ai_review.findings||[]):[],hasUnresolved=reviewFindings.some(function(f){var d=(selectedVersion.review_decisions||{})[f.id];return !d||d.decision==='unresolved';});
@@ -52,26 +50,49 @@
             el('sbs-af-progress-bar').hidden=!busy;
         }
         function stageLabel(method){return ({inspect:'Inspect',resize:'Fit down to print box',print_png:'Prepare print PNG',upscale:'AI upscale'})[method]||'selected stage';}
+        function stageVersion(method){
+            if(!current||!Array.isArray(current.versions))return null;
+            for(var i=current.versions.length-1;i>=0;i--){var version=current.versions[i];if(version.options&&version.options.method===method)return version;}
+            return null;
+        }
+        function stageReportText(version){
+            var qa=version&&version.qa||{},parts=[];
+            var width=Number(qa.width||version&&version.asset&&version.asset.width||0),height=Number(qa.height||version&&version.asset&&version.asset.height||0);
+            if(width&&height)parts.push(width+' × '+height+' px');
+            if(Number.isFinite(Number(qa.effective_ppi)))parts.push(Number(qa.effective_ppi).toFixed(1)+' PPI at '+Number(version.options.width||14)+' × '+Number(version.options.height||16)+' in');
+            return parts.join(' · ')||'Stage completed.';
+        }
+        function setStageReport(method,state,text){
+            var report=document.querySelector('[data-af-stage-report="'+method+'"]');if(!report)return;
+            report.dataset.state=state;report.querySelector('.sbs-af-stage-report-text').textContent=text;report.hidden=false;
+        }
         function updateStageButtons(){
             document.querySelectorAll('[data-af-method]').forEach(function(button){
-                var method=button.getAttribute('data-af-method'),spinner=button.querySelector('.sbs-af-stage-spinner'),done=button.querySelector('.sbs-af-stage-done');
-                var running=!!(busy&&activeStageMethod===method),completed=!!(current&&current.versions&&current.versions.some(function(version){return version.options&&version.options.method===method;}));
+                var method=button.getAttribute('data-af-method'),spinner=button.querySelector('.sbs-af-stage-spinner'),done=button.querySelector('.sbs-af-stage-done'),version=stageVersion(method),runState=stageRunState[method]||{},running=!!(busy&&activeStageMethod===method),failed=runState.state==='error',completed=!!version&&!failed;
                 if(spinner)spinner.hidden=!running;
                 if(done)done.hidden=running||!completed;
-                if(running){button.setAttribute('aria-busy','true');button.setAttribute('aria-label',button.querySelector('.sbs-af-stage-button-label').textContent+' — running');}
-                else{button.removeAttribute('aria-busy');button.setAttribute('aria-label',button.querySelector('.sbs-af-stage-button-label').textContent+(completed?' — completed':''));}
-                button.dataset.stageState=running?'running':completed?'complete':'idle';
+                if(running){button.setAttribute('aria-busy','true');button.setAttribute('aria-label',button.querySelector('.sbs-af-stage-button-label').textContent+' — processing');setStageReport(method,'info','Processing…');}
+                else{
+                    button.removeAttribute('aria-busy');
+                    button.setAttribute('aria-label',button.querySelector('.sbs-af-stage-button-label').textContent+(completed?' — completed':''));
+                    if(failed){setStageReport(method,'error','Needs attention: '+String(runState.message||'The stage did not complete.').slice(0,180));}
+                    else if(version){
+                        var warnings=Array.isArray(version.qa&&version.qa.warnings)?version.qa.warnings:[];
+                        if(warnings.length){var warning=String(warnings[0]);setStageReport(method,'error','Needs attention: '+warning+(warnings.length>1?' (+'+(warnings.length-1)+' more)':''));}
+                        else{setStageReport(method,'success','Completed: '+stageReportText(version));}
+                    }
+                }
+                button.dataset.stageState=running?'running':failed?'error':completed?'complete':'idle';
+                button.disabled=busy||!current;
             });
         }
         function updateStepButtons(){
-            var queued=!!(current&&current.pending),hasVersion=!!(current&&current.current_version),approved=!!(current&&current.approval&&current.approval.version===current.current_version),queuedLabel=queued?stageLabel(current.pending.method):stageLabel(selectedMethod);
-            el('sbs-af-prepare').textContent=queued?'✓ 2. '+stageLabel(current.pending.method)+' queued':'2. Queue '+stageLabel(selectedMethod);
-            el('sbs-af-run').textContent=queued&&current.pending.replicate_prediction_id?'3. Waiting for Replicate result':queued?'3. Run '+stageLabel(current.pending.method):hasVersion?'✓ 3. Stage complete':'3. Run '+queuedLabel;
+            var approved=!!(current&&current.approval&&current.approval.version===current.current_version);
             el('sbs-af-approve').textContent=approved?'✓ 6. Approved locally':'6. Approve this local version';
             updateStageButtons();
         }
-        function buttonBusy(button,on){if(!button)return;if(on){if(!button.hasAttribute('aria-busy')){button.dataset.previousLabel=button.textContent;button.setAttribute('aria-busy','true');}button.disabled=true;}else{button.removeAttribute('aria-busy');if(button.dataset.previousLabel){button.textContent=button.dataset.previousLabel;delete button.dataset.previousLabel;}}}
-        async function operation(fn,text,button,onError){if(busy)return;activeStageMethod=button&&button.id==='sbs-af-run'&&current&&current.pending?current.pending.method:'';busy=true;buttonBusy(button,true);controls();updateStepButtons();message(text);try{await fn();}catch(error){message(error.message,true);if(onError)onError(error);}finally{busy=false;activeStageMethod='';el('sbs-af-progress-bar').removeAttribute('value');controls();buttonBusy(button,false);updateStepButtons();}}
+        function buttonBusy(button,on){if(!button)return;if(button.querySelector('.sbs-af-stage-button-label')){button.disabled=on;if(on)button.setAttribute('aria-busy','true');else button.removeAttribute('aria-busy');return;}if(on){if(!button.hasAttribute('aria-busy')){button.dataset.previousLabel=button.textContent;button.setAttribute('aria-busy','true');}button.disabled=true;}else{button.removeAttribute('aria-busy');if(button.dataset.previousLabel){button.textContent=button.dataset.previousLabel;delete button.dataset.previousLabel;}}}
+        async function operation(fn,text,button,onError){if(busy)return;activeStageMethod=button&&button.getAttribute('data-af-method')?button.getAttribute('data-af-method'):button&&button.id==='sbs-af-run'&&current&&current.pending?current.pending.method:'';busy=true;buttonBusy(button,true);controls();updateStepButtons();message(text);try{await fn();}catch(error){message(error.message,true);if(onError)onError(error);}finally{busy=false;activeStageMethod='';el('sbs-af-progress-bar').removeAttribute('value');controls();buttonBusy(button,false);updateStepButtons();}}
         function fileSize(size){return (size/(1024*1024)).toFixed(2)+' MB';}
         function flatColors(){var colors=[[1,3,5].map(function(n){return parseInt(el('sbs-af-flat-colour').value.slice(n,n+2),16);})];if(el('sbs-af-flat-use-second').checked){colors.push([1,3,5].map(function(n){return parseInt(el('sbs-af-flat-colour-2').value.slice(n,n+2),16);}));}return colors;}
         function flatKey(){return JSON.stringify([current&&current.uuid,current&&current.current_version||'original',flatColors(),Number(el('sbs-af-flat-tolerance').value)]);}
@@ -299,7 +320,7 @@
             if(flatPreviewBlob&&flatPreviewKey!==flatKey())clearFlatPreview();
             resetChecks();
             var queuedCost=current&&current.pending&&current.pending.method==='upscale'?Number(current.pending.estimated_provider_cost||0):0;
-            el('sbs-af-stage-help').textContent=queuedCost>0?'No provider request has been sent yet. Running this queued upscale will send the selected image to Replicate Real-ESRGAN. Estimated cost: $'+queuedCost.toFixed(3)+' for this image; actual provider billing may vary. You can cancel instead.':'Choose or resume a workspace, set the print target, choose a stage, then queue and run it. The untouched original stays unchanged.';var nameField=el('sbs-af-package-name');var workspaceKey=current?current.uuid:'';if(nameField.dataset.workspace!==workspaceKey){nameField.value=current?friendlyName(current.title)+'-local-finishing.zip':'';nameField.dataset.workspace=workspaceKey;}var v=current&&current.versions.find(function(v){return v.uuid===current.current_version;});
+            el('sbs-af-stage-help').textContent=queuedCost>0?'No provider request has been sent yet. Running this queued upscale will send the selected image to Replicate Real-ESRGAN. Estimated cost: $'+queuedCost.toFixed(3)+' for this image; actual provider billing may vary. You can cancel instead.':'Run each stage with its button. The untouched original stays unchanged.';var nameField=el('sbs-af-package-name');var workspaceKey=current?current.uuid:'';if(nameField.dataset.workspace!==workspaceKey){nameField.value=current?friendlyName(current.title)+'-local-finishing.zip':'';nameField.dataset.workspace=workspaceKey;}var v=current&&current.versions.find(function(v){return v.uuid===current.current_version;});
             image('sbs-af-original',current&&current.original,'Untouched original: '+(current?current.title:''));image('sbs-af-candidate',v&&v.asset,'Candidate version '+(v?v.number:''));
             inspectTransparency('sbs-af-original','sbs-af-original-transparency');inspectTransparency('sbs-af-candidate','sbs-af-candidate-transparency');
             var candidateLink=el('sbs-af-candidate-download');candidateLink.hidden=!v;if(v){candidateLink.href=v.asset.url;}else{candidateLink.removeAttribute('href');}
@@ -436,8 +457,20 @@
         el('sbs-af-file').addEventListener('change',function(){chooseFile(this);});
         el('sbs-af-gallery-file').addEventListener('change',function(){chooseFile(this);});
         el('sbs-af-upload').addEventListener('submit',function(event){event.preventDefault();var submitter=event.submitter||this.querySelector('button[type=submit]'),uploaded=null;uploadMessage('Saving the untouched original in private Studio storage…');operation(async function(){var f=selectedFile||el('sbs-af-file').files[0]||el('sbs-af-gallery-file').files[0];if(!f)throw new Error('Choose one image using Photos / Gallery or Files / My Files first.');if(f.size>20*1024*1024)throw new Error('This file is '+fileSize(f.size)+'. The limit is 20 MB. Choose a smaller copy; your original file will not be changed.');var data=new FormData();data.append('file',f);data.append('title',el('sbs-af-name').value);current=await api('/upload',data);uploaded=current;await refresh();render();selectedFile=null;el('sbs-af-upload').reset();var saved='Saved successfully: “'+current.title+'”. Workspace '+current.uuid+'. The original is unchanged; no AF number was allocated.';message(saved);uploadMessage(saved,'success');},'Uploading original to private Studio storage…',submitter,function(error){if(uploaded){var saved='Original saved successfully: “'+uploaded.title+'”. Workspace '+uploaded.uuid+'. The workspace list did not refresh: '+error.message+' Do not upload it again; press Refresh workspaces.';uploadMessage(saved,'success');}else{uploadMessage('Upload not confirmed: '+error.message,'error');}});});
-        document.querySelectorAll('[data-af-method]').forEach(function(button){button.addEventListener('click',function(){selectedMethod=button.getAttribute('data-af-method');document.querySelectorAll('[data-af-method]').forEach(function(other){var active=other===button;other.setAttribute('aria-pressed',active?'true':'false');var card=other.closest('[data-af-stage-card]');if(card)card.classList.toggle('is-selected',active);});el('sbs-af-stage-help').textContent=current?'Selected: '+stageLabel(selectedMethod)+'. Next: press Queue selected stage, then Run queued stage. Watch the spinner; a tick confirms it finished. The original remains preserved.':'Selected: '+stageLabel(selectedMethod)+'. Choose or resume a workspace first, then queue selected stage and run it.';saveUiState();updateStepButtons();});});
-        el('sbs-af-prepare').addEventListener('click',function(){var button=this;operation(function(){return action('prepare',{options:{method:selectedMethod,width:Number(el('sbs-af-width').value),height:Number(el('sbs-af-height').value),notes:el('sbs-af-notes').value,print_canvas:el('sbs-af-print-canvas').checked}});},'Queueing '+stageLabel(selectedMethod)+'…',button);});
+        async function runStage(method,button){
+            if(!current||busy)return;
+            stageRunState[method]={state:'running'};updateStageButtons();
+            var previousCount=(current.versions||[]).length;
+            operation(async function(){
+                await action('prepare',{options:{method:method,width:Number(el('sbs-af-width').value),height:Number(el('sbs-af-height').value),notes:el('sbs-af-notes').value,print_canvas:el('sbs-af-print-canvas').checked}});
+                if(!current||!current.pending||current.pending.method!==method)throw new Error('Studio did not confirm that this stage was queued.');
+                await action('run');
+                if(current&&current.processing_error)throw new Error(current.processing_error);
+                if(!current||!Array.isArray(current.versions)||current.versions.length<=previousCount||!current.versions[current.versions.length-1].options||current.versions[current.versions.length-1].options.method!==method)throw new Error('Studio did not save a completed result for this stage.');
+                stageRunState[method]={state:'complete'};updateStageButtons();
+            },'Running '+stageLabel(method)+'…',button,function(error){stageRunState[method]={state:'error',message:error.message};updateStageButtons();});
+        }
+        document.querySelectorAll('[data-af-method]').forEach(function(button){button.addEventListener('click',function(){runStage(button.getAttribute('data-af-method'),button);});});
         el('sbs-af-flat-sample').addEventListener('click',sampleFlatBackground);
         el('sbs-af-flat-preview').addEventListener('click',function(){var button=this;operation(previewFlatBackground,'Preparing a local pixel preview…',button);});
         el('sbs-af-flat-remove').addEventListener('click',removeFlatBackground);
