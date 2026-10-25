@@ -34,8 +34,8 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0\.2\.88/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.88'\)/);
+assert.match(plugin, /Version: 0\.2\.89/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.89'\)/);
 assert.match(studio, /button\.closest\('\.sbs-character-page-menu'\)\) \{ return; \}/, 'Character menu entries must not receive information buttons');
 const mainNav = studioTemplate.match(/<nav id="sbs-primary-nav"[\s\S]*?<\/nav>/)[0];
 assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="freestyle"'));
@@ -267,6 +267,7 @@ assert.match(finishing, /View area/);
 assert.match(finishing, /openAiFocus\(finding,zoomButton\)/);
 assert.match(finishing, /AI-estimated location\. A yellow outline marks the approximate area/);
 assert.match(finishing, /function updateAiFocusMarker\(width,height\)/);
+assert.match(finishing, /marker\.removeAttribute\('hidden'\)/, 'SVG issue outline must be unhidden with an SVG attribute');
 assert.match(template, /<rect x="4" y="4" width="92" height="92" rx="8"><\/rect>/);
 assert.match(finishing, /base\*4/);
 assert.match(finishing, /aiFocusStage\.appendChild\(aiFocusImage\)/);
