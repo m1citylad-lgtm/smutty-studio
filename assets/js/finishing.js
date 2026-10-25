@@ -11,7 +11,7 @@
         return partial?'Partial alpha':clear?'Genuine transparency':'Opaque';
     }
     function init() {
-        var root=document.getElementById('sbs-app');if(!root || root.getAttribute('data-authenticated')!=='1')return;
+        var root=document.getElementById('sbs-app');if(!root)return;
         var current=null, records=[], busy=false, activeStageMethod='', selectedFile=null, selectedMethod='inspect', exportPickerOpen=false, proofPreviewUrl=null, proofSourceKey='', proofRenderedKey='', activePrintQA=null, activeProofAssetUrl='', flatPreviewBlob=null, flatPreviewUrl=null, flatPreviewKey='', refreshPromise=null, stageRunState={};
         var uiStateKey='sbs-af-session-v1:'+location.pathname, savedUiState=(function(){try{return JSON.parse(sessionStorage.getItem(uiStateKey)||'{}');}catch(e){return {};}})(),lastCheckKey='';
         if(savedUiState.stage&&['inspect','upscale','print_png','resize'].includes(savedUiState.stage))selectedMethod=savedUiState.stage;
