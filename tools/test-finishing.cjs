@@ -34,8 +34,8 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0\.2\.87/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.87'\)/);
+assert.match(plugin, /Version: 0\.2\.88/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.88'\)/);
 assert.match(studio, /button\.closest\('\.sbs-character-page-menu'\)\) \{ return; \}/, 'Character menu entries must not receive information buttons');
 const mainNav = studioTemplate.match(/<nav id="sbs-primary-nav"[\s\S]*?<\/nav>/)[0];
 assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="freestyle"'));
@@ -265,7 +265,9 @@ assert.match(finishing, /Please compare the attached original\/ and candidate\//
 assert.match(finishing, /filter\(function\(finding\)\{return finding\.severity!=='info';\}\)/);
 assert.match(finishing, /View area/);
 assert.match(finishing, /openAiFocus\(finding,zoomButton\)/);
-assert.match(finishing, /AI-estimated location\. No marker covers the artwork/);
+assert.match(finishing, /AI-estimated location\. A yellow outline marks the approximate area/);
+assert.match(finishing, /function updateAiFocusMarker\(width,height\)/);
+assert.match(template, /<rect x="4" y="4" width="92" height="92" rx="8"><\/rect>/);
 assert.match(finishing, /base\*4/);
 assert.match(finishing, /aiFocusStage\.appendChild\(aiFocusImage\)/);
 assert.match(finishing, /aiFocusMoveState\.parent\.insertBefore/);
@@ -289,7 +291,8 @@ assert.match(css, /\.sbs-af-review-points\{[^}]*color:#ffe08a/);
 assert.match(css, /\.sbs-af-proof-grid \.sbs-info-button,\.sbs-af-proof-viewer \.sbs-info-button\{display:none!important\}/);
 assert.match(finishing, /var pxW=Number\(q\.width\),pxH=Number\(q\.height\),ppi=Math\.max/);
 assert.match(finishing, /var pxW=Number\(q\.width\),pxH=Number\(q\.height\),ppi=Math\.max/);
-assert.match(css, /#sbs-af-print-status\[data-state="warning"\]::before\{background:#ff5a5f/);
+assert.match(css, /#sbs-af-print-status\[data-state="warning"\]\{padding:\.65rem \.8rem;background:#5b4816/);
+assert.match(css, /#sbs-af-print-status\[data-state="ok"\]\{padding:\.65rem \.8rem;background:#145c3b/);
 assert.match(css, /#sbs-af-print-status\{padding:\.2rem 0;border:0/);
 assert.match(studioTemplate, /Set the character's identity/);
 assert.match(studioTemplate, /Costs are estimates\. Check provider invoices for actual charges\./);
