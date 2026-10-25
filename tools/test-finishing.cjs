@@ -73,7 +73,9 @@ assert.match(css, /#sbs-af-checks label\{[^}]*grid-template-columns:28px minmax\
 assert.doesNotMatch(css, /\.sbs-af fieldset label\{[^}]*grid-template-columns/);
 assert.match(css, /@media\(max-width:750px\)\{\.sbs-af-compare\{grid-template-columns:minmax\(0,1fr\)/);
 
-assert.match(template, /2\. Queue selected stage/);
+assert.doesNotMatch(template, /Queue selected stage|Run queued stage/);
+assert.match(template, /data-af-method="inspect"/);
+assert.match(template, /data-af-stage-report="inspect"/);
 assert.doesNotMatch(template, /Sharpen \/ denoise \/ edge cleaning|Background removal — deliberate background protection pending/);
 assert.match(template, /Optional: remove a plain background/);
 assert.match(template, /<details class="sbs-af-flat-background"><summary>Optional: remove a plain background<\/summary>/, 'Optional background removal must start collapsed');
@@ -145,8 +147,8 @@ assert.match(studio, /no print-size or PPI preparation/);
 
 assert.match(backend, /source_version_uuid/);
 assert.match(pluginClass, /assets\/js\/flat-background\.js/);
-assert.match(template, /3\. Run queued stage/);
-assert.match(template, /Then ↓/);
+assert.doesNotMatch(template, /3\. Run queued stage|Then ↓/);
+assert.doesNotMatch(template, /Then ↓/);
 assert.match(finishing, /20\*1024\*1024/);
 assert.match(finishing, /selectedFile=null;input\.value='';var warning='This file is '/);
 assert.match(finishing, /fileSize\(f\.size\).*20 MB/s);
@@ -220,11 +222,11 @@ assert.match(finishing, /Choose a folder for the ZIP/);
 assert.match(finishing, /response\.body\.pipeTo/);
 
 // Replicate upscale is explicitly supported by the existing adapter and remains a separate review candidate.
-assert.match(template, /data-af-method="upscale" aria-pressed="false"><span class="sbs-af-stage-button-label">Choose Step 2: AI upscale<\/span>/);
-assert.match(template, /data-af-method="inspect" aria-pressed="true"><span class="sbs-af-stage-button-label">Choose Step 1: Inspect<\/span>/);
-assert.match(template, /Optional — recommended first/);
+assert.match(template, /data-af-method="upscale"><span class="sbs-af-stage-button-label">Run Step 2: AI upscale<\/span>/);
+assert.match(template, /data-af-method="inspect"><span class="sbs-af-stage-button-label">Run Step 1: Inspect<\/span>/);
+assert.match(template, /Recommended first/);
 assert.doesNotMatch(template, /id="sbs-af-method"/);
-assert.match(finishing, /method:selectedMethod/);
+assert.match(finishing, /method:method/);
 assert.match(backend, /SBS_Replicate::is_configured\(\)/);
 assert.match(backend, /SBS_Replicate::submit\(\$r\['original'\]\['id'\],\$scale\)/);
 assert.match(backend, /SBS_Replicate::poll\(/);
@@ -236,8 +238,8 @@ assert.match(backend, /original is unchanged/);
 assert.match(finishing, /Do not run another upscale/);
 
 assert.match(backend, /\$r\['original_qa'\]\['width'\].*\$pw/);
-assert.match(finishing, /sbs-af-prepare'\)\.disabled=busy\|\|!current\|\|!!current\.pending/);
-assert.match(finishing, /sbs-af-run'\)\.disabled=busy\|\|!current\|\|!current\.pending\|\|!!current\.pending\.replicate_prediction_id/);
+assert.match(finishing, /button\.disabled=busy\|\|!current/);
+assert.match(finishing, /await action\('run'\)/);
 assert.match(template, /4\. Run AI comparison \(optional\)/);
 assert.match(template, /id="sbs-af-ai-status" role="status"/);
 assert.match(template, /does not edit images/);
@@ -258,8 +260,8 @@ assert.match(finishing, /SMUTTY STUDIO — CHATGPT ARTWORK HANDOFF/);
 assert.match(finishing, /navigator\.clipboard\.writeText/);
 assert.match(finishing, /var pxW=Number\(q\.width\),pxH=Number\(q\.height\),ppi=Math\.max/);
 assert.match(finishing, /Comparison not completed: '\+error\.message/);
-assert.match(finishing, /✓ 2\. '\+stageLabel\(current\.pending\.method\)\+' queued/);
-assert.match(finishing, /✓ 3\. Stage complete/);
+assert.match(finishing, /function runStage\(method,button\)/);
+assert.match(finishing, /stageRunState\[method\]=\{state:'complete'\}/);
 assert.match(finishing, /✓ 6\. Approved locally/);
 assert.match(finishing, /Please compare the attached original\/ and candidate\//);
 assert.match(finishing, /filter\(function\(finding\)\{return finding\.severity!=='info';\}\)/);
