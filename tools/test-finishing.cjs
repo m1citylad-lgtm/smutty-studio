@@ -265,7 +265,9 @@ assert.match(finishing, /Please compare the attached original\/ and candidate\//
 assert.match(finishing, /filter\(function\(finding\)\{return finding\.severity!=='info';\}\)/);
 assert.match(finishing, /View area/);
 assert.match(finishing, /openAiFocus\(finding,zoomButton\)/);
-assert.match(finishing, /AI-estimated location\. No marker covers the artwork/);
+assert.match(finishing, /AI-estimated location\. A yellow outline marks the approximate area/);
+assert.match(finishing, /function updateAiFocusMarker\(width,height\)/);
+assert.match(template, /<rect x="4" y="4" width="92" height="92" rx="8"><\/rect>/);
 assert.match(finishing, /base\*4/);
 assert.match(finishing, /aiFocusStage\.appendChild\(aiFocusImage\)/);
 assert.match(finishing, /aiFocusMoveState\.parent\.insertBefore/);
