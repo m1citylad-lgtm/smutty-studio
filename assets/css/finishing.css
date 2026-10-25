@@ -210,3 +210,14 @@ body#sbs-studio-page .sbs-af-catalogue-row .sbs-danger-tool { justify-self:end; 
 .sbs-af-action-sequence{margin:1rem 0 .5rem;font-weight:700;color:#ffe08a}
 .sbs-af-then{text-align:center;font-weight:700;color:#ffe08a}
 #sbs-af-prepare,#sbs-af-run{margin:.25rem .5rem .5rem 0}
+
+/* Issue comparison: synchronized viewport gestures and unobtrusive issue arrow. */
+.sbs-af-ai-focus-stage{touch-action:none;cursor:grab;scrollbar-color:#ffb12d #0b1b35;scrollbar-width:thin}
+.sbs-af-ai-focus-stage::-webkit-scrollbar{width:14px;height:14px}
+.sbs-af-ai-focus-stage::-webkit-scrollbar-track{background:#0b1b35}
+.sbs-af-ai-focus-stage::-webkit-scrollbar-thumb{background:#ffb12d;border:3px solid #0b1b35;border-radius:9px}
+.sbs-af-ai-focus-marker{position:absolute;z-index:2;width:48px;height:48px;overflow:visible;pointer-events:none;fill:rgba(255,177,45,.22);stroke:#ffe08a;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 2px #07101f)}
+.sbs-af-ai-focus-marker[hidden]{display:none!important}
+.sbs-af-editor-viewport{position:relative}
+#sbs-af-brush-cursor{position:absolute;z-index:3;box-sizing:border-box;border:2px solid #ffb12d;border-radius:50%;box-shadow:0 0 0 1px #07101f,0 0 0 3px rgba(255,243,212,.7);background:rgba(255,177,45,.08);pointer-events:none;mix-blend-mode:difference}
+#sbs-af-brush-cursor[hidden]{display:none!important}
