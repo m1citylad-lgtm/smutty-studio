@@ -61,7 +61,7 @@ Images now keep their actions, actual job status and independent **Image Correct
 
 ### Freestyle sandbox (v0.2.33)
 
-The top-level **Freestyle** tab provides optional-character generation, eight drawing styles, T-shirt treatments, conversational edits, six recent thumbnails and Undo/Redo. Designs move explicitly into the existing upscale/print workflow. Defaults are opaque backgrounds and a 15 × 18 inch / 300 PPI print target. See [Freestyle workflow](docs/FREESTYLE.md) for history preservation, quality checks, limitations and tests.
+The top-level **Freestyle** tab provides optional-character generation, eight drawing styles, T-shirt treatments, conversational edits, six recent thumbnails and Undo/Redo. Designs move explicitly into the existing upscale/print workflow. Defaults are opaque backgrounds and a 16 × 18 inch / 300 PPI print target. See [Freestyle workflow](docs/FREESTYLE.md) for history preservation, quality checks, limitations and tests.
 
 ### Studio Settings (v0.2.45)
 
@@ -96,3 +96,8 @@ Freestyle and Artwork Finishing show a compact, high-contrast transparency statu
 New OpenAI generations retain requested model/quality/size separately from provider-reported model/quality/size and actual decoded native pixels. Unknown provider revisions/maxima remain unknown. This release does not introduce new Freestyle models or query imaginary capability endpoints; live model-capability adapters and reference/outfit profiles remain deferred until Artwork Finishing owner acceptance.
 
 Validation: the existing release gates plus real PNG conversion, alpha/white-ink preservation, no-upscale canvas, selected-candidate lineage, QA reuse/invalidation and checksum-verified ZIP tests run with both Imagick and GD-only.
+
+
+### Print fit and in-context review decisions (v0.2.86)
+
+Artwork Finishing now defaults to a 16 × 18 inch chest-print box and calculates effective PPI after proportional fit, alongside the artwork's maximum 300-PPI dimensions. The resolution guide is green at 300 PPI or above, amber from 250–299 PPI, and red below 250 PPI. Technical and AI findings share one review area, where each finding can be recorded as intentional, false alarm or unresolved, opened for in-place correction, or used to reject the candidate while preserving its history. Local approval remains separate from production approval.

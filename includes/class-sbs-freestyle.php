@@ -50,7 +50,7 @@ final class SBS_Freestyle
         if (array_diff($selected_styles, array_keys($all_styles)) || !isset(self::treatments()[$treatment]) || !in_array($size, array('1024x1536', '1024x1024', '1536x1024'), true)) {
             return new WP_Error('invalid_freestyle_settings', 'Choose one of the available styles, treatments and image formats.', array('status' => 400));
         }
-        $width = (float) ($input['width'] ?? 15);
+        $width = (float) ($input['width'] ?? 16);
         $height = (float) ($input['height'] ?? 18);
         if (!is_finite($width) || !is_finite($height) || $width < 1 || $height < 1 || $width > 30 || $height > 30) {
             return new WP_Error('invalid_freestyle_print_size', 'Print width and height must be between 1 and 30 inches.', array('status' => 400));

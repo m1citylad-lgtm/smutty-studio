@@ -3,7 +3,7 @@
 ## Default rules
 - Vintage treatment: 70% clean retro illustration, 20% selective halftone, 10% restrained distress. These are creative guidelines, not literal measured pixel proportions.
 - Print method: DTG by default; DTF optional. Supplier choices: Redbubble and Gelato. Do not assume either supports a particular DTF workflow without a product-specific specification.
-- Print target: 4500 × 5400 pixels, 300 PPI at 15 × 18 inches, transparent PNG where appropriate. Since v0.2.32, final PNG export writes a valid pHYs density chunk at the chosen DPI (300 by default). This label does not add source detail or prove actual sharpness.
+- Print target: 4800 × 5400 pixels, 300 PPI at 16 × 18 inches, transparent PNG where appropriate. Since v0.2.32, final PNG export writes a valid pHYs density chunk at the chosen PPI (300 by default). This label does not add source detail or prove actual sharpness.
 - Manual override is allowed for preflight warnings. Hard structural errors still block export. Every export carries a JSON report.
 - Preserve original generated image and editable canvas. Export separate branded and logo-free PNGs.
 

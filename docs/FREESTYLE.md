@@ -30,7 +30,7 @@ Job status is local to Freestyle and follows actual provider/server state. Activ
 
 ## D. Finish for print
 
-The initial standard is **15 × 18 inches at 300 PPI**, giving **4500 × 5400 output pixels**. Width and height are adjustable from 1–30 inches; 300 PPI is the fixed standard here. Draft generation is native provider resolution and may need upscaling. A density label alone adds no detail.
+The initial standard is **16 × 18 inches at 300 PPI**, giving **4800 × 5400 output pixels**. Width and height are adjustable from 1–30 inches; 300 PPI is the fixed standard here. Draft generation is native provider resolution and may need upscaling. A density label alone adds no detail.
 
 The 2×/4× AI upscale buttons use the existing Replicate integration and become unavailable with a clear explanation if it is not configured. Upscaled candidates enter the same image history, preserving the source. Transparency can change during upscaling, so inspect it again.
 
@@ -62,7 +62,7 @@ Freestyle background job completion refreshes only its own project. It does not 
 
 The live v0.2.32 page generated one new character-free teapot design with a slogan, applied a second instruction, and retained both versions. Undo restored the exact first asset URL; Redo and thumbnail restoration also worked. A third, transparent-background design branched from version 1. Its conversation included the original instruction and the new branch instruction, excluding the abandoned gold-steam edit; all three thumbnails remained.
 
-Explicit handoff placed the selected candidate in Creations under Freestyle compositions. A new, unsaved print layout carried over the selected source, transparent background and 15 × 18 inch / 300 PPI target. Preflight correctly returned REVIEW for the 1024-pixel source (estimated effective 85 PPI in this layout), and DTF checks flagged semi-transparent edges. A pipeline-only export with a temporary acknowledged warning override independently decoded as 4500 × 5400 RGBA, 299.9994 PPI, with real alpha. The downloaded JSON still recorded REVIEW and the warnings. This is not an approved print master. The temporary override was cleared; no existing saved design was overwritten.
+Explicit handoff placed the selected candidate in Creations under Freestyle compositions. At that time, a new unsaved print layout carried over the selected source, transparent background and 15 × 18 inch / 300 PPI target. Preflight correctly returned REVIEW for the 1024-pixel source (estimated effective 85 PPI in this layout), and DTF checks flagged semi-transparent edges. A pipeline-only export with a temporary acknowledged warning override independently decoded as 4500 × 5400 RGBA, 299.9994 PPI, with real alpha. The downloaded JSON still recorded REVIEW and the warnings. This is not an approved print master. The temporary override was cleared; no existing saved design was overwritten.
 
 The existing Replicate service rejected the 4× upscale with **insufficient credit**. The source and all versions remained available. Adding credit to that account is required before a full-resolution upscale can be verified; no billing change was made. v0.2.33 also refreshes the local failed job after such a rejected submission so the reason remains visible beside the design/instructions.
 

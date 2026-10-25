@@ -63,7 +63,7 @@
         function jobRows() { var p=project(),all={};(p&&p.jobs||[]).forEach(function(j){all[j.uuid]=j;});Object.keys(jobs).forEach(function(k){var j=jobs[k];if(p&&j.payload&&Number(j.payload.project_id)===p.id)all[k]=j;});return Object.keys(all).map(function(k){return all[k];}); }
         function busy() {return pending || jobRows().some(function(j){return !['completed','failed','blocked','cancelled'].includes(j.status);});}
         var styleChoices=JSON.parse(el('sbs-fs-style').getAttribute('data-styles')||'{}'),legacyStyles=JSON.parse(el('sbs-fs-style').getAttribute('data-legacy-styles')||'{}'),appliedStyles=['house'],stylesPending=false;
-        function settings() {var bg=el('sbs-fs-background').value;return {style:appliedStyles[0],styles:appliedStyles.slice(),treatment:el('sbs-fs-treatment').value,background:bg==='opaque'?'opaque':'transparent',transparency:bg==='transparent-print'?'print':bg==='transparent-soft'?'soft':'standard',size:el('sbs-fs-size').value,width:15,height:18,dpi:300};}
+        function settings() {var bg=el('sbs-fs-background').value;return {style:appliedStyles[0],styles:appliedStyles.slice(),treatment:el('sbs-fs-treatment').value,background:bg==='opaque'?'opaque':'transparent',transparency:bg==='transparent-print'?'print':bg==='transparent-soft'?'soft':'standard',size:el('sbs-fs-size').value,width:16,height:18,dpi:300};}
         function rememberedStyles(){var values;try{values=JSON.parse(read('last-styles','null'));}catch(e){}if(!Array.isArray(values))values=[read('last-style','house')];values=values.filter(function(key,index){return !!styleChoices[key]&&values.indexOf(key)===index;});return values.length?values:['house'];}
         function rememberedStyle(){return rememberedStyles()[0];}
         function paintStyles(){
@@ -138,7 +138,7 @@
             if(pending)return;
             preserveInputs();active='';choice=pack||'';save('new-character',choice);loaded='';save('session','');
             el('sbs-fs-title').value='';el('sbs-fs-instruction').value=read('draft:new:initial','');
-            applySettings({style:rememberedStyle(),styles:rememberedStyles(),treatment:'vintage',background:'transparent',transparency:'print',size:'1024x1536',width:15,height:18});render();
+            applySettings({style:rememberedStyle(),styles:rememberedStyles(),treatment:'vintage',background:'transparent',transparency:'print',size:'1024x1536',width:16,height:18});render();
         }
         function stage(letter,done,text) {var node=el('sbs-fs-step-'+letter);node.classList.toggle('done',done);node.querySelector('strong').textContent=(done?'✓ ':'○ ')+text;}
         var freestyleSources=[],sourcesLoaded=false,sourcesBusy=false;
@@ -171,7 +171,7 @@
             character.value=p?(p.concept.character_uuid||''):choice;
             if(loaded!==(p?active:'new')) {
                 loaded=p?active:'new';el('sbs-fs-title').value=read('title:'+(active||'new'),p?p.title:'');
-                applySettings(p?p.concept.settings:{style:rememberedStyle(),styles:rememberedStyles(),treatment:'vintage',background:'transparent',transparency:'print',size:'1024x1536',width:15,height:18});
+                applySettings(p?p.concept.settings:{style:rememberedStyle(),styles:rememberedStyles(),treatment:'vintage',background:'transparent',transparency:'print',size:'1024x1536',width:16,height:18});
             }
             var nextDraftKey=currentDraftKey();if(draftLoaded!==nextDraftKey){draftLoaded=nextDraftKey;el('sbs-fs-instruction').value=read(nextDraftKey,'');}el('sbs-fs-support').hidden=supportKey!==active||!supportKey;
             var thumbs=el('sbs-fs-thumbnails');thumbs.innerHTML=recentSix(gs,g&&g.uuid).map(function(image){var n=gs.length-gs.findIndex(function(x){return x.uuid===image.uuid;});var isSelected=!!g&&g.uuid===image.uuid;return '<button type="button" class="sbs-fs-thumbnail'+(isSelected?' selected':'')+'" data-fs-image="'+esc(image.uuid)+'" aria-pressed="'+(isSelected?'true':'false')+'" aria-label="Version '+n+(isSelected?', selected':'')+'"><img src="'+esc(image.asset_url)+'" alt="Version '+n+'"><span>Version '+n+(isSelected?' · Selected':'')+'</span></button>';}).join('');

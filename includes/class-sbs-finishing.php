@@ -50,12 +50,16 @@ final class SBS_Finishing
         if (!rename($tmp,$path)) { @unlink($tmp); return self::error('save','Workspace could not be committed.',500); }
         return $record;
     }
+    private static function finding_ids($record)
+    {
+        if(isset($record['versions'])&&is_array($record['versions'])){foreach($record['versions'] as &$version){if(isset($version['qa']['pixel_review']['findings'])){foreach($version['qa']['pixel_review']['findings'] as &$finding){$finding['id']=self::finding_id($finding);}unset($finding);}if(isset($version['ai_review']['findings'])){foreach($version['ai_review']['findings'] as &$finding){$finding['id']=self::finding_id($finding);}unset($finding);}}unset($version);}return $record;
+    }
     public static function listing()
     {
         $dir=self::directory(); if(is_wp_error($dir)){return $dir;}
         $records=array();
         foreach (glob($dir.'/*.json') ?: array() as $path) {
-            $r=self::read($path); if(!is_wp_error($r)){$records[]=$r;}
+            $r=self::read($path); if(!is_wp_error($r)){$records[]=self::finding_ids($r);}
         }
         usort($records,function($a,$b){return strcmp($b['updated_at'],$a['updated_at']);});
         return array('mode'=>'local_preview','records'=>array_slice($records,0,200),'drive_writes_enabled'=>false,'af_register'=>'1LQQAciLLM77nQTiUqaQcOvrpFlUyAWFymX3jWIt8Kb8');
@@ -103,7 +107,7 @@ final class SBS_Finishing
     }
     public static function get($request)
     {
-        $path=self::path($request['uuid']); if(is_wp_error($path)){return $path;}$r=self::read($path);if(!is_wp_error($r)){$r['qa_manifest']=SBS_Print_QA::manifest($r);}return $r;
+        $path=self::path($request['uuid']); if(is_wp_error($path)){return $path;}$r=self::read($path);if(!is_wp_error($r)){$r=self::finding_ids($r);$r['qa_manifest']=SBS_Print_QA::manifest($r);}return $r;
     }
     private static function deletion_plan($uuids)
     {
@@ -200,7 +204,7 @@ final class SBS_Finishing
         if(!is_array($input)){return self::error('options','Invalid processing options.');}
         $method=$input['method']??'inspect';
         if(!in_array($method,array('inspect','resize','sharpen','upscale','print_png'),true)){return self::error('method','This stage is not available. No image was changed.');} if($method==='upscale'&&!SBS_Replicate::is_configured()){return self::error('replicate_not_configured','Add your Replicate API token in Studio Settings before using AI upscale. No image was sent or changed.',503);}
-        $width=$input['width']??15; $height=$input['height']??18;
+        $width=$input['width']??16; $height=$input['height']??18;
         if(!is_numeric($width)||!is_numeric($height)||!is_finite((float)$width)||!is_finite((float)$height)||$width<1||$width>30||$height<1||$height>30){return self::error('size','Choose print dimensions from 1 to 30 inches.');}
         $notes=$input['notes']??'';
         if(!is_string($notes)||strlen($notes)>12000){return self::error('notes','Keep correction notes within 12000 bytes.');}
@@ -210,7 +214,8 @@ final class SBS_Finishing
     {
         $path=SBS_Storage::absolute_path($asset); $size=@getimagesize($path);
         if(!$size){return self::error('image','The image could not be inspected.');}
-        $ppi=min($size[0]/$options['width'],$size[1]/$options['height']);
+        // Artwork is fitted proportionally inside the requested print box.
+        $ppi=max($size[0]/$options['width'],$size[1]/$options['height']);
         $alpha='Unknown — manual check required';
         $metadata=SBS_Print_QA::metadata($path);$pixel_review=SBS_Print_QA::sample($path);
         if($pixel_review['status']==='sampled'){$alpha=$pixel_review['partial_samples']?'Partial alpha detected (sampled)':($pixel_review['clear_samples']?'Transparency detected (sampled)':'No transparency detected (sampled)');}
@@ -220,8 +225,10 @@ final class SBS_Finishing
         if($pixel_review['status']==='sampled'&&empty($pixel_review['clear_samples'])){$warnings[]='No clear pixels sampled; confirm the intended background before production.';}
         if(strpos((string)($asset_metadata['print_export']['colour_handling']??''),'assumed')!==false){$warnings[]=$asset_metadata['print_export']['colour_handling'];}
         if($pixel_review['status']==='not_run'){$warnings[]=$pixel_review['limitation'];}
+        foreach($pixel_review['findings'] as &$finding){$finding['id']=self::finding_id($finding);}unset($finding);
         return array('width'=>$size[0],'height'=>$size[1],'mime'=>$size['mime'],'sha256'=>hash_file('sha256',$path),'effective_ppi'=>round($ppi,1),'alpha'=>$alpha,'warnings'=>$warnings,'export_metadata'=>$metadata,'pixel_review'=>$pixel_review,'print_export'=>$asset_metadata['print_export']??null,'generation_provenance'=>$asset_metadata['native_generation']??null);
     }
+    private static function finding_id($finding){return substr(hash('sha256',wp_json_encode(array($finding['area']??'', $finding['issue']??'', $finding['action']??'', $finding['focus']??null))),0,24);}
     public static function upload($request)
     {
         $files=$request->get_file_params();$file=$files['file']??array();
@@ -293,12 +300,26 @@ final class SBS_Finishing
                 if(!self::intact($r['original'])||!self::intact($v['asset'])){return self::error('integrity','Asset checksum mismatch. AI review refused.',409);}
                 $report=SBS_OpenAI::review_finishing_artwork($r['original']['id'],$v['asset']['id'],$r['title']);
                 if(is_wp_error($report)){return $report;}
+                $report_findings=$report['findings']??array();foreach($report_findings as &$finding){$finding['method']='ai_review';$finding['id']=self::finding_id($finding);}unset($finding);$report['findings']=$report_findings;
                 foreach($r['versions'] as &$reviewed_version){if($reviewed_version['uuid']===$v['uuid']){$reviewed_version['ai_review']=$report;break;}}unset($reviewed_version);
+            } elseif($action==='review_finding'){
+                $v=self::current($r);$id=sanitize_text_field((string)$request->get_param('finding_id'));$decision=sanitize_key((string)$request->get_param('decision'));
+                if(!$v||!preg_match('/^[a-f0-9]{24}$/D',$id)||!in_array($decision,array('intentional','false_alarm','unresolved'),true)){return self::error('review_decision','Choose a valid finding and review decision.');}
+                $found=false;$findings=array_merge($v['qa']['pixel_review']['findings']??array(),$v['ai_review']['findings']??array());foreach($findings as $finding){if(($finding['id']??self::finding_id($finding))===$id){$found=true;break;}}
+                if(!$found){return self::error('review_finding','This finding is no longer in the current report. Refresh the checks and review the current finding.');}
+                if(!isset($v['review_decisions'])||!is_array($v['review_decisions'])){$v['review_decisions']=array();}$v['review_decisions'][$id]=array('decision'=>$decision,'at'=>gmdate('c'));
+                foreach($r['versions'] as &$reviewed_version){if($reviewed_version['uuid']===$v['uuid']){$reviewed_version['review_decisions']=$v['review_decisions'];break;}}unset($reviewed_version);
+            } elseif($action==='reject_candidate'){
+                $v=self::current($r);if(!$v){return self::error('version','Select a candidate before rejecting it.');}
+                foreach($r['versions'] as &$rejected_version){if($rejected_version['uuid']===$v['uuid']){$rejected_version['review_disposition']='rejected';$rejected_version['review_disposition_at']=gmdate('c');break;}}unset($rejected_version);
+                $r['approval']=null;$r['status']='Candidate rejected (history preserved)';$r['next_action']='Select another version or start a new candidate; rejected artwork remains in history';
             } elseif($action==='approve'){
                 if($r['status']!=='Awaiting Review'){return self::error('state','Run or select a candidate first.');}
                 $checks=$request->get_param('checks');
                 foreach(array('identity','lettering','texture','garments','warnings','colour') as $check){if(!is_array($checks)||($checks[$check]??false)!==true){return self::error('review','Complete every human review check before local approval.');}}
                 $v=self::current($r);if(!$v||!self::intact($r['original'])||!self::intact($v['asset'])){return self::error('integrity','Asset checksum mismatch. Approval refused.',409);}
+                if(($v['review_disposition']??'')==='rejected'){return self::error('rejected','This candidate was rejected. Select another version or create a new one before approval.',409);}
+                $decisions=$v['review_decisions']??array();foreach(array_merge($v['qa']['pixel_review']['findings']??array(),$v['ai_review']['findings']??array()) as $finding){$id=$finding['id']??self::finding_id($finding);if(($decisions[$id]['decision']??'')==='unresolved'||empty($decisions[$id])){return self::error('review_findings','Resolve each flagged area as intentional or false alarm, fix it in a new candidate, or reject this candidate before local approval.',409);}}
                 $r['approval']=array('version'=>$v['uuid'],'sha256'=>$v['asset']['sha256'],'at'=>gmdate('c'),'checks'=>$checks,'scope'=>'local_finishing_only');$r['status']='Finishing Approved (local only)';$r['next_action']='Download local package; Drive save awaits integration';
             } elseif($action==='export'){
                 if(empty($r['approval'])||$r['approval']['version']!==$r['current_version']){return self::error('approval','Approve the current version first.',409);}
@@ -311,7 +332,7 @@ final class SBS_Finishing
     private static function start_upscale($r)
     {
         if(!self::intact($r['original'])){return self::error('integrity','Original checksum mismatch. Processing refused.',409);}
-        $target=$r['pending']??array();$pw=(float)($target['width']??15);$ph=(float)($target['height']??18);$ppi=min((float)($r['original_qa']['width']??0)/$pw,(float)($r['original_qa']['height']??0)/$ph);
+        $target=$r['pending']??array();$pw=(float)($target['width']??16);$ph=(float)($target['height']??18);$ppi=max((float)($r['original_qa']['width']??0)/$pw,(float)($r['original_qa']['height']??0)/$ph);
         if($ppi>=300){return self::error('upscale_not_needed','This artwork already meets the 300 PPI pixel-dimension target at the selected print size. Use Inspect; no Replicate credits were used.',409);}
         $dimensions=@getimagesize(SBS_Storage::absolute_path($r['original']));$pixels=$dimensions?(int)$dimensions[0]*(int)$dimensions[1]:0;
         $scale=$ppi>=150?2:4;
@@ -361,7 +382,7 @@ final class SBS_Finishing
         if((int)$size[0]!== (int)$source_size[0]||(int)$size[1]!== (int)$source_size[1]){return self::error('dimensions','The copy dimensions do not match the selected source. No copy was saved.',409);}
         $bytes=file_get_contents($file['tmp_name']);if(!is_string($bytes)||$bytes===''){return self::error('upload','The PNG copy could not be read. The source is unchanged.');}
         $asset=SBS_Storage::store_bytes($bytes,'candidate-flat-background.png','image/png','finishing',0,'finishing_candidate',$r['title'],array('finishing_operation'=>'edge_connected_flat_colour_removal','source_asset_uuid'=>$source['uuid']??null));if(is_wp_error($asset)){return $asset;}
-        $options=array('method'=>'flat_background','colour'=>$colour,'colour2'=>$use_second?$colour2:null,'tolerance'=>(int)$tolerance,'source_version_uuid'=>$selected['uuid']??null,'source_asset_uuid'=>$source['uuid']??null,'source_sha256'=>$source['sha256'],'width'=>(float)($selected['options']['width']??15),'height'=>(float)($selected['options']['height']??18),'ppi'=>300,'provider'=>null,'model'=>null,'estimated_provider_cost'=>0,'preserve_texture'=>true,'generative_redraw'=>false);
+        $options=array('method'=>'flat_background','colour'=>$colour,'colour2'=>$use_second?$colour2:null,'tolerance'=>(int)$tolerance,'source_version_uuid'=>$selected['uuid']??null,'source_asset_uuid'=>$source['uuid']??null,'source_sha256'=>$source['sha256'],'width'=>(float)($selected['options']['width']??16),'height'=>(float)($selected['options']['height']??18),'ppi'=>300,'provider'=>null,'model'=>null,'estimated_provider_cost'=>0,'preserve_texture'=>true,'generative_redraw'=>false);
         $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
         return array('uuid'=>wp_generate_uuid4(),'number'=>count($r['versions'])+1,'asset'=>$asset,'options'=>$options,'qa'=>$qa,'created_at'=>gmdate('c'),'source_version_uuid'=>$selected['uuid']??null,'source_asset_uuid'=>$source['uuid']??null,'comparison'=>array('byte_identical'=>hash_equals($r['original']['sha256'],$asset['sha256']),'geometry'=>self::geometry_report($source,$asset,$source_qa,$qa),'structural_detection'=>'Not run — human review required','text_face_detection'=>'Not run — human review required'));
     }
@@ -382,7 +403,7 @@ final class SBS_Finishing
         $bytes=file_get_contents($file['tmp_name']);if(!is_string($bytes)||$bytes===''){return self::error('upload','The PNG copy could not be read. The source is unchanged.');}
         $op=$kind==='touchup'?'manual_transparent_touchup':'trim_transparent_margins';
         $asset=SBS_Storage::store_bytes($bytes,$kind==='touchup'?'candidate-touchup.png':'candidate-trimmed.png','image/png','finishing',0,'finishing_candidate',$r['title'],array('finishing_operation'=>$op,'source_asset_uuid'=>$source['uuid']??null,'source_sha256'=>$source['sha256']));if(is_wp_error($asset)){return $asset;}
-        $options=array('method'=>$op,'source_version_uuid'=>$selected['uuid'],'source_asset_uuid'=>$source['uuid']??null,'source_sha256'=>$source['sha256'],'width'=>(float)($selected['options']['width']??15),'height'=>(float)($selected['options']['height']??18),'ppi'=>300,'provider'=>null,'model'=>null,'estimated_provider_cost'=>0,'preserve_texture'=>true,'generative_redraw'=>false);
+        $options=array('method'=>$op,'source_version_uuid'=>$selected['uuid'],'source_asset_uuid'=>$source['uuid']??null,'source_sha256'=>$source['sha256'],'width'=>(float)($selected['options']['width']??16),'height'=>(float)($selected['options']['height']??18),'ppi'=>300,'provider'=>null,'model'=>null,'estimated_provider_cost'=>0,'preserve_texture'=>true,'generative_redraw'=>false);
         $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
         $geometry=self::geometry_report($source,$asset,$selected['qa'],$qa);if($kind==='trim_transparent'){$geometry=array('status'=>'trimmed','message'=>'Canvas bounds were trimmed around transparent margins without rescaling. Confirm artwork edges and product placement manually.','transparency_sample_matches'=>$geometry['transparency_sample_matches']??null);}
         return array('uuid'=>wp_generate_uuid4(),'number'=>count($r['versions'])+1,'asset'=>$asset,'options'=>$options,'qa'=>$qa,'created_at'=>gmdate('c'),'source_version_uuid'=>$selected['uuid'],'source_asset_uuid'=>$source['uuid']??null,'comparison'=>array('byte_identical'=>hash_equals($source['sha256'],$asset['sha256']),'geometry'=>$geometry,'structural_detection'=>'Not run — human review required','text_face_detection'=>'Not run — human review required'));
