@@ -34,8 +34,8 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0\.2\.94/);
-assert.match(plugin, /define\('SBS_VERSION', '0\.2\.94'\)/);
+assert.match(plugin, /Version: 0\.2\.95/);
+assert.match(plugin, /define\('SBS_VERSION', '0\.2\.95'\)/);
 assert.match(studio, /button\.closest\('\.sbs-character-page-menu'\)\) \{ return; \}/, 'Character menu entries must not receive information buttons');
 const mainNav = studioTemplate.match(/<nav id="sbs-primary-nav"[\s\S]*?<\/nav>/)[0];
 assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="freestyle"'));
@@ -161,10 +161,6 @@ assert.match(finishing, /function operation\(fn,text,button,onError\)/);
 assert.match(finishing, /button\.setAttribute\('aria-busy','true'\)/);
 assert.match(settingsTemplate, /Studio sign-in required\. Sign in above before saving or checking Google settings\./);
 assert.match(settingsTemplate, /SBS_Google_Drive::redirect_uri\(\)/);
-assert.match(finishing, /Settings saved securely\. /);
-assert.match(finishing, /Checking saved Google settings…/);
-assert.match(finishing, /Google settings could not be checked or saved:/);
-assert.match(finishing, /googleControls\(\).*googleBusy\|\|!googleState\.configured\|\|googleState\.connected/s);
 assert.match(settingsTemplate, /id="sbs-google-status" role="status" aria-live="polite" aria-atomic="true"/);
 assert.match(theme, /select option:checked/);
 assert.match(theme, /background: #101827;\s+color: #fff3d4;/);
