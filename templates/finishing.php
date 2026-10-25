@@ -16,7 +16,7 @@
             <button id="sbs-af-refresh" class="sbs-button" type="button" aria-live="polite"><span id="sbs-af-refresh-label">Refresh workspaces</span><span id="sbs-af-refresh-spinner" aria-hidden="true" hidden> ⌛</span><span id="sbs-af-refresh-done" aria-hidden="true" hidden> ✓</span></button>
             <section class="sbs-af-print-settings" aria-label="Print target settings">
                 <h3>Print target</h3>
-                <div class="sbs-grid two sbs-af-print-target"><label for="sbs-af-width">Print width (inches)<input id="sbs-af-width" type="number" min="1" max="30" step="0.25" value="16"></label><label for="sbs-af-height">Print height (inches)<input id="sbs-af-height" type="number" min="1" max="30" step="0.25" value="18"></label></div>
+                <div class="sbs-grid two sbs-af-print-target"><label for="sbs-af-width">Print width (inches)<input id="sbs-af-width" type="number" min="1" max="30" step="0.25" value="14"></label><label for="sbs-af-height">Print height (inches)<input id="sbs-af-height" type="number" min="1" max="30" step="0.25" value="16"></label></div>
                 <label class="sbs-af-print-canvas-label"><input id="sbs-af-print-canvas" type="checkbox"> For Step 3 only: fit artwork on a transparent print-size canvas, centred without stretching or enlarging.</label>
                 <p>Set these dimensions before running Inspect, Fit down or Prepare print PNG. 300 PPI is a target, not a quality or detail guarantee.</p>
             </section>
@@ -134,7 +134,7 @@
             <button id="sbs-af-ai-focus-original" type="button" class="sbs-button">Original</button>
             <button id="sbs-af-ai-focus-candidate" type="button" class="sbs-button">Candidate</button>
         </div>
-        <div id="sbs-af-ai-focus-stage" class="sbs-af-ai-focus-stage" tabindex="0" aria-label="Issue comparison. Pinch to zoom, drag to pan, tap to switch between original and candidate. Scroll bars are also available."><svg id="sbs-af-ai-focus-marker" class="sbs-af-ai-focus-marker" hidden viewBox="0 0 48 48" aria-hidden="true"><path d="M4 4 L42 42 M26 42 L42 42 L42 26"></path><circle cx="42" cy="42" r="3"></circle></svg></div>
+        <div id="sbs-af-ai-focus-stage" class="sbs-af-ai-focus-stage" tabindex="0" aria-label="Issue comparison. Pinch to zoom, drag to pan, tap to switch between original and candidate. Scroll bars are also available."><svg id="sbs-af-ai-focus-marker" class="sbs-af-ai-focus-marker" hidden viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><rect x="4" y="4" width="92" height="92" rx="8"></rect><circle cx="50" cy="50" r="3"></circle></svg></div>
         <div class="sbs-af-finding-actions" role="group" aria-label="Review this finding"><button type="button" class="sbs-button" data-af-finding-decision="intentional">Accept as intentional</button><button type="button" class="sbs-button" data-af-finding-decision="false_alarm">False alarm</button><button id="sbs-af-focus-fix" type="button" class="sbs-button">Fix here</button><button type="button" class="sbs-button" data-af-finding-decision="unresolved">Leave unresolved</button></div>
     </div>
     <div id="sbs-af-editor" class="sbs-af-editor" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-editor-title">
