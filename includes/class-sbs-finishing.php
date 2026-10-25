@@ -204,7 +204,7 @@ final class SBS_Finishing
         if(!is_array($input)){return self::error('options','Invalid processing options.');}
         $method=$input['method']??'inspect';
         if(!in_array($method,array('inspect','resize','sharpen','upscale','print_png'),true)){return self::error('method','This stage is not available. No image was changed.');} if($method==='upscale'&&!SBS_Replicate::is_configured()){return self::error('replicate_not_configured','Add your Replicate API token in Studio Settings before using AI upscale. No image was sent or changed.',503);}
-        $width=$input['width']??16; $height=$input['height']??18;
+        $width=$input['width']??14; $height=$input['height']??16;
         if(!is_numeric($width)||!is_numeric($height)||!is_finite((float)$width)||!is_finite((float)$height)||$width<1||$width>30||$height<1||$height>30){return self::error('size','Choose print dimensions from 1 to 30 inches.');}
         $notes=$input['notes']??'';
         if(!is_string($notes)||strlen($notes)>12000){return self::error('notes','Keep correction notes within 12000 bytes.');}
@@ -332,7 +332,7 @@ final class SBS_Finishing
     private static function start_upscale($r)
     {
         if(!self::intact($r['original'])){return self::error('integrity','Original checksum mismatch. Processing refused.',409);}
-        $target=$r['pending']??array();$pw=(float)($target['width']??16);$ph=(float)($target['height']??18);$ppi=max((float)($r['original_qa']['width']??0)/$pw,(float)($r['original_qa']['height']??0)/$ph);
+        $target=$r['pending']??array();$pw=(float)($target['width']??14);$ph=(float)($target['height']??16);$ppi=max((float)($r['original_qa']['width']??0)/$pw,(float)($r['original_qa']['height']??0)/$ph);
         if($ppi>=300){return self::error('upscale_not_needed','This artwork already meets the 300 PPI pixel-dimension target at the selected print size. Use Inspect; no Replicate credits were used.',409);}
         $dimensions=@getimagesize(SBS_Storage::absolute_path($r['original']));$pixels=$dimensions?(int)$dimensions[0]*(int)$dimensions[1]:0;
         $scale=$ppi>=150?2:4;
@@ -382,7 +382,7 @@ final class SBS_Finishing
         if((int)$size[0]!== (int)$source_size[0]||(int)$size[1]!== (int)$source_size[1]){return self::error('dimensions','The copy dimensions do not match the selected source. No copy was saved.',409);}
         $bytes=file_get_contents($file['tmp_name']);if(!is_string($bytes)||$bytes===''){return self::error('upload','The PNG copy could not be read. The source is unchanged.');}
         $asset=SBS_Storage::store_bytes($bytes,'candidate-flat-background.png','image/png','finishing',0,'finishing_candidate',$r['title'],array('finishing_operation'=>'edge_connected_flat_colour_removal','source_asset_uuid'=>$source['uuid']??null));if(is_wp_error($asset)){return $asset;}
-        $options=array('method'=>'flat_background','colour'=>$colour,'colour2'=>$use_second?$colour2:null,'tolerance'=>(int)$tolerance,'source_version_uuid'=>$selected['uuid']??null,'source_asset_uuid'=>$source['uuid']??null,'source_sha256'=>$source['sha256'],'width'=>(float)($selected['options']['width']??16),'height'=>(float)($selected['options']['height']??18),'ppi'=>300,'provider'=>null,'model'=>null,'estimated_provider_cost'=>0,'preserve_texture'=>true,'generative_redraw'=>false);
+        $options=array('method'=>'flat_background','colour'=>$colour,'colour2'=>$use_second?$colour2:null,'tolerance'=>(int)$tolerance,'source_version_uuid'=>$selected['uuid']??null,'source_asset_uuid'=>$source['uuid']??null,'source_sha256'=>$source['sha256'],'width'=>(float)($selected['options']['width']??14),'height'=>(float)($selected['options']['height']??16),'ppi'=>300,'provider'=>null,'model'=>null,'estimated_provider_cost'=>0,'preserve_texture'=>true,'generative_redraw'=>false);
         $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
         return array('uuid'=>wp_generate_uuid4(),'number'=>count($r['versions'])+1,'asset'=>$asset,'options'=>$options,'qa'=>$qa,'created_at'=>gmdate('c'),'source_version_uuid'=>$selected['uuid']??null,'source_asset_uuid'=>$source['uuid']??null,'comparison'=>array('byte_identical'=>hash_equals($r['original']['sha256'],$asset['sha256']),'geometry'=>self::geometry_report($source,$asset,$source_qa,$qa),'structural_detection'=>'Not run — human review required','text_face_detection'=>'Not run — human review required'));
     }
