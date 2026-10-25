@@ -318,6 +318,7 @@ final class SBS_Finishing
                 $checks=$request->get_param('checks');
                 foreach(array('identity','lettering','texture','garments','warnings','colour') as $check){if(!is_array($checks)||($checks[$check]??false)!==true){return self::error('review','Complete every human review check before local approval.');}}
                 $v=self::current($r);if(!$v||!self::intact($r['original'])||!self::intact($v['asset'])){return self::error('integrity','Asset checksum mismatch. Approval refused.',409);}
+                if(hash_equals($r['original']['sha256'],$v['asset']['sha256'])){return self::error('unchanged_candidate','This candidate is identical to the original. Select the upscaled or edited version before approval.',409);}
                 if(($v['review_disposition']??'')==='rejected'){return self::error('rejected','This candidate was rejected. Select another version or create a new one before approval.',409);}
                 $decisions=$v['review_decisions']??array();foreach(array_merge($v['qa']['pixel_review']['findings']??array(),$v['ai_review']['findings']??array()) as $finding){$id=$finding['id']??self::finding_id($finding);if(($decisions[$id]['decision']??'')==='unresolved'||empty($decisions[$id])){return self::error('review_findings','Resolve each flagged area as intentional or false alarm, fix it in a new candidate, or reject this candidate before local approval.',409);}}
                 $r['approval']=array('version'=>$v['uuid'],'sha256'=>$v['asset']['sha256'],'at'=>gmdate('c'),'checks'=>$checks,'scope'=>'local_finishing_only');$r['status']='Finishing Approved (local only)';$r['next_action']='Download local package; Drive save awaits integration';
@@ -434,9 +435,13 @@ final class SBS_Finishing
     private static function process($r,$options)
     {
         if(!self::intact($r['original'])){return self::error('integrity','Original checksum mismatch. Processing refused.',409);}
-        // Every repeat starts from the preserved original, avoiding accumulated resampling.
-        $path=SBS_Storage::absolute_path($r['original']);$bytes=$options['method']==='print_png'?'':file_get_contents($path);$mime=$r['original']['mime'];$name=$r['original']['filename'];
-        $source=$r['original'];$metadata=array();
+        // Inspect the currently selected version. Other repeat operations start
+        // from the preserved original unless they explicitly consume a candidate.
+        $source=$r['original'];
+        if($options['method']==='inspect'){$selected=self::current($r);if($selected){$source=$selected['asset'];}}
+        if(!self::intact($source)){return self::error('integrity','Selected source checksum mismatch. Processing refused.',409);}
+        $path=SBS_Storage::absolute_path($source);$bytes=$options['method']==='print_png'?'':file_get_contents($path);$mime=$source['mime'];$name=$source['filename'];
+        $metadata=array();
         if($options['method']==='print_png'){
             $selected=self::current($r);if($selected){$source=$selected['asset'];if(!self::intact($source)){return self::error('integrity','Candidate checksum mismatch; original unchanged.',409);}}
             $normalized=SBS_Print_QA::normalize(SBS_Storage::absolute_path($source),$options);if(is_wp_error($normalized)){return $normalized;}
@@ -491,6 +496,7 @@ final class SBS_Finishing
     private static function package($r,$requested_name=null)
     {
         $v=self::current($r);
+        if($v&&isset($r['original']['sha256'],$v['asset']['sha256'])&&hash_equals($r['original']['sha256'],$v['asset']['sha256'])){return self::error('unchanged_candidate','The selected candidate is identical to the original. Select the upscaled or edited version before building a ZIP.',409);}
         if(!$v||!self::intact($r['original'])||!self::intact($v['asset'])||!hash_equals($r['approval']['sha256'],$v['asset']['sha256'])){return self::error('integrity','Package checksum verification failed.',409);}
         if(!class_exists('ZipArchive')){return self::error('zip','The server needs PHP ZipArchive for package downloads.',503);}
         $path=tempnam(SBS_Storage::base_dir().'/tmp','af-');$zip=new ZipArchive();

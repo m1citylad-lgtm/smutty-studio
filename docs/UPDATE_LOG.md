@@ -1,5 +1,13 @@
 # Studio Update Log
 
+## Candidate selection fix for Inspect and ZIP export
+**Recorded:** 25 October 2026
+**Status:** Implemented in v0.2.97.
+
+- Inspect now inspects the currently selected version instead of reverting to a copy of the untouched original.
+- Local approval and ZIP generation reject a candidate whose file checksum is identical to the original.
+- This prevents an unchanged original from being presented as a finished candidate and makes Inspect preserve an upscale already selected.
+
 ## Planned for a later build — finishing approval button continuity
 **Recorded:** 25 October 2026  
 **Status:** Planned; not included in v0.2.96.
