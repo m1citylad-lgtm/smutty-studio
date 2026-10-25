@@ -229,3 +229,18 @@ body#sbs-studio-page .sbs-af-catalogue-row .sbs-danger-tool { justify-self:end; 
 .sbs-af-editor-viewport{position:relative}
 #sbs-af-brush-cursor{position:absolute;z-index:3;box-sizing:border-box;border:2px solid #ffb12d;border-radius:50%;box-shadow:0 0 0 1px #07101f,0 0 0 3px rgba(255,243,212,.7);background:rgba(255,177,45,.08);pointer-events:none;mix-blend-mode:difference}
 #sbs-af-brush-cursor[hidden]{display:none!important}
+
+
+/* Compact, truthful status reports for one-click finishing stages. */
+.sbs-af-stage-card h3{margin:.1rem 0;color:#ffe08a;line-height:1.35;font-size:1.05rem}
+.sbs-af-stage-report{display:flex;align-items:flex-start;gap:10px;margin:.7rem 0 0!important;padding:.45rem .55rem;border-radius:7px;background:#101525;font-size:.9rem;line-height:1.4}
+.sbs-af-stage-report[hidden]{display:none!important}
+.sbs-af-stage-report-dot{display:inline-block;width:20px;height:20px;min-width:20px;border-radius:50%;background:#778092;box-shadow:0 0 0 2px #ffffff33;margin-top:1px}
+.sbs-af-stage-report[data-state="error"] .sbs-af-stage-report-dot{background:#ed3344}
+.sbs-af-stage-report[data-state="success"] .sbs-af-stage-report-dot{background:#36b96b}
+.sbs-af-stage-report[data-state="info"] .sbs-af-stage-report-dot{background:#e9a72e}
+.sbs-af-stage-report[data-state="error"] .sbs-af-stage-report-text{color:#ffd6d8}
+.sbs-af-stage-report[data-state="success"] .sbs-af-stage-report-text{color:#d9ffe6}
+.sbs-af-stage-report[data-state="info"] .sbs-af-stage-report-text{color:#fff0cf}
+.sbs-af-stage-options .sbs-af-stage-card{border-color:#b69c65}
+.sbs-af-stage-options .sbs-af-stage-heading button:disabled{opacity:.78}
