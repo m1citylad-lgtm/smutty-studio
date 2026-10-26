@@ -1,0 +1,24 @@
+name: PHP 7.4.33 compatibility lint
+
+on:
+  push:
+    branches:
+      - codex/php-7.4.33-lint-check
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4.33'
+          extensions: zip, gd
+          coverage: none
+      - name: Confirm exact PHP version
+        run: test "$(php -r 'echo PHP_VERSION;')" = "7.4.33"
+      - name: Lint all PHP files
+        run: find . -name '*.php' -not -path './build/*' -print0 | xargs -0 -n1 php -l
