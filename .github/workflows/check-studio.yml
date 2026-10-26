@@ -26,7 +26,7 @@ jobs:
           php tools/test-settings.php
           php tools/test-updater-rollback.php
           php tools/test-print-qa.php
-          php -n -d extension=gd -d extension=zip tools/test-print-qa.php
+          php -n -d extension=json -d extension=gd -d extension=zip tools/test-print-qa.php
       - name: JavaScript and image export checks
         run: |
           node --check assets/js/studio.js

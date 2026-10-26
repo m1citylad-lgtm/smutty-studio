@@ -49,7 +49,7 @@ jobs:
           php tools/test-settings.php
           php tools/test-updater-rollback.php
           php tools/test-print-qa.php
-          php -n -d extension=gd -d extension=zip tools/test-print-qa.php
+          php -n -d extension=json -d extension=gd -d extension=zip tools/test-print-qa.php
           node tools/test-png-resolution.cjs
 
       - name: Build release
