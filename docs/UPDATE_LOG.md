@@ -1,5 +1,15 @@
 # Studio Update Log
 
+## Logic Correction visual review
+**Recorded:** 26 October 2026
+**Status:** Implemented in v0.2.98.
+
+- Added a standalone Logic Correction tab immediately before Finishing.
+- Added separate whole-image, overlapping enlarged-region, and approved SmuttyBear reference checks.
+- Findings show an approximate marker, concise issue and severity; uncertain evidence is labelled “Needs review.”
+- The checks never edit the uploaded image. Corrected copies are stored as separate versions.
+- Tablet file and photo selection, image zoom/pan, and isolated review storage are supported.
+
 ## Candidate selection fix for Inspect and ZIP export
 **Recorded:** 25 October 2026
 **Status:** Implemented in v0.2.97.

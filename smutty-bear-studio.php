@@ -3,7 +3,7 @@
  * Plugin Name: Smutty Bear Creative Studio
  * Plugin URI: https://smuttybear.com/
  * Description: A private, reference-grounded character image and merchandise design studio.
- * Version: 0.2.97
+ * Version: 0.2.98
  * Requires at least: 5.8.17
  * Requires PHP: 7.4
  * Author: Smutty Bear
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SBS_VERSION', '0.2.97');
+define('SBS_VERSION', '0.2.98');
 define('SBS_DB_VERSION', '2');
 define('SBS_PLUGIN_FILE', __FILE__);
 define('SBS_PLUGIN_DIR', plugin_dir_path(__FILE__));
@@ -33,6 +33,7 @@ require_once SBS_PLUGIN_DIR . 'includes/class-sbs-rest.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-freestyle.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-print-qa.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-finishing.php';
+require_once SBS_PLUGIN_DIR . 'includes/class-sbs-logic-correction.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-google-drive.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-finishing-catalogue.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-admin.php';

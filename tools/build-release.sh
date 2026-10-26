@@ -5,6 +5,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SLUG="smutty-bear-studio"
 BASE_URL="${1:-${SBS_UPDATE_BASE_URL:-}}"
 FEED_URL="${SBS_DEFAULT_UPDATE_FEED_URL:-}"
+SIGNING_KEY_FILE="${SBS_RELEASE_PRIVATE_KEY_FILE:-}"
+SIGNING_KEY_ID="${SBS_RELEASE_KEY_ID:-}"
 OUT="$ROOT/build/release"
 MAIN="$ROOT/smutty-bear-studio.php"
 
@@ -46,9 +48,18 @@ path.write_text("<?php\n\nreturn '" + escaped + "';\n", encoding='utf-8')
 PY
 fi
 
-python3 - "$OUT/stage/$SLUG" "$HEADER_VERSION" <<'PY'
+if [[ "${SBS_REQUIRE_SIGNATURE:-0}" == "1" && ( -z "$SIGNING_KEY_FILE" || -z "$SIGNING_KEY_ID" ) ]]; then
+  fail "a release signing key and key ID are required"
+fi
+if [[ -n "$SIGNING_KEY_FILE" ]]; then
+  [[ -r "$SIGNING_KEY_FILE" ]] || fail "release signing key file is not readable"
+  [[ -n "$SIGNING_KEY_ID" ]] || fail "release signing key ID is required"
+  command -v openssl >/dev/null || fail "openssl is required to sign the release"
+fi
+
+python3 - "$OUT/stage/$SLUG" "$HEADER_VERSION" "$SIGNING_KEY_ID" <<'PY'
 import hashlib, json, pathlib, sys
-root, version = pathlib.Path(sys.argv[1]), sys.argv[2]
+root, version, key_id = pathlib.Path(sys.argv[1]), sys.argv[2], sys.argv[3]
 files = {}
 for path in sorted(p for p in root.rglob('*') if p.is_file()):
     files[path.relative_to(root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -56,8 +67,19 @@ manifest = {
     'slug': 'smutty-bear-studio', 'version': version,
     'requires_wp': '5.8.17', 'requires_php': '7.4', 'files': files,
 }
+if key_id:
+    manifest['key_id'] = key_id
 (root / 'release.json').write_text(json.dumps(manifest, separators=(',', ':'), sort_keys=True), encoding='utf-8')
 PY
+
+if [[ -n "$SIGNING_KEY_FILE" ]]; then
+  raw_signature="$(mktemp)"
+  trap 'rm -f "$raw_signature"' EXIT
+  openssl dgst -sha256 -sign "$SIGNING_KEY_FILE" -out "$raw_signature" "$OUT/stage/$SLUG/release.json"
+  base64 < "$raw_signature" | tr -d '\n' > "$OUT/stage/$SLUG/release.sig"
+  rm -f "$raw_signature"
+  trap - EXIT
+fi
 
 PACKAGE="$SLUG-$HEADER_VERSION.zip"
 (cd "$OUT/stage" && python3 - "$SLUG" "$OUT/$PACKAGE" <<'PY'
