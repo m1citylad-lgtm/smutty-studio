@@ -1265,12 +1265,14 @@
         dialog.addEventListener('click', function (event) { if (event.target === dialog) { dialog.close(); } });
         function decorate() {
             document.querySelectorAll('.sbs-af[data-panel="finishing"] .sbs-info-button').forEach(function (button) { button.remove(); });
+            document.querySelectorAll('.sbs-lc .sbs-info-button').forEach(function (button) { button.remove(); });
             document.querySelectorAll('button:not(.sbs-info-button):not(.sbs-fs-thumbnail):not(.sbs-image-zoom):not(.sbs-modal-close):not(#sbs-explain-close)').forEach(function (button) {
                 // Keep compact navigation, Catalogue, and Finishing free from extra information buttons.
                 if (button.closest('.sbs-primary-tabs')) { return; }
                 if (button.closest('.sbs-character-page-menu')) { return; }
                 if (button.closest('.sbs-af[data-panel="catalogue"]')) { return; }
                 if (button.closest('.sbs-af[data-panel="finishing"]')) { return; }
+                if (button.closest('.sbs-lc')) { return; }
                 if (button.dataset.sbsInfoAttached || button.closest('.sbs-explain-dialog')) { return; }
                 button.dataset.sbsInfoAttached = '1';
                 var info = document.createElement('button');
