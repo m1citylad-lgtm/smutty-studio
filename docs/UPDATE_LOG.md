@@ -2,13 +2,14 @@
 
 ## Planned Logic Correction improvements
 **Recorded:** 26 October 2026  
-**Status:** Planned; not included in v0.2.98.
+**Status:** Implemented in v0.2.99.
 
 - Add an explicit **Fix this area** action to a finding. Open its marked area, allow a small editable mask and correction instruction, and generate an AI preview limited to that local area.
 - Keep every preview separate from the original. Provide **Undo/discard** and save accepted edits as a new version only; never alter the original automatically.
 - Change the Logic Correction description/instruction boxes from white to blue, move action buttons outside those boxes so they do not cover text, and remove the small round information buttons.
 - Replace the separate check buttons with one **Run all checks** button. Run the whole-image check, then enlarged-region checks, then the approved character-reference check only when a character is selected.
 - Add an editable **Focused checks** list. Let the user add, edit, and remove checks (for example, ears fitting below hats without blending into them, or body bugs without human legs). Apply saved checks by default to each inspection, after the standard checks, and show their findings in the same marked review list.
+- Add a local AI correction preview with a painted mask, discard/undo, and save-as-new-version controls. The original version remains untouched.
 
 ## Logic Correction visual review
 **Recorded:** 26 October 2026

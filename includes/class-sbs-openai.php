@@ -133,12 +133,12 @@ final class SBS_OpenAI
     }
 
     /** Multi-view visual logic review. Images are derived review copies; source files are never changed. */
-    public static function review_logic_correction($pass, $images, $character_identity = array())
+    public static function review_logic_correction($pass, $images, $character_identity = array(), $custom_checks = array())
     {
         if (!self::is_configured()) {
             return new WP_Error('openai_not_configured', 'Configure the OpenAI API key before running a visual logic check.', array('status' => 503));
         }
-        if (!in_array($pass, array('whole', 'regions', 'character'), true) || !is_array($images) || !$images) {
+        if (!in_array($pass, array('whole', 'regions', 'character', 'custom'), true) || !is_array($images) || !$images) {
             return new WP_Error('invalid_logic_review', 'The visual logic check could not be prepared.', array('status' => 400));
         }
         $content = array();
@@ -162,6 +162,14 @@ final class SBS_OpenAI
             $focus = "This is a focused close-up pass. Compare each enlarged overlapping region independently. Look for extra/missing/duplicated anatomy, disconnected limbs, malformed or duplicated prop parts (especially weights, bars and handles), and duplicated or incorrectly fitted accessories. Report only visible concerns; do not infer a fault from an ambiguous crop.";
         } elseif ($pass === 'character') {
             $focus = "Compare the first image labelled whole with the supplied approved character references and identity notes. Check recognizable face, body proportions, fur/colour, signature outfit and accessories. Report only visible inconsistencies, and place every finding box on the character in the first image labelled whole (never on a reference). Do not flag pose, expression or deliberate costume variations unless they contradict an explicit locked trait.";
+        } elseif ($pass === 'custom') {
+            $clean_checks = array();
+            foreach (array_slice((array) $custom_checks, 0, 20) as $check) {
+                $check = sanitize_textarea_field((string) $check);
+                if ($check !== '') { $clean_checks[] = $check; }
+            }
+            if (!$clean_checks) { return new WP_Error('empty_logic_checks', 'Add at least one saved focused check first.', array('status' => 400)); }
+            $focus = "Run each saved focused check against the supplied overlapping enlarged regions. Treat each check independently. Report only a visible concern; do not assume a fault merely because a feature is unusual. In each finding, name the relevant saved check in category. SAVED FOCUSED CHECKS:\n- " . implode("\n- ", $clean_checks);
         }
         $identity_text = $character_identity ? "\nAPPROVED CHARACTER IDENTITY (reference only):\n" . wp_json_encode($character_identity, JSON_UNESCAPED_SLASHES) : '';
         $schema = wp_json_encode(array('summary' => 'string', 'findings' => array(array('severity' => 'concern|needs_review', 'category' => 'string', 'issue' => 'string', 'action' => 'string', 'image_label' => 'string', 'bbox' => array('x' => 'number', 'y' => 'number', 'width' => 'number', 'height' => 'number'), 'confidence' => 'number'))));

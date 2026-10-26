@@ -12,7 +12,7 @@ class WP_REST_Request implements ArrayAccess {
     public function set_param($k,$v) {$this->params[$k]=$v;}
     public function get_param($k) {return $this->params[$k] ?? null;}
     public function offsetExists($k): bool {return isset($this->params[$k]);}
-    public function offsetGet($k): mixed {return $this->get_param($k);}
+    public function offsetGet($k) {return $this->get_param($k);}
     public function offsetSet($k,$v): void {$this->set_param($k,$v);}
     public function offsetUnset($k): void {unset($this->params[$k]);}
 }

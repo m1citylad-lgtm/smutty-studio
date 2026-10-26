@@ -10,10 +10,14 @@ final class SBS_Logic_Correction
         $base = array('permission_callback' => array('SBS_REST', 'permission'));
         register_rest_route(SBS_REST::NS, '/logic-correction', array(array_merge($base, array('methods' => 'GET', 'callback' => array(__CLASS__, 'listing')))));
         register_rest_route(SBS_REST::NS, '/logic-correction/references', array(array_merge($base, array('methods' => 'GET', 'callback' => array(__CLASS__, 'references')))));
+        register_rest_route(SBS_REST::NS, '/logic-correction/checks', array(array_merge($base, array('methods' => 'GET', 'callback' => array(__CLASS__, 'checks'))), array_merge($base, array('methods' => 'POST', 'callback' => array(__CLASS__, 'save_checks')))));
         register_rest_route(SBS_REST::NS, '/logic-correction/upload', array(array_merge($base, array('methods' => 'POST', 'callback' => array(__CLASS__, 'upload')))));
         register_rest_route(SBS_REST::NS, '/logic-correction/(?P<uuid>[a-f0-9\-]{36})', array(array_merge($base, array('methods' => 'GET', 'callback' => array(__CLASS__, 'get')))));
         register_rest_route(SBS_REST::NS, '/logic-correction/(?P<uuid>[a-f0-9\-]{36})/version', array(array_merge($base, array('methods' => 'POST', 'callback' => array(__CLASS__, 'add_version')))));
         register_rest_route(SBS_REST::NS, '/logic-correction/(?P<uuid>[a-f0-9\-]{36})/review', array(array_merge($base, array('methods' => 'POST', 'callback' => array(__CLASS__, 'review')))));
+        register_rest_route(SBS_REST::NS, '/logic-correction/(?P<uuid>[a-f0-9\-]{36})/repair', array(array_merge($base, array('methods' => 'POST', 'callback' => array(__CLASS__, 'start_repair')))));
+        register_rest_route(SBS_REST::NS, '/logic-correction/(?P<uuid>[a-f0-9\-]{36})/repair/(?P<job_uuid>[a-f0-9\-]{36})', array(array_merge($base, array('methods' => 'GET', 'callback' => array(__CLASS__, 'poll_repair'))), array_merge($base, array('methods' => 'DELETE', 'callback' => array(__CLASS__, 'discard_repair')))));
+        register_rest_route(SBS_REST::NS, '/logic-correction/(?P<uuid>[a-f0-9\-]{36})/repair/(?P<job_uuid>[a-f0-9\-]{36})/accept', array(array_merge($base, array('methods' => 'POST', 'callback' => array(__CLASS__, 'accept_repair')))));
     }
 
     private static function directory()
@@ -55,7 +59,35 @@ final class SBS_Logic_Correction
             $record = self::read_record($path); if (!is_wp_error($record)) { $records[] = $record; }
         }
         usort($records, function ($a, $b) { return strcmp((string) ($b['updated_at'] ?? ''), (string) ($a['updated_at'] ?? '')); });
-        return array('records' => array_slice($records, 0, 100), 'references' => self::approved_references());
+        return array('records' => array_slice($records, 0, 100), 'references' => self::approved_references(), 'checks' => self::saved_checks());
+    }
+
+    public static function checks() { return array('checks' => self::saved_checks()); }
+
+    public static function save_checks($request)
+    {
+        $input = $request->get_param('checks');
+        if (!is_array($input)) { return new WP_Error('logic_checks_invalid', 'Focused checks must be supplied as a list.', array('status' => 400)); }
+        $checks = array();
+        foreach (array_slice($input, 0, 20) as $item) {
+            $item = sanitize_textarea_field((string) $item);
+            $item = trim(preg_replace('/\s+/', ' ', $item));
+            if ($item !== '') { $checks[] = substr($item, 0, 180); }
+        }
+        update_option('sbs_logic_correction_checks', array_values(array_unique($checks)), false);
+        return array('checks' => self::saved_checks());
+    }
+
+    private static function saved_checks()
+    {
+        $saved = get_option('sbs_logic_correction_checks', array());
+        if (!is_array($saved)) { return array(); }
+        $checks = array();
+        foreach (array_slice($saved, 0, 20) as $item) {
+            $item = trim(sanitize_textarea_field((string) $item));
+            if ($item !== '') { $checks[] = substr($item, 0, 180); }
+        }
+        return array_values(array_unique($checks));
     }
 
     public static function references()
@@ -150,9 +182,10 @@ final class SBS_Logic_Correction
         $version = null; foreach ($record['versions'] as $item) { if (($item['uuid'] ?? '') === $version_uuid) { $version = $item; break; } }
         if (!$version) { return new WP_Error('logic_version', 'Select a saved image version first.', array('status' => 400)); }
         $pass = sanitize_key((string) $request->get_param('pass'));
-        if (!in_array($pass, array('whole', 'regions', 'character'), true)) { return new WP_Error('logic_pass', 'Choose one of the listed visual checks.', array('status' => 400)); }
+        if (!in_array($pass, array('whole', 'regions', 'character', 'custom'), true)) { return new WP_Error('logic_pass', 'Choose one of the listed visual checks.', array('status' => 400)); }
         $pack_uuid = sanitize_text_field((string) $request->get_param('character_uuid'));
         if ($pass === 'character' && $pack_uuid === '') { return new WP_Error('logic_reference', 'Choose an approved character reference before running this check.', array('status' => 400)); }
+        if ($pass === 'custom' && !self::saved_checks()) { return new WP_Error('empty_logic_checks', 'Add at least one saved focused check first.', array('status' => 400)); }
         $source = self::raw_asset((string) $version['asset']['uuid'], (string) $record['uuid']); if (is_wp_error($source)) { return $source; }
         $images = self::review_images($source['path'], $pass);
         if (is_wp_error($images)) { return $images; }
@@ -162,11 +195,138 @@ final class SBS_Logic_Correction
             if (is_wp_error($reference)) { return $reference; }
             $images = array_merge(array_slice($images, 0, 1), $reference['images']); $identity = $reference['identity'];
         }
-        $report = SBS_OpenAI::review_logic_correction($pass, $images, $identity);
+        if ($pass === 'custom') { $images = self::review_images($source['path'], 'regions'); if (is_wp_error($images)) { return $images; } }
+        $report = SBS_OpenAI::review_logic_correction($pass, $images, $identity, self::saved_checks());
         if (is_wp_error($report)) { return $report; }
         if (!isset($record['reports'][$version_uuid]) || !is_array($record['reports'][$version_uuid])) { $record['reports'][$version_uuid] = array(); }
         $record['reports'][$version_uuid][$pass] = $report; $record['updated_at'] = gmdate('c');
         $saved = self::save_record($path, $record); return is_wp_error($saved) ? $saved : array('record' => $saved, 'report' => $report);
+    }
+
+    private static function job_path($workspace, $job)
+    {
+        $dir = self::directory();
+        if (is_wp_error($dir)) { return $dir; }
+        $jobs = $dir . '/jobs';
+        if (!is_dir($jobs)) { wp_mkdir_p($jobs); @file_put_contents($jobs . '/index.php', "<?php http_response_code(404); exit;\n"); }
+        return $jobs . '/' . $workspace . '-' . $job . '.json';
+    }
+
+    private static function read_job($workspace, $job)
+    {
+        $path = self::job_path($workspace, $job);
+        if (is_wp_error($path)) { return $path; }
+        $data = is_readable($path) ? json_decode(file_get_contents($path), true) : null;
+        return is_array($data) && ($data['workspace'] ?? '') === $workspace ? $data : new WP_Error('logic_repair_missing', 'This correction preview is no longer available.', array('status' => 404));
+    }
+
+    private static function save_job($workspace, $job, $data)
+    {
+        $path = self::job_path($workspace, $job);
+        if (is_wp_error($path)) { return $path; }
+        $tmp = $path . '.tmp';
+        $json = wp_json_encode($data, JSON_UNESCAPED_SLASHES);
+        if (!is_string($json) || file_put_contents($tmp, $json, LOCK_EX) !== strlen($json) || !rename($tmp, $path)) { @unlink($tmp); return new WP_Error('logic_repair_save', 'The correction preview could not be saved.'); }
+        @chmod($path, 0640);
+        return $data;
+    }
+
+    public static function start_repair($request)
+    {
+        $workspace = (string) $request['uuid'];
+        $path = self::record_path($workspace); if (is_wp_error($path)) { return $path; }
+        $record = self::read_record($path); if (is_wp_error($record)) { return $record; }
+        $version_uuid = sanitize_text_field((string) $request->get_param('version_uuid'));
+        $version = null; foreach ($record['versions'] as $item) { if (($item['uuid'] ?? '') === $version_uuid) { $version = $item; break; } }
+        if (!$version) { return new WP_Error('logic_version', 'Select a saved image version first.', array('status' => 400)); }
+        $prompt = sanitize_textarea_field((string) $request->get_param('prompt'));
+        if (strlen($prompt) < 4 || strlen($prompt) > 500) { return new WP_Error('logic_repair_prompt', 'Describe the local correction in 4 to 500 characters.', array('status' => 400)); }
+        $mask_url = (string) $request->get_param('mask');
+        if (!preg_match('#^data:image/png;base64,([A-Za-z0-9+/=]+)$#', $mask_url, $match) || strlen($match[1]) > 12 * 1024 * 1024) { return new WP_Error('logic_repair_mask', 'Paint a correction area before requesting a preview.', array('status' => 400)); }
+        $mask_bytes = base64_decode($match[1], true); $mask = $mask_bytes !== false ? @imagecreatefromstring($mask_bytes) : false;
+        $source = self::raw_asset((string) $version['asset']['uuid'], $workspace); if (is_wp_error($source)) { return $source; }
+        $source_bytes = @file_get_contents($source['path']); $image = $source_bytes !== false ? @imagecreatefromstring($source_bytes) : false;
+        if (!$mask || !$image || !function_exists('imagecreatetruecolor')) { if ($mask) { imagedestroy($mask); } if ($image) { imagedestroy($image); } return new WP_Error('logic_repair_gd', 'This server needs GD image support to create a local correction preview.', array('status' => 503)); }
+        $width = imagesx($image); $height = imagesy($image);
+        if (imagesx($mask) !== $width || imagesy($mask) !== $height || $width * $height > 20000000) { imagedestroy($mask); imagedestroy($image); return new WP_Error('logic_repair_dimensions', 'The correction mask does not match the selected image.', array('status' => 400)); }
+        $bounds = $request->get_param('bounds');
+        if (!is_array($bounds) || !isset($bounds['x'],$bounds['y'],$bounds['right'],$bounds['bottom'])) { imagedestroy($mask); imagedestroy($image); return new WP_Error('logic_repair_bounds', 'The correction area is invalid.', array('status' => 400)); }
+        $left = max(0, min($width - 1, (int) $bounds['x'])); $top = max(0, min($height - 1, (int) $bounds['y']));
+        $right = max($left + 1, min($width, (int) $bounds['right'])); $bottom = max($top + 1, min($height, (int) $bounds['bottom']));
+        $cropW = $right - $left; $cropH = $bottom - $top;
+        if ($cropW * $cropH > 2000000) { imagedestroy($mask); imagedestroy($image); return new WP_Error('logic_repair_area', 'Choose a smaller local area (up to 2 million pixels).', array('status' => 413)); }
+        $scale = min(1, 1536 / max($cropW, $cropH)); $outW = max(1, (int) round($cropW * $scale)); $outH = max(1, (int) round($cropH * $scale));
+        $crop = imagecreatetruecolor($outW, $outH); imagecopyresampled($crop, $image, 0, 0, $left, $top, $outW, $outH, $cropW, $cropH);
+        ob_start(); imagepng($crop); $cropBytes = ob_get_clean();
+        $cropMask = imagecreatetruecolor($outW, $outH); imagealphablending($cropMask, false); imagesavealpha($cropMask, true);
+        $transparent = imagecolorallocatealpha($cropMask, 0, 0, 0, 127); imagefill($cropMask, 0, 0, $transparent);
+        imagecopyresampled($cropMask, $mask, 0, 0, $left, $top, $outW, $outH, $cropW, $cropH);
+        ob_start(); imagepng($cropMask); $maskPng = ob_get_clean(); imagedestroy($cropMask);
+        $cropAsset = SBS_Storage::store_bytes($cropBytes, 'repair-source.png', 'image/png', 'logic_check', 0, 'repair_source', 'Temporary local correction source');
+        imagedestroy($crop); imagedestroy($image);
+        if (is_wp_error($cropAsset)) { imagedestroy($mask); return $cropAsset; }
+        imagedestroy($mask);
+        $maskAsset = SBS_Storage::store_bytes($maskPng, 'repair-mask.png', 'image/png', 'logic_check', 0, 'repair_mask', 'Temporary local correction mask');
+        if (is_wp_error($maskAsset)) { SBS_Storage::delete_asset((int) $cropAsset['id']); return $maskAsset; }
+        $cropAsset = self::attach_to_record($cropAsset, $workspace); $maskAsset = self::attach_to_record($maskAsset, $workspace);
+        $job = wp_generate_uuid4();
+        $payload = array('workspace'=>$workspace,'job'=>$job,'version_uuid'=>$version_uuid,'source_uuid'=>$version['asset']['uuid'],'source_sha256'=>$version['asset']['sha256'],'crop_uuid'=>$cropAsset['uuid'],'mask_uuid'=>$maskAsset['uuid'],'bounds'=>array('x'=>$left,'y'=>$top,'width'=>$cropW,'height'=>$cropH,'out_width'=>$outW,'out_height'=>$outH),'prompt'=>$prompt,'status'=>'pending','created_at'=>gmdate('c'));
+        $saved = self::save_job($workspace, $job, $payload); if (is_wp_error($saved)) { SBS_Storage::delete_asset((int)$cropAsset['id']); SBS_Storage::delete_asset((int)$maskAsset['id']); return $saved; }
+        $response = SBS_OpenAI::submit_image('Edit the first image as a local illustration correction. The second image is a black/white mask showing pixels the user wants changed. ' . $prompt . ' Preserve composition, style and all details outside the marked region. Return the same crop framing.', array((int)$cropAsset['id'], (int)$maskAsset['id']), array('action'=>'edit','quality'=>'medium','size'=>'auto','background'=>'opaque'));
+        if (is_wp_error($response)) { self::cleanup_job_assets($payload); @unlink(self::job_path($workspace, $job)); return $response; }
+        $payload['response_id'] = (string) ($response['id'] ?? '');
+        if ($payload['response_id'] === '') { self::cleanup_job_assets($payload); @unlink(self::job_path($workspace, $job)); return new WP_Error('logic_repair_provider', 'The image provider did not create a correction job.'); }
+        self::save_job($workspace, $job, $payload);
+        return array('job_uuid'=>$job,'status'=>'pending');
+    }
+
+    public static function poll_repair($request)
+    {
+        $workspace = (string) $request['uuid']; $jobId = (string) $request['job_uuid'];
+        $job = self::read_job($workspace, $jobId); if (is_wp_error($job)) { return $job; }
+        if ($job['status'] === 'ready') { return array('status'=>'ready','preview'=>SBS_Storage::asset_by_uuid($job['preview_uuid'])); }
+        if ($job['status'] === 'failed') { return new WP_Error('logic_repair_failed', $job['error'] ?? 'The local correction failed.', array('status'=>422)); }
+        $response = SBS_OpenAI::poll($job['response_id']); if (is_wp_error($response)) { return $response; }
+        $parsed = SBS_OpenAI::parse_image_response($response);
+        if (($parsed['status'] ?? '') === 'queued' || ($parsed['status'] ?? '') === 'in_progress') { return array('status'=>'pending'); }
+        if (($parsed['status'] ?? '') !== 'completed') { $job['status']='failed'; $job['error']=$parsed['error']['message'] ?? 'The image provider could not complete this correction.'; self::save_job($workspace,$jobId,$job); return new WP_Error('logic_repair_failed',$job['error'],array('status'=>422)); }
+        $source = self::raw_asset($job['source_uuid'], $workspace); $maskAsset = self::raw_asset($job['mask_uuid'], $workspace);
+        if (is_wp_error($source) || is_wp_error($maskAsset) || !hash_equals($job['source_sha256'], hash_file('sha256',$source['path']))) { return new WP_Error('logic_repair_source', 'The selected source version changed or is unavailable.'); }
+        $orig = @imagecreatefromstring(file_get_contents($source['path'])); $mask = @imagecreatefromstring(file_get_contents($maskAsset['path'])); $generated = @imagecreatefromstring($parsed['bytes']);
+        if (!$orig || !$mask || !$generated) { return new WP_Error('logic_repair_decode','The correction preview could not be decoded.'); }
+        $b=$job['bounds']; $patch=imagecreatetruecolor($b['width'],$b['height']); imagecopyresampled($patch,$generated,0,0,0,0,$b['width'],$b['height'],imagesx($generated),imagesy($generated));
+        for ($y=0;$y<$b['height'];$y++) { for ($x=0;$x<$b['width'];$x++) { $mx=$x+$b['x']; $my=$y+$b['y']; $m=imagecolorat($mask,$mx,$my); $alpha=($m >> 24) & 0x7F; $coverage=1-($alpha/127); if ($coverage<=0.01) { continue; } $old=imagecolorat($orig,$mx,$my); $new=imagecolorat($patch,$x,$y); $a=imagecolorsforindex($orig,$old); $n=imagecolorsforindex($patch,$new); $r=(int)round($a['red']*(1-$coverage)+$n['red']*$coverage); $g=(int)round($a['green']*(1-$coverage)+$n['green']*$coverage); $bl=(int)round($a['blue']*(1-$coverage)+$n['blue']*$coverage); imagesetpixel($orig,$mx,$my,imagecolorallocate($orig,$r,$g,$bl)); } }
+        ob_start(); imagepng($orig); $final=ob_get_clean(); imagedestroy($orig); imagedestroy($mask); imagedestroy($generated); imagedestroy($patch);
+        $asset=SBS_Storage::store_bytes($final,'local-correction-preview.png','image/png','logic_check',0,'repair_preview','AI local correction preview');
+        if (is_wp_error($asset)) { return $asset; }
+        $asset=self::attach_to_record($asset,$workspace); $job['status']='ready'; $job['preview_uuid']=$asset['uuid']; self::save_job($workspace,$jobId,$job);
+        return array('status'=>'ready','preview'=>$asset);
+    }
+
+    private static function cleanup_job_assets($job)
+    {
+        foreach (array('crop_uuid','mask_uuid') as $key) { if (empty($job[$key])) { continue; } $asset=SBS_Storage::asset_by_uuid($job[$key]); if ($asset && ($asset['owner_type'] ?? '')==='logic_check' && ($asset['metadata']['logic_workspace_uuid'] ?? '')===($job['workspace'] ?? '')) { SBS_Storage::delete_asset((int)$asset['id']); } }
+    }
+
+    public static function discard_repair($request)
+    {
+        $workspace=(string)$request['uuid']; $jobId=(string)$request['job_uuid']; $job=self::read_job($workspace,$jobId); if (is_wp_error($job)) { return $job; }
+        if (!empty($job['response_id']) && $job['status']==='pending') { SBS_OpenAI::cancel($job['response_id']); }
+        self::cleanup_job_assets($job);
+        if (!empty($job['preview_uuid'])) { $asset=SBS_Storage::asset_by_uuid($job['preview_uuid']); if ($asset && ($asset['metadata']['logic_workspace_uuid'] ?? '')===$workspace) { SBS_Storage::delete_asset((int)$asset['id']); } }
+        @unlink(self::job_path($workspace,$jobId)); return array('discarded'=>true);
+    }
+
+    public static function accept_repair($request)
+    {
+        $workspace=(string)$request['uuid']; $jobId=(string)$request['job_uuid']; $job=self::read_job($workspace,$jobId); if (is_wp_error($job)) { return $job; }
+        if (($job['status'] ?? '')!=='ready') { return new WP_Error('logic_repair_pending','Wait for the correction preview before saving it.',array('status'=>409)); }
+        $path=self::record_path($workspace); $record=self::read_record($path); if (is_wp_error($record)) { return $record; }
+        $sourceFound=false; foreach ($record['versions'] as $version) { if (($version['uuid']??'')===$job['version_uuid'] && ($version['asset']['uuid']??'')===$job['source_uuid']) { $sourceFound=true; } }
+        $asset=SBS_Storage::asset_by_uuid($job['preview_uuid']); if (!$sourceFound || !$asset || ($asset['metadata']['logic_workspace_uuid']??'')!==$workspace) { return new WP_Error('logic_repair_source','The source version or preview is unavailable.'); }
+        $label=sanitize_text_field((string)$request->get_param('label')); $record['versions'][]=array('uuid'=>wp_generate_uuid4(),'number'=>count($record['versions'])+1,'label'=>$label?:'AI local correction','asset'=>$asset,'created_at'=>gmdate('c')); $record['current_version']=$record['versions'][count($record['versions'])-1]['uuid']; $record['updated_at']=gmdate('c');
+        $saved=self::save_record($path,$record); if (is_wp_error($saved)) { return $saved; }
+        self::cleanup_job_assets($job); @unlink(self::job_path($workspace,$jobId)); return $saved;
     }
 
     private static function raw_asset($asset_uuid, $record_uuid)
