@@ -201,7 +201,7 @@
         }
         var viewer=el('sbs-af-proof-viewer'), viewerStage=el('sbs-af-proof-stage'), viewerImage=el('sbs-af-proof-large'), viewerScale=1, viewerX=0, viewerY=0, viewerPointers=new Map(), viewerStart=null, viewerOpener=null;
         var aiFocus=el('sbs-af-ai-focus'), aiFocusStage=el('sbs-af-ai-focus-stage'), aiFocusImage=null, aiFocusMoveState=null, aiFocusData=null, aiFocusOpener=null, aiFocusSide='candidate', aiFocusZoom=4, aiFocusCenter=null, aiFocusPointers=new Map(), aiFocusGesture=null, aiFocusTap=null, aiFocusNoteBase='';
-        var autoCleanupState={};
+        var autoCleanupState={},lastAutoCleanup=null;
         function aiFocusFit(image){var bounds=aiFocusStage.getBoundingClientRect();return Math.min(bounds.width/image.naturalWidth,bounds.height/image.naturalHeight);}
         function aiFocusClampScroll(){aiFocusStage.scrollLeft=Math.max(0,Math.min(aiFocusStage.scrollWidth-aiFocusStage.clientWidth,aiFocusStage.scrollLeft));aiFocusStage.scrollTop=Math.max(0,Math.min(aiFocusStage.scrollHeight-aiFocusStage.clientHeight,aiFocusStage.scrollTop));}
         function updateAiFocusMarker(width,height){
@@ -319,14 +319,13 @@
                 var blob=await new Promise(function(resolve,reject){canvas.toBlob(function(b){b?resolve(b):reject(new Error('Could not prepare the new PNG copy.'));},'image/png');});
                 await saveImageEdit(blob,'touchup',version.uuid,button);
                 var state=autoCleanupState[finding.id]||(autoCleanupState[finding.id]={passes:0,changed:0,stopped:false});
-                state.passes++;state.changed+=changed;state.remaining=remaining;state.sourceVersion=version.uuid;
-                state.stopped=remaining===0||state.passes>=2;
-                status.dataset.state=remaining?'warning':'success';
-                status.textContent=remaining?'Pass '+state.passes+' changed '+changed+' pixels; issues remain. Compare the copy before deciding.':'Pass '+state.passes+' checked. No matching colour fringe remains in this square; compare before saving.';
+                state.passes++;state.changed+=changed;state.remaining=remaining;state.sourceVersion=version.uuid;state.finding=finding;state.stopped=remaining===0||state.passes>=2;state.version=current.current_version;lastAutoCleanup={finding:finding,state:state,version:current.current_version};
+                status.dataset.state='warning';
+                status.textContent=remaining?'Pass '+state.passes+' changed '+changed+' pixels. Issues remain; compare before repeating.':'Pass '+state.passes+' saved. The safe check found no matching fringe; compare and recheck before marking successful.';
                 button.disabled=state.stopped;
                 render();
-                var overall=el('sbs-af-ai-status');overall.dataset.state=remaining?'review':'success';overall.textContent=status.textContent;
-                message(status.textContent,remaining>0);
+                var overall=el('sbs-af-ai-status');overall.dataset.state='review';overall.textContent=status.textContent;
+                message(status.textContent+' Compare the copy and run the artwork check before treating it as finished.',true);
             }catch(error){status.dataset.state='fail';status.textContent='Fix not saved; check the original and try again later.';button.disabled=false;message(error.message,true);throw error;}
         }
         function renderAiReview(version){
@@ -335,11 +334,21 @@
             if(!version)return;
             if(status.dataset.version!==version.uuid){status.dataset.version=version.uuid;status.dataset.state='';status.textContent=version.ai_review?'Comparison complete. See the report below.':'Not run. This check is optional.';}
             var reject=document.createElement('button');reject.type='button';reject.className='sbs-button';reject.textContent='Reject this candidate (keep in history)';reject.disabled=busy||version.review_disposition==='rejected';reject.addEventListener('click',function(){if(window.confirm('Reject this candidate? Its version and artwork will remain in history, and it cannot be approved.'))operation(function(){return action('reject_candidate');},'Marking candidate rejected; history is preserved…',reject);});report.appendChild(reject);
-            if(!version.ai_review){if(status.dataset.state!=='error'&&status.textContent.indexOf('Comparing')!==0){status.dataset.state='';status.textContent='Not run. This check is optional.';}var prompt=document.createElement('p');prompt.textContent='No AI comparison has been run. AI review is optional.';report.appendChild(prompt);return;}
+            if(!version.ai_review){
+                if(status.dataset.state!=='error'&&status.textContent.indexOf('Comparing')!==0){status.dataset.state='';status.textContent='Not run. This check is optional.';}
+                var prompt=document.createElement('p');prompt.textContent='No AI comparison has been run. AI review is optional.';report.appendChild(prompt);
+                if(lastAutoCleanup&&lastAutoCleanup.version===version.uuid){
+                    var pendingStatus=document.createElement('p');pendingStatus.className='sbs-af-cleanup-status';pendingStatus.dataset.state='warning';pendingStatus.setAttribute('role','status');pendingStatus.textContent='Cleanup copy saved. Compare it, then recheck before treating the issue as fixed.';report.appendChild(pendingStatus);
+                    var followup=document.createElement('div');followup.className='sbs-af-finding-actions';followup.setAttribute('role','group');followup.setAttribute('aria-label','Next steps after automatic cleanup');
+                    var compare=document.createElement('button');compare.type='button';compare.className='sbs-button';compare.textContent='3. Compare copy';compare.addEventListener('click',function(){openAiFocus(lastAutoCleanup.finding,compare);});followup.appendChild(compare);
+                    var recheck=document.createElement('button');recheck.type='button';recheck.className='sbs-button';recheck.textContent='4. Recheck artwork';recheck.addEventListener('click',function(){operation(function(){return action('ai_review');},'Rechecking the edited copy…',recheck);});followup.appendChild(recheck);report.appendChild(followup);
+                }
+                return;
+            }
             var result=version.ai_review,findings=(result.findings||[]).filter(function(finding){return finding.severity!=='info';});
-            status.dataset.state=result.overall==='unable'?'review':'success';
-            status.textContent=findings.length?'AI check: '+findings.length+' area'+(findings.length===1?'':'s')+' to inspect.':result.overall==='unable'?'AI could not assess the image reliably.':'AI check: no specific issues flagged.';
-            if(!findings.length){var none=document.createElement('p');none.textContent=result.overall==='unable'?'Try the 4× comparison and inspect the artwork manually.':'No specific issues flagged. AI can miss defects.';report.appendChild(none);return;}
+            status.dataset.state='review';
+            status.textContent=findings.length?'AI check: '+findings.length+' area'+(findings.length===1?'':'s')+' to inspect.':result.overall==='unable'?'AI could not assess the image reliably.':'No specific issues flagged; compare the copy before treating it as verified.';
+            if(!findings.length){var none=document.createElement('p');none.textContent=result.overall==='unable'?'Try the 4× comparison and inspect the artwork manually.':'No specific issues flagged. This check cannot prove that every defect is gone.';report.appendChild(none);return;}
             var findingsHeading=document.createElement('h4');findingsHeading.textContent='Areas to inspect';report.appendChild(findingsHeading);
             var zoomHelp=document.createElement('p');zoomHelp.className='sbs-af-ai-zoom-help';zoomHelp.textContent='View area opens at 4×. The outlined square is also the limit for automatic cleanup.';report.appendChild(zoomHelp);
             var findingsList=document.createElement('ol');findingsList.className='sbs-af-review-points sbs-af-ai-findings';
