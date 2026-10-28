@@ -34,8 +34,8 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0.3.0/);
-assert.match(plugin, /define\('SBS_VERSION', '0.3.0'\)/);
+assert.match(plugin, /Version: 0.3.1/);
+assert.match(plugin, /define\('SBS_VERSION', '0.3.1'\)/);
 assert.match(studio, /button\.closest\('\.sbs-character-page-menu'\)\) \{ return; \}/, 'Character menu entries must not receive information buttons');
 const mainNav = studioTemplate.match(/<nav id="sbs-primary-nav"[\s\S]*?<\/nav>/)[0];
 assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="freestyle"'));
@@ -192,7 +192,7 @@ assert.match(template, /id="sbs-af-print-proof"[^>]*hidden/);
 assert.match(template, /id="sbs-af-handoff"/);
 assert.match(template, /Copy ChatGPT handoff/);
 assert.match(template, /id="sbs-af-ai-status" role="status"/);
-assert.match(template, /4\. Run AI comparison \(optional\)/);
+assert.match(template, /1\. Scan artwork \(optional\)/);
 assert.match(template, /7\. Build approved ZIP/);
 assert.match(template, /Garment-colour proof backgrounds/);
 assert.match(template, /id="sbs-af-proof-viewer"[^>]*aria-modal="true"/);
@@ -249,7 +249,7 @@ assert.match(finishing, /Do not run another upscale/);
 assert.match(backend, /\$r\['original_qa'\]\['width'\].*\$pw/);
 assert.match(finishing, /button\.disabled=busy\|\|!current/);
 assert.match(finishing, /await action\('run'\)/);
-assert.match(template, /4\. Run AI comparison \(optional\)/);
+assert.match(template, /1\. Scan artwork \(optional\)/);
 assert.match(template, /id="sbs-af-ai-status" role="status"/);
 assert.match(template, /does not edit images/);
 assert.match(backend, /\$action==='ai_review'/);
@@ -259,6 +259,52 @@ assert.match(backend, /transparency_sample_matches/);
 assert.match(read('includes/class-sbs-openai.php'), /review_finishing_artwork/);
 assert.match(read('includes/class-sbs-openai.php'), /You only report observations; you never edit or generate images/);
 assert.match(finishing, /function renderAiReview/);
+assert.match(finishing, /function runAutomaticSquareCleanup/);
+assert.match(finishing, /function cleanupFocusBox/);
+const cleanEdgeFringeRegion = finishingContext.window.SBSFinishing.cleanEdgeFringeRegion;
+const cleanupFocusBox = finishingContext.window.SBSFinishing.cleanupFocusBox;
+assert.equal(typeof cleanEdgeFringeRegion, 'function');
+const syntheticWidth = 100, syntheticHeight = 100;
+const originalPixels = new Uint8ClampedArray(syntheticWidth * syntheticHeight * 4);
+for (let i = 0; i < originalPixels.length; i += 4) {
+    originalPixels[i] = 80; originalPixels[i + 1] = 100; originalPixels[i + 2] = 120; originalPixels[i + 3] = 255;
+}
+const focusedBox = cleanupFocusBox(syntheticWidth, syntheticHeight, { x: .5, y: .5 });
+assert.deepEqual({ x: focusedBox.x, y: focusedBox.y, w: focusedBox.w, h: focusedBox.h }, { x: 18, y: 18, w: 64, h: 64 });
+const outsideIndex = (5 * syntheticWidth + 5) * 4;
+originalPixels.set([255, 0, 0, 128], outsideIndex);
+const regionPixels = new Uint8ClampedArray(focusedBox.w * focusedBox.h * 4);
+for (let y = 0; y < focusedBox.h; y++) for (let x = 0; x < focusedBox.w; x++) {
+    const src = ((focusedBox.y + y) * syntheticWidth + focusedBox.x + x) * 4;
+    const dst = (y * focusedBox.w + x) * 4;
+    regionPixels.set(originalPixels.slice(src, src + 4), dst);
+}
+const fringe = (32 * focusedBox.w + 32) * 4;
+regionPixels.set([255, 0, 0, 128], fringe);
+for (let y = 20; y <= 24; y++) for (let x = 20; x <= 24; x++) regionPixels.set([80, 100, 120, 100], (y * focusedBox.w + x) * 4);
+const alphaBefore = [];
+for (let i = 3; i < regionPixels.length; i += 4) alphaBefore.push(regionPixels[i]);
+const cleanupResult = cleanEdgeFringeRegion(regionPixels, focusedBox.w, focusedBox.h);
+assert.ok(cleanupResult.changed >= 1, 'A coloured, partly transparent edge pixel should be corrected');
+assert.equal(cleanupResult.remaining, 0, 'The corrected synthetic fringe should pass the same follow-up scan');
+assert.deepEqual(Array.from(regionPixels.slice(fringe, fringe + 4)), [80, 100, 120, 128], 'Correction should use nearby artwork colour while keeping alpha');
+for (let i = 3, index = 0; i < regionPixels.length; i += 4, index++) assert.equal(regionPixels[i], alphaBefore[index], 'Every alpha value must be preserved');
+assert.equal(regionPixels[(22 * focusedBox.w + 22) * 4 + 3], 100, 'Soft smoke-like partial transparency should remain');
+const finalPixels = new Uint8ClampedArray(originalPixels);
+for (let y = 0; y < focusedBox.h; y++) for (let x = 0; x < focusedBox.w; x++) {
+    const src = (y * focusedBox.w + x) * 4;
+    const dst = ((focusedBox.y + y) * syntheticWidth + focusedBox.x + x) * 4;
+    finalPixels.set(regionPixels.slice(src, src + 4), dst);
+}
+assert.deepEqual(Array.from(finalPixels.slice(outsideIndex, outsideIndex + 4)), [255, 0, 0, 128], 'A coloured pixel outside the highlighted square must remain untouched');
+assert.equal(finalPixels[(0 * syntheticWidth + 0) * 4 + 3], 255, 'Unrelated artwork alpha must be preserved');
+assert.match(finishing, /lastAutoCleanup/);
+assert.match(finishing, /Cleanup copy saved\. Compare it, then recheck before treating the issue as fixed\./);
+assert.match(template, /id="sbs-af-focus-fix"[^>]*>Auto-clean square/);
+assert.doesNotMatch(template, /<circle cx="50" cy="50" r="3"><\/circle>/);
+assert.match(css, /\.sbs-af-cleanup-status\[data-state="warning"\]/);
+assert.match(css, /#sbs-af-ai-status:before/);
+
 assert.match(finishing, /function renderHandoff\(version\)/);
 assert.match(finishing, /var sx=Number\(q\.width\)\/Number\(sourceQA\.width\),sy=Number\(q\.height\)\/Number\(sourceQA\.height\)/);
 assert.match(finishing, /Suggested maximum: '\+suggested/);
@@ -276,7 +322,7 @@ assert.match(finishing, /Please compare the attached original\/ and candidate\//
 assert.match(finishing, /filter\(function\(finding\)\{return finding\.severity!=='info';\}\)/);
 assert.match(finishing, /View area/);
 assert.match(finishing, /openAiFocus\(finding,zoomButton\)/);
-assert.match(finishing, /AI-estimated location\. A yellow outline marks the approximate area/);
+assert.match(finishing, /AI-estimated location\. The square is the exact area for automatic edge cleanup/);
 assert.match(finishing, /function updateAiFocusMarker\(width,height\)/);
 assert.match(finishing, /marker\.removeAttribute\('hidden'\)/, 'SVG issue outline must be unhidden with an SVG attribute');
 assert.match(template, /<rect x="4" y="4" width="92" height="92" rx="8"><\/rect>/);

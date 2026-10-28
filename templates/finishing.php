@@ -90,9 +90,9 @@
         <p id="sbs-af-print-status" class="sbs-af-print-status" role="status" aria-live="polite" data-state="warning">Enter a print size to see the PPI estimate.</p>
         <div id="sbs-af-qa"></div>
         <section id="sbs-af-ai-review" class="sbs-af-ai-review" aria-labelledby="sbs-af-ai-review-title" hidden>
-            <h3 id="sbs-af-ai-review-title">AI quality check</h3>
-            <p>Optional: send both images to OpenAI. This may use credits. It reports issues but does not edit images.</p>
-            <button id="sbs-af-ai-review-run" class="sbs-button" type="button">4. Run AI comparison (optional)</button>
+            <h3 id="sbs-af-ai-review-title">1. Scan artwork</h3>
+            <p>Looks for possible issues. It does not edit images. This optional AI scan sends the original and candidate to OpenAI and may use credits.</p>
+            <button id="sbs-af-ai-review-run" class="sbs-button" type="button">1. Scan artwork (optional)</button>
             <p id="sbs-af-ai-status" role="status" aria-live="polite" aria-atomic="true">Not run. This check is optional.</p>
             <div id="sbs-af-ai-review-report" class="sbs-af-ai-review-report" aria-live="polite"></div>
         </section>
@@ -127,8 +127,8 @@
             <button id="sbs-af-ai-focus-original" type="button" class="sbs-button">Original</button>
             <button id="sbs-af-ai-focus-candidate" type="button" class="sbs-button">Candidate</button>
         </div>
-        <div id="sbs-af-ai-focus-stage" class="sbs-af-ai-focus-stage" tabindex="0" aria-label="Issue comparison. Pinch to zoom, drag to pan, tap to switch between original and candidate. Scroll bars are also available."><svg id="sbs-af-ai-focus-marker" class="sbs-af-ai-focus-marker" hidden viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><rect x="4" y="4" width="92" height="92" rx="8"></rect><circle cx="50" cy="50" r="3"></circle></svg></div>
-        <div class="sbs-af-finding-actions" role="group" aria-label="Review this finding"><button type="button" class="sbs-button" data-af-finding-decision="intentional">Accept as intentional</button><button type="button" class="sbs-button" data-af-finding-decision="false_alarm">False alarm</button><button id="sbs-af-focus-fix" type="button" class="sbs-button">Fix here</button><button type="button" class="sbs-button" data-af-finding-decision="unresolved">Leave unresolved</button></div>
+        <div id="sbs-af-ai-focus-stage" class="sbs-af-ai-focus-stage" tabindex="0" aria-label="Issue comparison. Pinch to zoom, drag to pan, tap to switch between original and candidate. Scroll bars are also available."><svg id="sbs-af-ai-focus-marker" class="sbs-af-ai-focus-marker" hidden viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><rect x="4" y="4" width="92" height="92" rx="8"></rect></svg></div>
+        <div class="sbs-af-finding-actions" role="group" aria-label="Review this finding"><button type="button" class="sbs-button" data-af-finding-decision="intentional">Accept as intentional</button><button type="button" class="sbs-button" data-af-finding-decision="false_alarm">False alarm</button><button id="sbs-af-focus-fix" type="button" class="sbs-button">Auto-clean square</button><button type="button" class="sbs-button" data-af-finding-decision="unresolved">Leave unresolved</button></div>
     </div>
     <div id="sbs-af-editor" class="sbs-af-editor" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-editor-title">
         <header class="sbs-af-editor-head"><div><h2 id="sbs-af-editor-title">Clean transparent artwork</h2><p>Changes apply to a new copy. The selected candidate and original stay in history.</p></div><button id="sbs-af-editor-close" class="sbs-af-ai-focus-close" type="button" aria-label="Close editor">×</button></header>

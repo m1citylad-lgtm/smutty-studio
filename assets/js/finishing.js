@@ -10,6 +10,41 @@
         for(var i=3;i<data.length;i+=4){if(data[i]===0)clear=true;else if(data[i]<255)partial=true;}
         return partial?'Partial alpha':clear?'Genuine transparency':'Opaque';
     }
+    function cleanupFocusBox(width,height,focus){
+        var side=Math.round(Math.max(64,Math.min(180,Math.min(width,height)*.08)));
+        side=Math.min(side,width,height);
+        var x=Math.max(0,Math.min(width-side,Math.round(Number(focus.x)*width-side/2)));
+        var y=Math.max(0,Math.min(height-side,Math.round(Number(focus.y)*height-side/2)));
+        return {x:x,y:y,w:side,h:side};
+    }
+    function medianChannel(values){values.sort(function(a,b){return a-b;});return values[Math.floor(values.length/2)]||0;}
+    function cleanEdgeFringeRegion(data,width,height){
+        if(!data||!data.length||data.length!==width*height*4)throw new Error('Decoded pixels are unavailable');
+        var source=new Uint8ClampedArray(data),out=new Uint8ClampedArray(data),pending=[];
+        function findFringes(input,collect){
+            var count=0;
+            for(var y=0;y<height;y++)for(var x=0;x<width;x++){
+                var i=(y*width+x)*4,a=input[i+3];if(a===0||a===255)continue;
+                var rs=[],gs=[],bs=[];
+                for(var ny=Math.max(0,y-2);ny<=Math.min(height-1,y+2);ny++)for(var nx=Math.max(0,x-2);nx<=Math.min(width-1,x+2);nx++){
+                    if(nx===x&&ny===y)continue;
+                    var ni=(ny*width+nx)*4;if(input[ni+3]===255){rs.push(input[ni]);gs.push(input[ni+1]);bs.push(input[ni+2]);}
+                }
+                if(rs.length<5)continue;
+                var mr=medianChannel(rs),mg=medianChannel(gs),mb=medianChannel(bs);
+                if(Math.max(Math.abs(input[i]-mr),Math.abs(input[i+1]-mg),Math.abs(input[i+2]-mb))>42){
+                    count++;if(collect)pending.push([i,mr,mg,mb]);
+                }
+            }
+            return count;
+        }
+        findFringes(source,true);
+        pending.forEach(function(p){out[p[0]]=p[1];out[p[0]+1]=p[2];out[p[0]+2]=p[3];});
+        var changed=0;
+        for(var i=0;i<source.length;i+=4)if(source[i]!==out[i]||source[i+1]!==out[i+1]||source[i+2]!==out[i+2])changed++;
+        data.set(out);
+        return {changed:changed,remaining:findFringes(out,false)};
+    }
     function init() {
         var root=document.getElementById('sbs-app');if(!root)return;
         var current=null, records=[], busy=false, activeStageMethod='', selectedFile=null, selectedMethod='inspect', exportPickerOpen=false, proofPreviewUrl=null, proofSourceKey='', proofRenderedKey='', activePrintQA=null, activeProofAssetUrl='', flatPreviewBlob=null, flatPreviewUrl=null, flatPreviewKey='', refreshPromise=null, stageRunState={};
@@ -201,14 +236,16 @@
         }
         var viewer=el('sbs-af-proof-viewer'), viewerStage=el('sbs-af-proof-stage'), viewerImage=el('sbs-af-proof-large'), viewerScale=1, viewerX=0, viewerY=0, viewerPointers=new Map(), viewerStart=null, viewerOpener=null;
         var aiFocus=el('sbs-af-ai-focus'), aiFocusStage=el('sbs-af-ai-focus-stage'), aiFocusImage=null, aiFocusMoveState=null, aiFocusData=null, aiFocusOpener=null, aiFocusSide='candidate', aiFocusZoom=4, aiFocusCenter=null, aiFocusPointers=new Map(), aiFocusGesture=null, aiFocusTap=null, aiFocusNoteBase='';
+        var autoCleanupState={},lastAutoCleanup=null,autoCleanupWorkspace='';
         function aiFocusFit(image){var bounds=aiFocusStage.getBoundingClientRect();return Math.min(bounds.width/image.naturalWidth,bounds.height/image.naturalHeight);}
         function aiFocusClampScroll(){aiFocusStage.scrollLeft=Math.max(0,Math.min(aiFocusStage.scrollWidth-aiFocusStage.clientWidth,aiFocusStage.scrollLeft));aiFocusStage.scrollTop=Math.max(0,Math.min(aiFocusStage.scrollHeight-aiFocusStage.clientHeight,aiFocusStage.scrollTop));}
         function updateAiFocusMarker(width,height){
             var marker=el('sbs-af-ai-focus-marker');
             if(!aiFocusData||!aiFocusData.focus||!width||!height){marker.setAttribute('hidden','');return;}
-            var side=Math.max(64,Math.min(180,Math.min(width,height)*.08));
-            marker.style.width=side+'px';marker.style.height=side+'px';
-            marker.style.left=(aiFocusData.focus.x*width-side/2)+'px';marker.style.top=(aiFocusData.focus.y*height-side/2)+'px';marker.removeAttribute('hidden');
+            var naturalW=aiFocusImage&&aiFocusImage.naturalWidth||width,naturalH=aiFocusImage&&aiFocusImage.naturalHeight||height;
+            var box=cleanupFocusBox(naturalW,naturalH,aiFocusData.focus);
+            marker.style.width=(box.w/naturalW*width)+'px';marker.style.height=(box.h/naturalH*height)+'px';
+            marker.style.left=(box.x/naturalW*width)+'px';marker.style.top=(box.y/naturalH*height)+'px';marker.removeAttribute('hidden');
         }
         function positionAiFocusImage(){
             if(aiFocus.hidden||!aiFocusImage||!aiFocusImage.complete||!aiFocusImage.naturalWidth)return;
@@ -235,14 +272,14 @@
             var version=current&&current.versions.find(function(v){return v.uuid===current.current_version;});if(!current||!current.original||!version||!version.asset)return;
             var focus=finding.focus&&isFinite(Number(finding.focus.x))&&isFinite(Number(finding.focus.y))&&Number(finding.focus.x)>=0&&Number(finding.focus.x)<=1&&Number(finding.focus.y)>=0&&Number(finding.focus.y)<=1?{x:Number(finding.focus.x),y:Number(finding.focus.y)}:null;
             aiFocusData={area:finding.area||'Flagged area',focus:focus,original:current.original,candidate:version.asset,finding:finding};aiFocusOpener=opener||document.activeElement;aiFocusZoom=4;aiFocusCenter=focus||{x:.5,y:.5};aiFocusPointers.clear();aiFocusGesture=null;aiFocusTap=null;
-            el('sbs-af-ai-focus-title').textContent=aiFocusData.area;aiFocusNoteBase=focus?'AI-estimated location. A yellow outline marks the approximate area and follows it as you zoom and pan; it is not an exact defect boundary. Starts at 4×; pinch to zoom, drag to pan, tap to compare.':'No AI location was saved. No area outline is available. Starts at 4×; pinch to zoom, drag to pan, tap to compare.';
+            el('sbs-af-ai-focus-title').textContent=aiFocusData.area;aiFocusNoteBase=focus?'AI-estimated location. The square is the exact area for automatic edge cleanup; only edge colour can change, transparency stays as it is. Starts at 4×; pinch to zoom, drag to pan, tap to compare.':'No AI location was saved. No area outline is available. Starts at 4×; pinch to zoom, drag to pan, tap to compare.';
             if(finding.method==='sampled_alpha')aiFocusNoteBase='Approximate sampled point; it may be intentional. A yellow outline marks the nearby area, not the defect boundary. Starts at 4×; pinch to zoom, drag to pan, tap to compare.';updateAiFocusNote();
             aiFocus.hidden=false;document.body.style.overflow='hidden';setAiFocusSide('candidate');el('sbs-af-ai-focus-close').focus();
         }
         function closeAiFocus(){if(aiFocus.hidden)return;aiFocus.hidden=true;if(aiFocusMoveState){aiFocusMoveState.parent.insertBefore(aiFocusMoveState.node,aiFocusMoveState.next&&aiFocusMoveState.next.parentNode===aiFocusMoveState.parent?aiFocusMoveState.next:null);aiFocusMoveState.node.style.cssText=aiFocusMoveState.cssText;aiFocusMoveState.node.alt=aiFocusMoveState.alt;aiFocusMoveState.node.hidden=aiFocusMoveState.hidden;aiFocusMoveState.node.onload=aiFocusMoveState.onload;aiFocusMoveState=null;}aiFocusImage=null;aiFocusStage.scrollLeft=0;aiFocusStage.scrollTop=0;aiFocusData=null;aiFocusCenter=null;aiFocusPointers.clear();aiFocusGesture=null;aiFocusTap=null;el('sbs-af-ai-focus-marker').setAttribute('hidden','');document.body.style.overflow='';if(aiFocusOpener&&aiFocusOpener.focus)aiFocusOpener.focus();}
         el('sbs-af-ai-focus-original').addEventListener('click',function(){setAiFocusSide('original');});el('sbs-af-ai-focus-candidate').addEventListener('click',function(){setAiFocusSide('candidate');});el('sbs-af-ai-focus-close').addEventListener('click',closeAiFocus);
         document.querySelectorAll('[data-af-finding-decision]').forEach(function(button){button.addEventListener('click',function(){if(!aiFocusData||!aiFocusData.finding)return;var finding=aiFocusData.finding;closeAiFocus();reviewFinding(finding,button.getAttribute('data-af-finding-decision'));});});
-        el('sbs-af-focus-fix').addEventListener('click',function(){if(!aiFocusData||!aiFocusData.finding)return;var finding=aiFocusData.finding;closeAiFocus();openArtworkEditor(finding);});
+        el('sbs-af-focus-fix').addEventListener('click',function(){if(!aiFocusData||!aiFocusData.finding)return;var finding=aiFocusData.finding,status=el('sbs-af-ai-status'),button=el('sbs-af-focus-fix');closeAiFocus();runAutomaticSquareCleanup(finding,button,status).catch(function(){});});
         function aiFocusPoint(event){var rect=aiFocusStage.getBoundingClientRect();return {x:event.clientX-rect.left,y:event.clientY-rect.top};}
         function beginAiFocusGesture(){var points=Array.from(aiFocusPointers.values()).slice(0,2);if(points.length<2||!aiFocusImage)return;var mid={x:(points[0].x+points[1].x)/2,y:(points[0].y+points[1].y)/2},distance=Math.max(1,Math.hypot(points[1].x-points[0].x,points[1].y-points[0].y)),factor=aiFocusFit(aiFocusImage)*aiFocusZoom;aiFocusGesture={distance:distance,zoom:aiFocusZoom,anchorX:(aiFocusStage.scrollLeft+mid.x)/factor,anchorY:(aiFocusStage.scrollTop+mid.y)/factor};}
         function aiFocusPointerDown(event){if(!aiFocusData||event.target.closest('button'))return;event.preventDefault();aiFocusStage.setPointerCapture(event.pointerId);var p=aiFocusPoint(event);aiFocusPointers.set(event.pointerId,p);if(aiFocusPointers.size===1)aiFocusTap={id:event.pointerId,x:p.x,y:p.y,left:aiFocusStage.scrollLeft,top:aiFocusStage.scrollTop,moved:false};else{aiFocusTap=null;if(aiFocusPointers.size===2)beginAiFocusGesture();}}
@@ -267,21 +304,80 @@
         document.addEventListener('keydown',function(event){if(event.key==='Escape'){if(!aiFocus.hidden){event.preventDefault();closeAiFocus();}else if(!viewer.hidden){event.preventDefault();closeProofViewer();}}});
         viewerImage.addEventListener('load',resetViewer);
         function friendlyName(title){return (title||'Artwork').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[\u2018\u2019']/g,'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,110)||'Artwork';}
+        async function runAutomaticSquareCleanup(finding,button,status){
+            var version=selectedCandidate();
+            if(!current||!version||!finding.focus)throw new Error('Select a candidate and a flagged area first.');
+            button.disabled=true;status.dataset.state='busy';status.textContent='Working…';
+            message('Checking only the highlighted square. The original is unchanged.');
+            try{
+                var image=new Image();image.src=version.asset.url;await image.decode();
+                var canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
+                var ctx=canvas.getContext('2d',{willReadFrequently:true});if(!ctx)throw new Error('Automatic cleanup is unavailable in this browser.');
+                ctx.drawImage(image,0,0);
+                var box=cleanupFocusBox(canvas.width,canvas.height,finding.focus);
+                var region=ctx.getImageData(box.x,box.y,box.w,box.h);
+                var cleanup=cleanEdgeFringeRegion(region.data,box.w,box.h),changed=cleanup.changed,remaining=cleanup.remaining;
+                if(!changed){status.dataset.state='warning';status.textContent='No safe changes found. Don’t repeat this pass.';button.disabled=true;message('No edge pixels could be changed safely. The original and candidate are unchanged.');return;}
+                region.data.set(out);ctx.putImageData(region,box.x,box.y);
+                var blob=await new Promise(function(resolve,reject){canvas.toBlob(function(b){b?resolve(b):reject(new Error('Could not prepare the new PNG copy.'));},'image/png');});
+                await saveImageEdit(blob,'touchup',version.uuid,button);
+                var state=autoCleanupState[finding.id]||(autoCleanupState[finding.id]={passes:0,changed:0,stopped:false});
+                state.passes++;state.changed+=changed;state.remaining=remaining;state.sourceVersion=version.uuid;state.finding=finding;state.stopped=remaining===0||state.passes>=2;state.version=current.current_version;persistAutoCleanupState();lastAutoCleanup={finding:finding,state:state,version:current.current_version};
+                status.dataset.state='warning';
+                status.textContent=remaining?'Pass '+state.passes+' changed '+changed+' pixels. Issues remain; compare before repeating.':'Pass '+state.passes+' saved. The safe check found no matching fringe; compare and recheck before marking successful.';
+                button.disabled=state.stopped;
+                render();
+                var overall=el('sbs-af-ai-status');overall.dataset.state='review';overall.textContent=status.textContent;
+                message(status.textContent+' Compare the copy and run the artwork check before treating it as finished.',true);
+            }catch(error){status.dataset.state='fail';status.textContent='Fix not saved; check the original and try again later.';button.disabled=false;message(error.message,true);throw error;}
+        }
         function renderAiReview(version){
             var section=el('sbs-af-ai-review'),button=el('sbs-af-ai-review-run'),report=el('sbs-af-ai-review-report'),status=el('sbs-af-ai-status');
             section.hidden=!version;button.disabled=busy||!version;report.replaceChildren();
             if(!version)return;
             if(status.dataset.version!==version.uuid){status.dataset.version=version.uuid;status.dataset.state='';status.textContent=version.ai_review?'Comparison complete. See the report below.':'Not run. This check is optional.';}
             var reject=document.createElement('button');reject.type='button';reject.className='sbs-button';reject.textContent='Reject this candidate (keep in history)';reject.disabled=busy||version.review_disposition==='rejected';reject.addEventListener('click',function(){if(window.confirm('Reject this candidate? Its version and artwork will remain in history, and it cannot be approved.'))operation(function(){return action('reject_candidate');},'Marking candidate rejected; history is preserved…',reject);});report.appendChild(reject);
-            if(!version.ai_review){if(status.dataset.state!=='error'&&status.textContent.indexOf('Comparing')!==0){status.dataset.state='';status.textContent='Not run. This check is optional.';}var prompt=document.createElement('p');prompt.textContent='No AI comparison has been run. AI review is optional.';report.appendChild(prompt);return;}
+            if(!version.ai_review){
+                if(status.dataset.state!=='error'&&status.textContent.indexOf('Comparing')!==0){status.dataset.state='';status.textContent='Not run. This check is optional.';}
+                var prompt=document.createElement('p');prompt.textContent='No AI comparison has been run. AI review is optional.';report.appendChild(prompt);
+                if(lastAutoCleanup&&lastAutoCleanup.version===version.uuid){
+                    var pendingStatus=document.createElement('p');pendingStatus.className='sbs-af-cleanup-status';pendingStatus.dataset.state='warning';pendingStatus.setAttribute('role','status');pendingStatus.textContent='Cleanup copy saved. Compare it, then recheck before treating the issue as fixed.';report.appendChild(pendingStatus);
+                    var followup=document.createElement('div');followup.className='sbs-af-finding-actions';followup.setAttribute('role','group');followup.setAttribute('aria-label','Next steps after automatic cleanup');
+                    var compare=document.createElement('button');compare.type='button';compare.className='sbs-button';compare.textContent='3. Compare copy';compare.addEventListener('click',function(){openAiFocus(lastAutoCleanup.finding,compare);});followup.appendChild(compare);
+                    var recheck=document.createElement('button');recheck.type='button';recheck.className='sbs-button';recheck.textContent='4. Recheck artwork';recheck.addEventListener('click',function(){operation(function(){return action('ai_review');},'Rechecking the edited copy…',recheck);});followup.appendChild(recheck);report.appendChild(followup);
+                }
+                return;
+            }
             var result=version.ai_review,findings=(result.findings||[]).filter(function(finding){return finding.severity!=='info';});
-            status.dataset.state=result.overall==='unable'?'review':'success';
-            status.textContent=findings.length?'AI check: '+findings.length+' area'+(findings.length===1?'':'s')+' to inspect.':result.overall==='unable'?'AI could not assess the image reliably.':'AI check: no specific issues flagged.';
-            if(!findings.length){var none=document.createElement('p');none.textContent=result.overall==='unable'?'Try the 4× comparison and inspect the artwork manually.':'No specific issues flagged. AI can miss defects.';report.appendChild(none);return;}
+            status.dataset.state=findings.some(function(f){return f.severity==='concern';})?'fail':'review';
+            status.textContent=findings.length?'AI check: '+findings.length+' area'+(findings.length===1?'':'s')+' to inspect.':result.overall==='unable'?'AI could not assess the image reliably.':'No specific issues flagged; compare the copy before treating it as verified.';
+            if(!findings.length){var none=document.createElement('p');none.textContent=result.overall==='unable'?'Try the 4× comparison and inspect the artwork manually.':'No specific issues flagged. This check cannot prove that every defect is gone.';report.appendChild(none);return;}
             var findingsHeading=document.createElement('h4');findingsHeading.textContent='Areas to inspect';report.appendChild(findingsHeading);
-            var zoomHelp=document.createElement('p');zoomHelp.className='sbs-af-ai-zoom-help';zoomHelp.textContent='View area opens at 4× and centres on the estimate. A yellow outline marks the approximate area and follows it during zoom and pan; it is not an exact defect boundary.';report.appendChild(zoomHelp);
+            var zoomHelp=document.createElement('p');zoomHelp.className='sbs-af-ai-zoom-help';zoomHelp.textContent='View area opens at 4×. The outlined square is also the limit for automatic cleanup.';report.appendChild(zoomHelp);
             var findingsList=document.createElement('ol');findingsList.className='sbs-af-review-points sbs-af-ai-findings';
-            findings.forEach(function(finding,index){var item=document.createElement('li');item.dataset.severity=finding.severity;var heading=document.createElement('strong');heading.textContent=(index+1)+'. '+finding.area;item.appendChild(heading);var severity=document.createElement('p');severity.className='sbs-af-finding-status';severity.textContent=finding.severity==='concern'?'ACTION NEEDED — review before approval':'REVIEW — AI suggestion; confirm against the original';item.appendChild(severity);var issue=document.createElement('p');issue.textContent=finding.issue+' Next: '+finding.action;item.appendChild(issue);var saved=(version.review_decisions||{})[finding.id],state=document.createElement('p');state.className='sbs-af-finding-decision';state.textContent=saved?'Your review: '+saved.decision.replace('_',' '):'Not confirmed as a defect until you review it.';item.appendChild(state);var row=document.createElement('div');row.className='sbs-af-finding-actions';function addButton(label,callback){var b=document.createElement('button');b.type='button';b.className='sbs-button';b.textContent=label;b.disabled=!finding.id; b.addEventListener('click',callback);row.appendChild(b);return b;}var zoomButton=document.createElement('button');zoomButton.type='button';zoomButton.className='sbs-button sbs-af-ai-zoom-button';zoomButton.textContent='View area';zoomButton.setAttribute('aria-label','Open 4× view centred on '+finding.area);zoomButton.addEventListener('click',function(){openAiFocus(finding,zoomButton);});row.appendChild(zoomButton);addButton('Accept as intentional',function(){reviewFinding(finding,'intentional');});addButton('False alarm',function(){reviewFinding(finding,'false_alarm');});var fixButton=addButton('Fix here',function(){closeAiFocus();openArtworkEditor(finding);});fixButton.disabled=!finding.focus;addButton('Leave unresolved',function(){reviewFinding(finding,'unresolved');});item.appendChild(row);findingsList.appendChild(item);});
+            findings.forEach(function(finding,index){
+                var item=document.createElement('li');item.dataset.severity=finding.severity;
+                var heading=document.createElement('strong');heading.textContent=(index+1)+'. '+finding.area;item.appendChild(heading);
+                var severity=document.createElement('p');severity.className='sbs-af-finding-status';severity.textContent=finding.severity==='concern'?'ACTION NEEDED — review before approval':'REVIEW — AI suggestion; confirm against the original';item.appendChild(severity);
+                var issue=document.createElement('p');issue.textContent=finding.issue+' Next: '+finding.action;item.appendChild(issue);
+                var saved=(version.review_decisions||{})[finding.id],state=document.createElement('p');state.className='sbs-af-finding-decision';state.textContent=saved?'Your review: '+saved.decision.replace('_',' '):'Not confirmed as a defect until you review it.';item.appendChild(state);
+                var cleanupStatus=document.createElement('p');cleanupStatus.className='sbs-af-cleanup-status';cleanupStatus.dataset.state='not-run';cleanupStatus.setAttribute('role','status');cleanupStatus.setAttribute('aria-live','polite');
+                var cleanup=autoCleanupState[finding.id];cleanupStatus.textContent=cleanup?(cleanup.stopped?'No further automatic passes recommended.':cleanup.remaining===0&&cleanup.passes?'Checked after '+cleanup.passes+' pass(es). Compare the copy.':'Ready. No automatic repeat.'): 'Not run. This careful check only changes the flagged square.';item.appendChild(cleanupStatus);var cleanupHint=document.createElement('p');cleanupHint.className='sbs-af-cleanup-hint';cleanupHint.textContent='Only edge colour inside the square changes. Transparency and all pixels outside it are kept. No repeat runs automatically.';item.appendChild(cleanupHint);
+                var row=document.createElement('div');row.className='sbs-af-finding-actions';row.setAttribute('role','group');row.setAttribute('aria-label','Steps for '+finding.area);
+                function addButton(label,callback,disabled){var b=document.createElement('button');b.type='button';b.className='sbs-button';b.textContent=label;b.disabled=!!disabled||busy;b.addEventListener('click',callback);row.appendChild(b);return b;}
+                var zoomButton=addButton('1. View square',function(){openAiFocus(finding,zoomButton);},false);zoomButton.classList.add('sbs-af-ai-zoom-button');
+                var cleanupButton=addButton('2. Auto-clean square',function(){runAutomaticSquareCleanup(finding,cleanupButton,cleanupStatus).catch(function(){});},!finding.focus||!!(cleanup&&cleanup.stopped));
+                function addArrow(){var arrow=document.createElement('span');arrow.className='sbs-af-step-arrow';arrow.setAttribute('aria-hidden','true');arrow.textContent='→';row.appendChild(arrow);}
+                addArrow();
+                addButton('3. Compare copy',function(){var view=el('sbs-af-ai-focus-candidate');openAiFocus(finding,view);},false);
+                addArrow();
+                addButton('4. Recheck artwork',function(){operation(function(){return action('ai_review');},'Rechecking the edited copy…',button);},false);
+                addArrow();
+                addButton('Accept as intentional',function(){reviewFinding(finding,'intentional');},!finding.id);
+                addButton('False alarm',function(){reviewFinding(finding,'false_alarm');},!finding.id);
+                addButton('Leave unresolved',function(){reviewFinding(finding,'unresolved');},!finding.id);
+                item.appendChild(row);findingsList.appendChild(item);
+            });
             report.appendChild(findingsList);
         }
         function reviewFinding(finding,decision){if(!finding.id)return;var button=document.activeElement;operation(function(){return action('review_finding',{finding_id:finding.id,decision:decision});},'Saving finding review…',button);}
@@ -317,7 +413,21 @@
             if(current.qa_manifest){var manifest=current.qa_manifest;lines.push('Finishing QA manifest: '+manifest.overall+' — included as finishing-qa.json in the ZIP.','Candidate SHA-256: '+manifest.candidate_sha256,'Reuse checks only for identical bytes and the same print target. Recheck altered artwork, placement, brand assets and garment variants.','Screen garment colours are contrast previews, not physical print proofs.');status.dataset.state=manifest.overall.toLowerCase();status.textContent=manifest.overall+' — digital finishing only; production approval is separate.';}
             text.value=lines.join('\n');
         }
+        function hydrateAutoCleanupState(){
+            if(!current)return;
+            if(autoCleanupWorkspace!==current.uuid){
+                autoCleanupWorkspace=current.uuid;autoCleanupState={};
+                try{autoCleanupState=JSON.parse(sessionStorage.getItem('sbs-af-cleanup-'+current.uuid)||'{}')||{};}catch(e){autoCleanupState={};}
+            }
+            lastAutoCleanup=null;
+            Object.keys(autoCleanupState).some(function(id){var state=autoCleanupState[id];if(state&&state.version===current.current_version&&state.finding){lastAutoCleanup={finding:state.finding,state:state,version:state.version};return true;}return false;});
+        }
+        function persistAutoCleanupState(){
+            if(!current)return;
+            try{sessionStorage.setItem('sbs-af-cleanup-'+current.uuid,JSON.stringify(autoCleanupState));}catch(e){}
+        }
         function render(){
+            hydrateAutoCleanupState();
             if(flatPreviewBlob&&flatPreviewKey!==flatKey())clearFlatPreview();
             resetChecks();
             el('sbs-af-stage-help').textContent='Run each stage with its button. AI upscale may use paid credits; the untouched original stays unchanged.';var nameField=el('sbs-af-package-name');var workspaceKey=current?current.uuid:'';if(nameField.dataset.workspace!==workspaceKey){nameField.value=current?friendlyName(current.title)+'-local-finishing.zip':'';nameField.dataset.workspace=workspaceKey;}var v=current&&current.versions.find(function(v){return v.uuid===current.current_version;});
@@ -521,6 +631,6 @@
         render();
         refresh().then(async function(){var restoreId=savedUiState.workspace;if(restoreId&&!current&&records.some(function(record){return record.uuid===restoreId;})){current=await api('/'+restoreId);el('sbs-af-resume').value=restoreId;var checkKey=current.uuid+':'+(current.current_version||'');if(savedUiState.checkKey===checkKey&&savedUiState.checks){document.querySelectorAll('[data-af-check]').forEach(function(n){var key=n.getAttribute('data-af-check');n.checked=!!savedUiState.checks[key];});lastCheckKey=checkKey;}render();saveUiState();if(current.pending&&current.pending.replicate_prediction_id){message('Restored the existing upscale and checking its status. No new upscale was started.');await pollReplicate();}else if(current.pending){message('Workspace restored with a queued stage. It has not been run again.');}else{message('Your previous Finishing workspace has been restored.');}}else{render();message('Local workspaces loaded.');}}).catch(function(error){render();message('Workspaces could not be loaded at startup: '+error.message,true);});
     }
-    if(typeof window!=='undefined')window.SBSFinishing={matches:matches,canApprove:canApprove,classifyTransparency:classifyTransparency,init:init};
+    if(typeof window!=='undefined')window.SBSFinishing={matches:matches,canApprove:canApprove,classifyTransparency:classifyTransparency,cleanupFocusBox:cleanupFocusBox,cleanEdgeFringeRegion:cleanEdgeFringeRegion,init:init};
     if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();}
 }());
