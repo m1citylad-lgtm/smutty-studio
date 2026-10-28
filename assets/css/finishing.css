@@ -261,3 +261,5 @@ body#sbs-studio-page .sbs-af-catalogue-row .sbs-danger-tool { justify-self:end; 
 .sbs-af-ai-findings .sbs-af-finding-actions button{flex:0 0 auto;min-width:48px;min-height:48px;}
 @keyframes sbs-af-cleanup-spin{to{transform:rotate(360deg);}}
 @media(prefers-reduced-motion:reduce){.sbs-af-cleanup-status[data-state="busy"]:before{animation:none;border-right-color:#70c7ff;}}
+
+.sbs-af-cleanup-hint{margin:.35rem 0;color:#f4e6c8;}
