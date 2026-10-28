@@ -237,14 +237,14 @@
             var version=current&&current.versions.find(function(v){return v.uuid===current.current_version;});if(!current||!current.original||!version||!version.asset)return;
             var focus=finding.focus&&isFinite(Number(finding.focus.x))&&isFinite(Number(finding.focus.y))&&Number(finding.focus.x)>=0&&Number(finding.focus.x)<=1&&Number(finding.focus.y)>=0&&Number(finding.focus.y)<=1?{x:Number(finding.focus.x),y:Number(finding.focus.y)}:null;
             aiFocusData={area:finding.area||'Flagged area',focus:focus,original:current.original,candidate:version.asset,finding:finding};aiFocusOpener=opener||document.activeElement;aiFocusZoom=4;aiFocusCenter=focus||{x:.5,y:.5};aiFocusPointers.clear();aiFocusGesture=null;aiFocusTap=null;
-            el('sbs-af-ai-focus-title').textContent=aiFocusData.area;aiFocusNoteBase=focus?'AI-estimated location. A yellow outline marks the approximate area and follows it as you zoom and pan; it is not an exact defect boundary. Starts at 4×; pinch to zoom, drag to pan, tap to compare.':'No AI location was saved. No area outline is available. Starts at 4×; pinch to zoom, drag to pan, tap to compare.';
+            el('sbs-af-ai-focus-title').textContent=aiFocusData.area;aiFocusNoteBase=focus?'AI-estimated location. The square is the exact area for automatic edge cleanup; only edge colour can change, transparency stays as it is. Starts at 4×; pinch to zoom, drag to pan, tap to compare.':'No AI location was saved. No area outline is available. Starts at 4×; pinch to zoom, drag to pan, tap to compare.';
             if(finding.method==='sampled_alpha')aiFocusNoteBase='Approximate sampled point; it may be intentional. A yellow outline marks the nearby area, not the defect boundary. Starts at 4×; pinch to zoom, drag to pan, tap to compare.';updateAiFocusNote();
             aiFocus.hidden=false;document.body.style.overflow='hidden';setAiFocusSide('candidate');el('sbs-af-ai-focus-close').focus();
         }
         function closeAiFocus(){if(aiFocus.hidden)return;aiFocus.hidden=true;if(aiFocusMoveState){aiFocusMoveState.parent.insertBefore(aiFocusMoveState.node,aiFocusMoveState.next&&aiFocusMoveState.next.parentNode===aiFocusMoveState.parent?aiFocusMoveState.next:null);aiFocusMoveState.node.style.cssText=aiFocusMoveState.cssText;aiFocusMoveState.node.alt=aiFocusMoveState.alt;aiFocusMoveState.node.hidden=aiFocusMoveState.hidden;aiFocusMoveState.node.onload=aiFocusMoveState.onload;aiFocusMoveState=null;}aiFocusImage=null;aiFocusStage.scrollLeft=0;aiFocusStage.scrollTop=0;aiFocusData=null;aiFocusCenter=null;aiFocusPointers.clear();aiFocusGesture=null;aiFocusTap=null;el('sbs-af-ai-focus-marker').setAttribute('hidden','');document.body.style.overflow='';if(aiFocusOpener&&aiFocusOpener.focus)aiFocusOpener.focus();}
         el('sbs-af-ai-focus-original').addEventListener('click',function(){setAiFocusSide('original');});el('sbs-af-ai-focus-candidate').addEventListener('click',function(){setAiFocusSide('candidate');});el('sbs-af-ai-focus-close').addEventListener('click',closeAiFocus);
         document.querySelectorAll('[data-af-finding-decision]').forEach(function(button){button.addEventListener('click',function(){if(!aiFocusData||!aiFocusData.finding)return;var finding=aiFocusData.finding;closeAiFocus();reviewFinding(finding,button.getAttribute('data-af-finding-decision'));});});
-        el('sbs-af-focus-fix').addEventListener('click',function(){if(!aiFocusData||!aiFocusData.finding)return;var finding=aiFocusData.finding;closeAiFocus();openArtworkEditor(finding);});
+        el('sbs-af-focus-fix').addEventListener('click',function(){if(!aiFocusData||!aiFocusData.finding)return;var finding=aiFocusData.finding,status=el('sbs-af-ai-status'),button=el('sbs-af-focus-fix');closeAiFocus();runAutomaticSquareCleanup(finding,button,status).catch(function(){});});
         function aiFocusPoint(event){var rect=aiFocusStage.getBoundingClientRect();return {x:event.clientX-rect.left,y:event.clientY-rect.top};}
         function beginAiFocusGesture(){var points=Array.from(aiFocusPointers.values()).slice(0,2);if(points.length<2||!aiFocusImage)return;var mid={x:(points[0].x+points[1].x)/2,y:(points[0].y+points[1].y)/2},distance=Math.max(1,Math.hypot(points[1].x-points[0].x,points[1].y-points[0].y)),factor=aiFocusFit(aiFocusImage)*aiFocusZoom;aiFocusGesture={distance:distance,zoom:aiFocusZoom,anchorX:(aiFocusStage.scrollLeft+mid.x)/factor,anchorY:(aiFocusStage.scrollTop+mid.y)/factor};}
         function aiFocusPointerDown(event){if(!aiFocusData||event.target.closest('button'))return;event.preventDefault();aiFocusStage.setPointerCapture(event.pointerId);var p=aiFocusPoint(event);aiFocusPointers.set(event.pointerId,p);if(aiFocusPointers.size===1)aiFocusTap={id:event.pointerId,x:p.x,y:p.y,left:aiFocusStage.scrollLeft,top:aiFocusStage.scrollTop,moved:false};else{aiFocusTap=null;if(aiFocusPointers.size===2)beginAiFocusGesture();}}
@@ -287,18 +287,18 @@
                 var canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
                 var ctx=canvas.getContext('2d',{willReadFrequently:true});if(!ctx)throw new Error('Automatic cleanup is unavailable in this browser.');
                 ctx.drawImage(image,0,0);
-                var before=ctx.getImageData(0,0,canvas.width,canvas.height),source=before.data;
-                var box=cleanupFocusBox(canvas.width,canvas.height,finding.focus),out=new Uint8ClampedArray(source);
-                var changed=0,remaining=0,readX=box.x,readY=box.y;
+                var box=cleanupFocusBox(canvas.width,canvas.height,finding.focus);
+                var region=ctx.getImageData(box.x,box.y,box.w,box.h),source=region.data,out=new Uint8ClampedArray(source);
+                var changed=0,remaining=0;
                 function inspectPass(input,write){
                     var edits=0,pending=[];
-                    for(var y=box.y;y<box.y+box.h;y++){
-                        for(var x=box.x;x<box.x+box.w;x++){
-                            var i=(y*canvas.width+x)*4,a=input[i+3];if(a===0||a===255)continue;
+                    for(var y=0;y<box.h;y++){
+                        for(var x=0;x<box.w;x++){
+                            var i=(y*box.w+x)*4,a=input[i+3];if(a===0||a===255)continue;
                             var rs=[],gs=[],bs=[];
-                            for(var ny=Math.max(box.y,y-2);ny<=Math.min(box.y+box.h-1,y+2);ny++){
-                                for(var nx=Math.max(box.x,x-2);nx<=Math.min(box.x+box.w-1,x+2);nx++){
-                                    if(nx===x&&ny===y)continue;var ni=(ny*canvas.width+nx)*4;
+                            for(var ny=Math.max(0,y-2);ny<=Math.min(box.h-1,y+2);ny++){
+                                for(var nx=Math.max(0,x-2);nx<=Math.min(box.w-1,x+2);nx++){
+                                    if(nx===x&&ny===y)continue;var ni=(ny*box.w+nx)*4;
                                     if(input[ni+3]===255){rs.push(input[ni]);gs.push(input[ni+1]);bs.push(input[ni+2]);}
                                 }
                             }
@@ -312,14 +312,10 @@
                     return edits;
                 }
                 inspectPass(source,true);changed=0;
-                for(var py=box.y;py<box.y+box.h;py++)for(var px=box.x;px<box.x+box.w;px++){var pi=(py*canvas.width+px)*4;if(source[pi]!==out[pi]||source[pi+1]!==out[pi+1]||source[pi+2]!==out[pi+2]||source[pi+3]!==out[pi+3])changed++;}
+                for(var pi=0;pi<source.length;pi+=4){if(source[pi]!==out[pi]||source[pi+1]!==out[pi+1]||source[pi+2]!==out[pi+2]||source[pi+3]!==out[pi+3])changed++;}
                 remaining=0;inspectPass(out,false);
-                for(var oy=0;oy<canvas.height;oy++)for(var ox=0;ox<canvas.width;ox++){
-                    if(ox>=box.x&&ox<box.x+box.w&&oy>=box.y&&oy<box.y+box.h)continue;
-                    var oi=(oy*canvas.width+ox)*4;if(source[oi]!==out[oi]||source[oi+1]!==out[oi+1]||source[oi+2]!==out[oi+2]||source[oi+3]!==out[oi+3])throw new Error('Safety check stopped the save because pixels outside the highlighted square changed.');
-                }
                 if(!changed){status.dataset.state='warning';status.textContent='No safe changes found. Don’t repeat this pass.';button.disabled=true;message('No edge pixels could be changed safely. The original and candidate are unchanged.');return;}
-                var after=ctx.createImageData(canvas.width,canvas.height);after.data.set(out);ctx.putImageData(after,0,0);
+                region.data.set(out);ctx.putImageData(region,box.x,box.y);
                 var blob=await new Promise(function(resolve,reject){canvas.toBlob(function(b){b?resolve(b):reject(new Error('Could not prepare the new PNG copy.'));},'image/png');});
                 await saveImageEdit(blob,'touchup',version.uuid,button);
                 var state=autoCleanupState[finding.id]||(autoCleanupState[finding.id]={passes:0,changed:0,stopped:false});
@@ -354,7 +350,7 @@
                 var issue=document.createElement('p');issue.textContent=finding.issue+' Next: '+finding.action;item.appendChild(issue);
                 var saved=(version.review_decisions||{})[finding.id],state=document.createElement('p');state.className='sbs-af-finding-decision';state.textContent=saved?'Your review: '+saved.decision.replace('_',' '):'Not confirmed as a defect until you review it.';item.appendChild(state);
                 var cleanupStatus=document.createElement('p');cleanupStatus.className='sbs-af-cleanup-status';cleanupStatus.dataset.state='not-run';cleanupStatus.setAttribute('role','status');cleanupStatus.setAttribute('aria-live','polite');
-                var cleanup=autoCleanupState[finding.id];cleanupStatus.textContent=cleanup?(cleanup.stopped?'No further automatic passes recommended.':cleanup.remaining===0&&cleanup.passes?'Checked after '+cleanup.passes+' pass(es). Compare the copy.':'Ready. No automatic repeat.'): 'Not run. This careful check only changes the flagged square.';item.appendChild(cleanupStatus);
+                var cleanup=autoCleanupState[finding.id];cleanupStatus.textContent=cleanup?(cleanup.stopped?'No further automatic passes recommended.':cleanup.remaining===0&&cleanup.passes?'Checked after '+cleanup.passes+' pass(es). Compare the copy.':'Ready. No automatic repeat.'): 'Not run. This careful check only changes the flagged square.';item.appendChild(cleanupStatus);var cleanupHint=document.createElement('p');cleanupHint.className='sbs-af-cleanup-hint';cleanupHint.textContent='Only edge colour inside the square changes. Transparency and all pixels outside it are kept. No repeat runs automatically.';item.appendChild(cleanupHint);
                 var row=document.createElement('div');row.className='sbs-af-finding-actions';row.setAttribute('role','group');row.setAttribute('aria-label','Steps for '+finding.area);
                 function addButton(label,callback,disabled){var b=document.createElement('button');b.type='button';b.className='sbs-button';b.textContent=label;b.disabled=!!disabled||busy;b.addEventListener('click',callback);row.appendChild(b);return b;}
                 var zoomButton=addButton('1. View square',function(){openAiFocus(finding,zoomButton);},false);zoomButton.classList.add('sbs-af-ai-zoom-button');
