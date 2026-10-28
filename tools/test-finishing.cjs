@@ -261,7 +261,43 @@ assert.match(read('includes/class-sbs-openai.php'), /You only report observation
 assert.match(finishing, /function renderAiReview/);
 assert.match(finishing, /function runAutomaticSquareCleanup/);
 assert.match(finishing, /function cleanupFocusBox/);
-assert.match(finishing, /out\[p\[0\]\+3\]=p\[4\]/, 'Automatic edge cleanup must preserve original alpha values');
+const cleanEdgeFringeRegion = finishingContext.window.SBSFinishing.cleanEdgeFringeRegion;
+const cleanupFocusBox = finishingContext.window.SBSFinishing.cleanupFocusBox;
+assert.equal(typeof cleanEdgeFringeRegion, 'function');
+const syntheticWidth = 100, syntheticHeight = 100;
+const originalPixels = new Uint8ClampedArray(syntheticWidth * syntheticHeight * 4);
+for (let i = 0; i < originalPixels.length; i += 4) {
+    originalPixels[i] = 80; originalPixels[i + 1] = 100; originalPixels[i + 2] = 120; originalPixels[i + 3] = 255;
+}
+const focusedBox = cleanupFocusBox(syntheticWidth, syntheticHeight, { x: .5, y: .5 });
+assert.deepEqual({ x: focusedBox.x, y: focusedBox.y, w: focusedBox.w, h: focusedBox.h }, { x: 18, y: 18, w: 64, h: 64 });
+const outsideIndex = (5 * syntheticWidth + 5) * 4;
+originalPixels.set([255, 0, 0, 128], outsideIndex);
+const regionPixels = new Uint8ClampedArray(focusedBox.w * focusedBox.h * 4);
+for (let y = 0; y < focusedBox.h; y++) for (let x = 0; x < focusedBox.w; x++) {
+    const src = ((focusedBox.y + y) * syntheticWidth + focusedBox.x + x) * 4;
+    const dst = (y * focusedBox.w + x) * 4;
+    regionPixels.set(originalPixels.slice(src, src + 4), dst);
+}
+const fringe = (32 * focusedBox.w + 32) * 4;
+regionPixels.set([255, 0, 0, 128], fringe);
+for (let y = 20; y <= 24; y++) for (let x = 20; x <= 24; x++) regionPixels.set([80, 100, 120, 100], (y * focusedBox.w + x) * 4);
+const alphaBefore = [];
+for (let i = 3; i < regionPixels.length; i += 4) alphaBefore.push(regionPixels[i]);
+const cleanupResult = cleanEdgeFringeRegion(regionPixels, focusedBox.w, focusedBox.h);
+assert.ok(cleanupResult.changed >= 1, 'A coloured, partly transparent edge pixel should be corrected');
+assert.equal(cleanupResult.remaining, 0, 'The corrected synthetic fringe should pass the same follow-up scan');
+assert.deepEqual(Array.from(regionPixels.slice(fringe, fringe + 4)), [80, 100, 120, 128], 'Correction should use nearby artwork colour while keeping alpha');
+for (let i = 3, index = 0; i < regionPixels.length; i += 4, index++) assert.equal(regionPixels[i], alphaBefore[index], 'Every alpha value must be preserved');
+assert.equal(regionPixels[(22 * focusedBox.w + 22) * 4 + 3], 100, 'Soft smoke-like partial transparency should remain');
+const finalPixels = new Uint8ClampedArray(originalPixels);
+for (let y = 0; y < focusedBox.h; y++) for (let x = 0; x < focusedBox.w; x++) {
+    const src = (y * focusedBox.w + x) * 4;
+    const dst = ((focusedBox.y + y) * syntheticWidth + focusedBox.x + x) * 4;
+    finalPixels.set(regionPixels.slice(src, src + 4), dst);
+}
+assert.deepEqual(Array.from(finalPixels.slice(outsideIndex, outsideIndex + 4)), [255, 0, 0, 128], 'A coloured pixel outside the highlighted square must remain untouched');
+assert.equal(finalPixels[(0 * syntheticWidth + 0) * 4 + 3], 255, 'Unrelated artwork alpha must be preserved');
 assert.match(finishing, /lastAutoCleanup/);
 assert.match(finishing, /Cleanup copy saved\. Compare it, then recheck before treating the issue as fixed\./);
 assert.match(template, /id="sbs-af-focus-fix"[^>]*>Auto-clean square/);
