@@ -263,3 +263,11 @@ body#sbs-studio-page .sbs-af-catalogue-row .sbs-danger-tool { justify-self:end; 
 @media(prefers-reduced-motion:reduce){.sbs-af-cleanup-status[data-state="busy"]:before{animation:none;border-right-color:#70c7ff;}}
 
 .sbs-af-cleanup-hint{margin:.35rem 0;color:#f4e6c8;}
+
+#sbs-af-ai-status{display:flex;align-items:center;gap:.65rem;min-height:44px;}
+#sbs-af-ai-status:before{content:"";display:inline-flex;flex:0 0 40px;width:40px;height:40px;box-sizing:border-box;align-items:center;justify-content:center;border:4px solid #b9c0ca;border-radius:50%;background:#505966;color:#fff;font-size:1.4rem;font-weight:900;}
+#sbs-af-ai-status[data-state="review"]:before{border-color:#ffbf47;background:#ffbf47;}
+#sbs-af-ai-status[data-state="success"]:before{content:"✓";border-color:#58d68d;background:#187c42;}
+#sbs-af-ai-status[data-state="fail"]:before,#sbs-af-ai-status[data-state="error"]:before{content:"!";border-color:#ff6868;background:#aa2020;}
+#sbs-af-ai-status[data-state="busy"]:before{content:"";border-color:#70c7ff;border-right-color:transparent;background:transparent;animation:sbs-af-cleanup-spin .8s linear infinite;}
+@media(prefers-reduced-motion:reduce){#sbs-af-ai-status[data-state="busy"]:before{animation:none;border-right-color:#70c7ff;}}
