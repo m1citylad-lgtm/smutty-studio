@@ -346,7 +346,7 @@
                 return;
             }
             var result=version.ai_review,findings=(result.findings||[]).filter(function(finding){return finding.severity!=='info';});
-            status.dataset.state='review';
+            status.dataset.state=findings.some(function(f){return f.severity==='concern';})?'fail':'review';
             status.textContent=findings.length?'AI check: '+findings.length+' area'+(findings.length===1?'':'s')+' to inspect.':result.overall==='unable'?'AI could not assess the image reliably.':'No specific issues flagged; compare the copy before treating it as verified.';
             if(!findings.length){var none=document.createElement('p');none.textContent=result.overall==='unable'?'Try the 4× comparison and inspect the artwork manually.':'No specific issues flagged. This check cannot prove that every defect is gone.';report.appendChild(none);return;}
             var findingsHeading=document.createElement('h4');findingsHeading.textContent='Areas to inspect';report.appendChild(findingsHeading);
