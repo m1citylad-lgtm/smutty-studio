@@ -244,3 +244,20 @@ body#sbs-studio-page .sbs-af-catalogue-row .sbs-danger-tool { justify-self:end; 
 .sbs-af-stage-report[data-state="info"] .sbs-af-stage-report-text{color:#fff0cf}
 .sbs-af-stage-options .sbs-af-stage-card{border-color:#b69c65}
 .sbs-af-stage-options .sbs-af-stage-heading button:disabled{opacity:.78}
+
+/* Accessible, ordered square-cleanup workflow */
+.sbs-af-cleanup-status{display:flex;align-items:center;gap:.65rem;min-height:44px;margin:.65rem 0;padding:.45rem .65rem;border:2px solid #6d7787;border-radius:8px;background:#101827;color:#fff3d4;font-weight:700;}
+.sbs-af-cleanup-status:before{content:"";flex:0 0 40px;width:40px;height:40px;box-sizing:border-box;border:4px solid currentColor;border-radius:50%;background:#6d7787;}
+.sbs-af-cleanup-status[data-state="warning"]{border-color:#ffbf47;color:#ffe2a1;}
+.sbs-af-cleanup-status[data-state="warning"]:before{background:#ffbf47;border-color:#ffbf47;}
+.sbs-af-cleanup-status[data-state="busy"]{border-color:#70c7ff;color:#d5efff;}
+.sbs-af-cleanup-status[data-state="busy"]:before{background:transparent;border-color:#70c7ff;border-right-color:transparent;animation:sbs-af-cleanup-spin .8s linear infinite;}
+.sbs-af-cleanup-status[data-state="success"]{border-color:#58d68d;color:#c6f7d8;}
+.sbs-af-cleanup-status[data-state="success"]:before{background:#187c42;border-color:#58d68d;}
+.sbs-af-cleanup-status[data-state="fail"]{border-color:#ff6868;color:#ffd3d3;}
+.sbs-af-cleanup-status[data-state="fail"]:before{background:#aa2020;border-color:#ff6868;}
+.sbs-af-step-arrow{align-self:center;color:#ffe08a;font-size:1.7rem;font-weight:900;padding:0 .15rem;}
+.sbs-af-ai-findings .sbs-af-finding-actions{display:flex;flex-wrap:nowrap;align-items:center;gap:.45rem;overflow-x:auto;padding:.35rem 0 .65rem;scrollbar-width:thin;}
+.sbs-af-ai-findings .sbs-af-finding-actions button{flex:0 0 auto;min-width:48px;min-height:48px;}
+@keyframes sbs-af-cleanup-spin{to{transform:rotate(360deg);}}
+@media(prefers-reduced-motion:reduce){.sbs-af-cleanup-status[data-state="busy"]:before{animation:none;border-right-color:#70c7ff;}}
