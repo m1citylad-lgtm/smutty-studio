@@ -1,5 +1,14 @@
 # Studio Update Log
 
+## Catalogue deletion for queued and mixed-status workspaces
+**Recorded:** 28 October 2026
+**Status:** Implemented in v0.3.0.
+
+- Allow individually safe catalogue records to be deleted together even when other selected records are blocked; identify records left unchanged and why.
+- Cancel queued local stages and verified remote upscale jobs before removing their workspace files. Keep a record if a remote job is still active or cancellation cannot be confirmed.
+- Preserve shared or externally referenced files, and show eligible files, jobs to cancel, preserved files, and blocked records in the confirmation.
+- Stage and commit each record independently, restoring its files if its database or filesystem step fails. Refresh the catalogue and report partial results.
+
 ## Planned Logic Correction improvements
 **Recorded:** 26 October 2026  
 **Status:** Implemented in v0.2.99.

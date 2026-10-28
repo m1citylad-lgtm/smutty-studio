@@ -109,6 +109,12 @@ final class SBS_Finishing
     {
         $path=self::path($request['uuid']); if(is_wp_error($path)){return $path;}$r=self::read($path);if(!is_wp_error($r)){$r=self::finding_ids($r);$r['qa_manifest']=SBS_Print_QA::manifest($r);}return $r;
     }
+    private static function pending_job_kind($record)
+    {
+        if(!array_key_exists('pending',$record)||$record['pending']===null||$record['pending']===array()){return 'none';}
+        if(!is_array($record['pending'])){return 'invalid';}
+        return !empty($record['pending']['replicate_prediction_id'])?'remote':'queued';
+    }
     private static function deletion_plan($uuids)
     {
         global $wpdb;
@@ -116,66 +122,136 @@ final class SBS_Finishing
         $uuids=array_values(array_unique(array_map('sanitize_text_field',$uuids)));
         foreach($uuids as $uuid){if(!preg_match('/^[a-f0-9-]{36}$/D',$uuid)){return self::error('delete_selection','A selected workspace reference is invalid.');}}
         sort($uuids,SORT_STRING);$dir=self::directory();if(is_wp_error($dir)){return $dir;}
-        $selected=array();$record_paths=array();$asset_ids=array();$blocked=array();
-        foreach($uuids as $uuid){$path=$dir.'/'.$uuid.'.json';$record=self::read($path);if(is_wp_error($record)){return $record;}
-            if(!empty($record['pending'])){$blocked[]=$record['title'].' — an operation is queued or running';}
-            if(!empty($record['drive']['original_file_id'])||!empty($record['drive']['approved_master_file_id'])){$blocked[]=$record['title'].' — a Drive-linked file cannot be removed from the local workspace safely';}
+        $selected=array();$record_paths=array();$asset_refs=array();$record_blockers=array();$asset_names=array();
+        foreach($uuids as $uuid){
+            $path=$dir.'/'.$uuid.'.json';$record=self::read($path);if(is_wp_error($record)){return $record;}
             $selected[$uuid]=$record;$record_paths[$uuid]=$path;
+            if(!empty($record['drive']['original_file_id'])||!empty($record['drive']['approved_master_file_id'])){$record_blockers[$uuid][]='Drive-linked artwork cannot be safely removed from the local workspace';}
+            if(!is_file($path)||!is_writable($path)||!is_writable(dirname($path))){$record_blockers[$uuid][]='The catalogue record file cannot be safely staged for deletion';}
             $assets=array_merge(array($record['original']??array()),array_map(function($v){return $v['asset']??array();},$record['versions']??array()));
-            foreach($assets as $asset){$id=(int)($asset['id']??0);if($id>0){$asset_ids[$id]=$asset['filename']??('asset '.$id);}else{$blocked[]=$record['title'].' — an associated file has no storage reference';}}
+            foreach($assets as $asset){
+                $id=(int)($asset['id']??0);
+                if($id<1){$record_blockers[$uuid][]='An associated file has no verified storage reference';continue;}
+                $asset_refs[$id][$uuid]=true;$asset_names[$id]=$asset['filename']??('asset '.$id);
+            }
         }
-        $ids=array_keys($asset_ids);sort($ids,SORT_NUMERIC);$asset_rows=array();$assets_table=SBS_DB::table('assets');$generations=SBS_DB::table('generations');$canvases=SBS_DB::table('canvases');$jobs=SBS_DB::table('jobs');$projects=SBS_DB::table('projects');$pack_versions=SBS_DB::table('pack_versions');
-        $engine=$wpdb->get_row($wpdb->prepare('SHOW TABLE STATUS WHERE Name = %s',$assets_table),ARRAY_A);if(strtolower((string)($engine['Engine']??''))!=='innodb'){$blocked[]='Asset storage does not support a rollback-safe database transaction';}
-        foreach(glob($dir.'/*.json')?:array() as $other_path){$other=self::read($other_path);if(is_wp_error($other)||in_array($other['uuid']??'', $uuids,true)){continue;}$refs=array_merge(array($other['original']['id']??0),array_map(function($v){return $v['asset']['id']??0;},$other['versions']??array()));foreach($refs as $ref){if(in_array((int)$ref,$ids,true)){$blocked[]='A file is shared with another catalogue record';}}}
-        $base=realpath(SBS_Storage::base_dir());
-        foreach($ids as $id){$row=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$assets_table} WHERE id = %d",$id),ARRAY_A);
-            if(!$row||$row['owner_type']!=='finishing'||(int)$row['owner_id']!==0){$blocked[]=$asset_ids[$id].' — storage ownership is not exclusive to this catalogue';continue;}
+        $assets_table=SBS_DB::table('assets');$generations=SBS_DB::table('generations');$canvases=SBS_DB::table('canvases');$jobs=SBS_DB::table('jobs');$projects=SBS_DB::table('projects');$pack_versions=SBS_DB::table('pack_versions');
+        $engine=$wpdb->get_row($wpdb->prepare('SHOW TABLE STATUS WHERE Name = %s',$assets_table),ARRAY_A);
+        $transaction_safe=strtolower((string)($engine['Engine']??''))==='innodb';
+        if(!$transaction_safe){foreach($uuids as $uuid){$record_blockers[$uuid][]='Asset storage does not support a rollback-safe database transaction';}}
+        $base=realpath(SBS_Storage::base_dir());$asset_rows=array();$preserved=array();
+        foreach(array_keys($asset_refs) as $id){
+            $row=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$assets_table} WHERE id = %d",$id),ARRAY_A);
+            if(!$row||$row['owner_type']!=='finishing'||(int)$row['owner_id']!==0){
+                foreach(array_keys($asset_refs[$id]) as $uuid){$record_blockers[$uuid][]=$asset_names[$id].' — storage ownership cannot be verified';}
+                continue;
+            }
             $path=SBS_Storage::absolute_path($row);$real=$path?realpath($path):false;
-            if(!$base||!$real||strpos(wp_normalize_path($real),wp_normalize_path($base).'/assets/')!==0||!is_file($real)||!is_writable($real)||!is_writable(dirname($real))){$blocked[]=$asset_ids[$id].' — its private file path or permissions cannot be verified';continue;}
+            if(!$base||!$real||strpos(wp_normalize_path($real),wp_normalize_path($base).'/assets/')!==0||!is_file($real)||!is_writable($real)||!is_writable(dirname($real))){
+                foreach(array_keys($asset_refs[$id]) as $uuid){$record_blockers[$uuid][]=$asset_names[$id].' — its private file path or permissions cannot be verified';}
+                continue;
+            }
+            $row['_absolute_path']=$real;$asset_rows[$id]=$row;
+        }
+        $catalogue_refs=array();
+        foreach(glob($dir.'/*.json')?:array() as $other_path){
+            $other=self::read($other_path);if(is_wp_error($other)){continue;}
+            $other_uuid=(string)($other['uuid']??'');
+            $other_assets=array_merge(array($other['original']['id']??0),array_map(function($v){return $v['asset']['id']??0;},$other['versions']??array()));
+            foreach($other_assets as $ref){$ref=(int)$ref;if($ref>0){$catalogue_refs[$ref][$other_uuid]=true;}}
+        }
+        foreach(array_keys($asset_refs) as $id){
+            if(!isset($asset_rows[$id])){continue;}
+            $other_catalogue_refs=array_diff_key($catalogue_refs[$id]??array(),$asset_refs[$id]);
+            if(count($asset_refs[$id])>1||$other_catalogue_refs){$preserved[$id]=array('asset_id'=>(int)$id,'filename'=>$asset_names[$id],'reason'=>'Referenced by another catalogue record');continue;}
+            $row=$asset_rows[$id];$uuid_like='%'.$wpdb->esc_like($row['uuid']).'%';
             $generation_ref=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$generations} WHERE output_asset_id = %d LIMIT 1",$id));
             $generation_input_ref=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$generations} WHERE refs_json LIKE %s LIMIT 1",'%'.$wpdb->esc_like('"asset_id":'.$id).'%'));
             $canvas_ref=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$canvases} WHERE preview_asset_id = %d LIMIT 1",$id));
-            $uuid_like='%'.$wpdb->esc_like($row['uuid']).'%';
             $canvas_document_ref=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$canvases} WHERE document_json LIKE %s LIMIT 1",$uuid_like));
             $job_ref=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$jobs} WHERE payload_json LIKE %s OR result_json LIKE %s LIMIT 1",$uuid_like,$uuid_like));
             $project_ref=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$projects} WHERE concept_json LIKE %s LIMIT 1",$uuid_like));
             $profile_ref=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$pack_versions} WHERE identity_json LIKE %s LIMIT 1",$uuid_like));
-            $metadata_refs=array_map('intval',$wpdb->get_col($wpdb->prepare("SELECT id FROM {$assets_table} WHERE id <> %d AND metadata_json LIKE %s",$id,$uuid_like))?:array());
-            $metadata_ref=false;foreach($metadata_refs as $metadata_id){if(!in_array($metadata_id,$ids,true)){$metadata_ref=true;break;}}
-            if($generation_ref||$generation_input_ref||$canvas_ref||$canvas_document_ref||$job_ref||$project_ref||$profile_ref||$metadata_ref){$blocked[]=$asset_ids[$id].' — another project, generation, profile, composition or stored file references this asset';continue;}
-            $row['_absolute_path']=$real;$asset_rows[]=$row;
+            $metadata_refs=$wpdb->get_col($wpdb->prepare("SELECT id FROM {$assets_table} WHERE id <> %d AND metadata_json LIKE %s",$id,$uuid_like));
+            if($generation_ref||$generation_input_ref||$canvas_ref||$canvas_document_ref||$job_ref||$project_ref||$profile_ref||$metadata_refs){
+                $preserved[$id]=array('asset_id'=>(int)$id,'filename'=>$asset_names[$id],'reason'=>'Referenced by a project, generation, composition, job or stored file');continue;
+            }
+            $asset_rows[$id]['_record_uuid']=array_key_first($asset_refs[$id]);
         }
-        foreach($record_paths as $path){if(!is_file($path)||!is_writable($path)||!is_writable(dirname($path))){$blocked[]='A catalogue record file cannot be safely staged for deletion';}}
-        $blocked=array_values(array_unique($blocked));
-        return array('uuids'=>$uuids,'records'=>$selected,'record_paths'=>$record_paths,'assets'=>$asset_rows,'record_count'=>count($selected),'file_count'=>count($ids),'bytes'=>array_sum(array_map(function($a){return (int)$a['bytes'];},$asset_rows)),'blocked'=>$blocked,'safe'=>!$blocked);
+        foreach($record_blockers as $uuid=>$reasons){$record_blockers[$uuid]=array_values(array_unique($reasons));}
+        $eligible=array();$blocked_records=array();$blocked=array();$jobs_to_cancel=0;
+        foreach($selected as $uuid=>$record){
+            if(self::pending_job_kind($record)==='invalid'){$record_blockers[$uuid][]='Pending work state cannot be verified; the record was left unchanged';}
+        }
+        foreach($record_blockers as $uuid=>$reasons){$record_blockers[$uuid]=array_values(array_unique($reasons));}
+        foreach($selected as $uuid=>$record){
+            if(!empty($record_blockers[$uuid])){$entry=array('uuid'=>$uuid,'title'=>$record['title'],'reasons'=>$record_blockers[$uuid]);$blocked_records[]=$entry;foreach($entry['reasons'] as $reason){$blocked[]=$record['title'].' — '.$reason;}continue;}
+            $eligible[]=array('uuid'=>$uuid,'title'=>$record['title'],'revision'=>(int)$record['revision']);
+            if(self::pending_job_kind($record)!=='none'){$jobs_to_cancel++;}
+        }
+        $eligible_ids=array_fill_keys(array_column($eligible,'uuid'),true);$deletable_assets=array();
+        foreach($asset_rows as $id=>$row){$owner_uuid=$row['_record_uuid']??'';if(isset($eligible_ids[$owner_uuid])){$deletable_assets[]=$row;}}
+        $records=array();foreach($selected as $uuid=>$record){$records[]=array('uuid'=>$uuid,'title'=>$record['title'],'revision'=>(int)$record['revision']);}
+        return array(
+            'uuids'=>$uuids,'records'=>$records,'selected_records'=>$selected,'record_paths'=>$record_paths,
+            'eligible_records'=>$eligible,'assets'=>$deletable_assets,'record_count'=>count($eligible),
+            'selected_count'=>count($selected),'file_count'=>count($deletable_assets),'preserved_file_count'=>count($preserved),
+            'preserved_files'=>array_values($preserved),'preserved_asset_ids'=>array_keys($preserved),'jobs_to_cancel'=>$jobs_to_cancel,
+            'bytes'=>array_sum(array_map(function($a){return (int)$a['bytes'];},$deletable_assets)),
+            'blocked'=>$blocked,'blocked_records'=>$blocked_records,'safe'=>count($eligible)>0
+        );
     }
     public static function delete_plan($request)
     {
         $plan=self::deletion_plan($request->get_param('uuids'));if(is_wp_error($plan)){return $plan;}
-        return array('record_count'=>$plan['record_count'],'file_count'=>$plan['file_count'],'bytes'=>$plan['bytes'],'blocked'=>$plan['blocked'],'safe'=>$plan['safe'],'records'=>array_map(function($r){return array('uuid'=>$r['uuid'],'title'=>$r['title'],'revision'=>(int)$r['revision']);},array_values($plan['records'])));
+        return array('record_count'=>$plan['record_count'],'selected_count'=>$plan['selected_count'],'file_count'=>$plan['file_count'],'preserved_file_count'=>$plan['preserved_file_count'],'preserved_files'=>$plan['preserved_files'],'jobs_to_cancel'=>$plan['jobs_to_cancel'],'bytes'=>$plan['bytes'],'blocked'=>$plan['blocked'],'blocked_records'=>$plan['blocked_records'],'safe'=>$plan['safe'],'records'=>$plan['records'],'eligible_records'=>$plan['eligible_records']);
     }
     public static function delete($request)
     {
         global $wpdb;
         $uuids=$request->get_param('uuids');$plan=self::deletion_plan($uuids);if(is_wp_error($plan)){return $plan;}
-        if(empty($plan['safe'])){return self::error('delete_blocked','No records were deleted. Some associated files are shared, pending or cannot be verified: '.implode('; ',$plan['blocked']),409);}
         $revisions=$request->get_param('revisions');if(!is_array($revisions)||!is_array($uuids)){return self::error('delete_confirmation','Confirm the current catalogue record and file counts before deleting.');}
-        foreach($plan['records'] as $uuid=>$record){if((int)($revisions[$uuid]??-1)!==(int)$record['revision']){return self::error('delete_conflict','The catalogue changed after review. Refresh the list and confirm again.',409);}}
-        if($request->get_param('confirmed')!==true||(int)$request->get_param('record_count')!==$plan['record_count']||(int)$request->get_param('file_count')!==$plan['file_count']){return self::error('delete_confirmation','The record or associated-file count changed. No data was deleted; review the new count.',409);}
-        $locks=array();$moved=array();$base=SBS_Storage::base_dir();$quarantine=$base.'/tmp/catalogue-delete-'.str_replace('-','',wp_generate_uuid4());
+        foreach($plan['records'] as $record){if((int)($revisions[$record['uuid']]??-1)!==(int)$record['revision']){return self::error('delete_conflict','The catalogue changed after review. Refresh the list and confirm again.',409);}}
+        if($request->get_param('confirmed')!==true||(int)$request->get_param('record_count')!==$plan['record_count']||(int)$request->get_param('file_count')!==$plan['file_count']||(int)$request->get_param('jobs_to_cancel')!==$plan['jobs_to_cancel']||(int)$request->get_param('preserved_file_count')!==$plan['preserved_file_count']){return self::error('delete_confirmation','The record, file, queued-job or preserved-file count changed. No data was deleted; review the new count.',409);}
+        if(empty($plan['safe'])){return array('deleted_records'=>0,'deleted_files'=>0,'cleanup_pending'=>array(),'blocked_records'=>$plan['blocked_records'],'preserved_files'=>$plan['preserved_files']);}
+        $locks=array();$deleted_records=0;$deleted_files=0;$deleted_uuids=array();$cleanup_pending=array();$blocked_records=$plan['blocked_records'];$preserved_files=$plan['preserved_files'];$preserved_ids=array_fill_keys($plan['preserved_asset_ids'],true);$base=SBS_Storage::base_dir();$assets_table=SBS_DB::table('assets');
         try {
-            foreach($plan['uuids'] as $uuid){$lock=fopen($plan['record_paths'][$uuid].'.lock','c');if(!$lock||!flock($lock,LOCK_EX|LOCK_NB)){if($lock){fclose($lock);}return self::error('busy','A selected workspace is in use. Nothing was deleted.',409);}$locks[]=$lock;}
-            $fresh=self::deletion_plan($plan['uuids']);if(is_wp_error($fresh)){return $fresh;}if(empty($fresh['safe'])){return self::error('delete_blocked','Deletion safety changed. Nothing was deleted: '.implode('; ',$fresh['blocked']),409);}
-            foreach($fresh['records'] as $uuid=>$record){if((int)($revisions[$uuid]??-1)!==(int)$record['revision']){return self::error('delete_conflict','A selected record changed. Nothing was deleted.',409);}}
-            if(!wp_mkdir_p($quarantine)){return self::error('delete_stage','A private deletion staging folder could not be created. Nothing was deleted.',503);}@chmod($quarantine,0700);
-            foreach($fresh['assets'] as $asset){$source=$asset['_absolute_path'];$target=$quarantine.'/asset-'.(int)$asset['id'];if(!@rename($source,$target)){self::restore_deletion_stage($moved);return self::error('delete_stage','A private file could not be staged. Nothing was deleted.',503);}$moved[]=array($target,$source);}
-            foreach($fresh['record_paths'] as $uuid=>$source){$target=$quarantine.'/record-'.$uuid.'.json';if(!@rename($source,$target)){self::restore_deletion_stage($moved);return self::error('delete_stage','A catalogue record could not be staged. Nothing was deleted.',503);}$moved[]=array($target,$source);}
-            if($wpdb->query('START TRANSACTION')===false){self::restore_deletion_stage($moved);return self::error('delete_commit','A rollback-safe database transaction is unavailable. Staged files were restored.',503);}$failed=false;
-            foreach($fresh['assets'] as $asset){$result=$wpdb->delete(SBS_DB::table('assets'),array('id'=>(int)$asset['id']),array('%d'));if($result!==1){$failed=true;break;}}
-            if($failed){$wpdb->query('ROLLBACK');self::restore_deletion_stage($moved);return self::error('delete_commit','Storage changed during deletion. No catalogue records were removed; staged files were restored.',409);}
-            $committed=$wpdb->query('COMMIT');if($committed===false){$wpdb->query('ROLLBACK');self::restore_deletion_stage($moved);return self::error('delete_commit','The database could not commit the deletion. Staged files were restored.',500);}
-            $left=array();foreach($moved as $move){if(!@unlink($move[0])){$left[]=basename($move[1]);}}@rmdir($quarantine);
-            return array('deleted_records'=>$fresh['record_count'],'deleted_files'=>$fresh['file_count'],'cleanup_pending'=>$left);
+            $candidates=$plan['eligible_records'];
+            foreach($candidates as $candidate){
+                $uuid=$candidate['uuid'];$path=$plan['record_paths'][$uuid];$title=$candidate['title'];
+                $lock=fopen($path.'.lock','c');if(!$lock||!flock($lock,LOCK_EX|LOCK_NB)){if($lock){fclose($lock);}$blocked_records[]=array('uuid'=>$uuid,'title'=>$title,'reasons'=>array('Workspace is busy; this record was left unchanged'));continue;}$locks[$uuid]=$lock;
+                $record=self::read($path);if(is_wp_error($record)||(int)$record['revision']!==(int)($revisions[$uuid]??-1)){$blocked_records[]=array('uuid'=>$uuid,'title'=>$title,'reasons'=>array('Record changed after review; refresh and confirm again'));flock($locks[$uuid],LOCK_UN);fclose($locks[$uuid]);unset($locks[$uuid]);continue;}
+                $pending_kind=self::pending_job_kind($record);
+                if($pending_kind!=='none'){
+                    if($pending_kind==='remote'){
+                        $prediction=SBS_Replicate::cancel($record['pending']['replicate_prediction_id']);
+                        if(is_wp_error($prediction)){$prediction=SBS_Replicate::poll($record['pending']['replicate_prediction_id']);}
+                        if(is_wp_error($prediction)){$blocked_records[]=array('uuid'=>$uuid,'title'=>$title,'reasons'=>array('The running Replicate job could not be cancelled or checked: '.$prediction->get_error_message()));continue;}
+                        $remote_status=strtolower((string)($prediction['status']??''));
+                        if($remote_status===''||in_array($remote_status,array('starting','processing','queued'),true)){$prediction=SBS_Replicate::poll($record['pending']['replicate_prediction_id']);$remote_status=is_wp_error($prediction)?'':strtolower((string)($prediction['status']??''));}
+                        if(!in_array($remote_status,array('canceled','cancelled','failed','succeeded','successful'),true)){$blocked_records[]=array('uuid'=>$uuid,'title'=>$title,'reasons'=>array('The remote job is still active or its cancellation could not be verified'));continue;}
+                    }
+                    unset($record['pending']);$record['processing_error']=null;$record['status']=$record['current_version']?'Awaiting Review':'Awaiting Finishing';$record['next_action']='Review or retry a stage';$record['revision']++;$record['updated_at']=gmdate('c');$record['audit'][]=array('at'=>gmdate('c'),'action'=>'Queued or running stage cancelled before catalogue deletion');
+                    $saved=self::write($path,$record);if(is_wp_error($saved)){$blocked_records[]=array('uuid'=>$uuid,'title'=>$title,'reasons'=>array('The job was cancelled but its workspace state could not be saved; no files were removed'));continue;}
+                }
+                $fresh=self::deletion_plan(array($uuid));if(is_wp_error($fresh)){$blocked_records[]=array('uuid'=>$uuid,'title'=>$title,'reasons'=>array($fresh->get_error_message()));continue;}
+                if(empty($fresh['safe'])){$reasons=!empty($fresh['blocked_records'][0]['reasons'])?$fresh['blocked_records'][0]['reasons']:array('Deletion safety checks no longer pass');$blocked_records[]=array('uuid'=>$uuid,'title'=>$title,'reasons'=>$reasons);continue;}
+                foreach($fresh['preserved_files'] as $file){$asset_id=(int)($file['asset_id']??0);if($asset_id&&!isset($preserved_ids[$asset_id])){$preserved_ids[$asset_id]=true;$preserved_files[]=$file;}}
+                $assets=array();foreach($fresh['assets'] as $asset){if(!in_array((int)$asset['id'],$plan['preserved_asset_ids'],true)){$assets[]=$asset;}}
+                $quarantine=$base.'/tmp/catalogue-delete-'.str_replace('-','',wp_generate_uuid4());
+                if(!wp_mkdir_p($quarantine)){$blocked_records[]=array('uuid'=>$uuid,'title'=>$title,'reasons'=>array('A private deletion staging folder could not be created'));continue;}@chmod($quarantine,0700);
+                $moved=array();$stage_failed=false;
+                foreach($assets as $asset){$source=$asset['_absolute_path'];$target=$quarantine.'/asset-'.(int)$asset['id'];if(!@rename($source,$target)){$stage_failed=true;break;}$moved[]=array($target,$source);}
+                if(!$stage_failed){$source=$path;$target=$quarantine.'/record-'.$uuid.'.json';if(!@rename($source,$target)){$stage_failed=true;}else{$moved[]=array($target,$source);}}
+                if($stage_failed){self::restore_deletion_stage($moved);@rmdir($quarantine);$blocked_records[]=array('uuid'=>$uuid,'title'=>$title,'reasons'=>array('A record or exclusive file could not be safely staged; nothing for this record was deleted'));continue;}
+                if($assets&&$wpdb->query('START TRANSACTION')===false){self::restore_deletion_stage($moved);@rmdir($quarantine);$blocked_records[]=array('uuid'=>$uuid,'title'=>$title,'reasons'=>array('A rollback-safe database transaction is unavailable'));continue;}
+                $failed=false;foreach($assets as $asset){$result=$wpdb->delete($assets_table,array('id'=>(int)$asset['id']),array('%d'));if($result!==1){$failed=true;break;}}
+                if($failed){$wpdb->query('ROLLBACK');self::restore_deletion_stage($moved);@rmdir($quarantine);$blocked_records[]=array('uuid'=>$uuid,'title'=>$title,'reasons'=>array('Storage changed during deletion; this record and its files were restored'));continue;}
+                if($assets&&$wpdb->query('COMMIT')===false){$wpdb->query('ROLLBACK');self::restore_deletion_stage($moved);@rmdir($quarantine);$blocked_records[]=array('uuid'=>$uuid,'title'=>$title,'reasons'=>array('The database could not commit; this record and its files were restored'));continue;}
+                foreach($moved as $move){if(!@unlink($move[0])){$cleanup_pending[]=basename($move[1]);}}
+                @rmdir($quarantine);$deleted_records++;$deleted_files+=count($assets);$deleted_uuids[]=$uuid;
+            }
+            return array('deleted_records'=>$deleted_records,'deleted_files'=>$deleted_files,'deleted_uuids'=>$deleted_uuids,'cleanup_pending'=>$cleanup_pending,'blocked_records'=>$blocked_records,'preserved_files'=>$preserved_files);
         } finally {foreach($locks as $lock){flock($lock,LOCK_UN);fclose($lock);}}
     }
     private static function restore_deletion_stage($moved){foreach(array_reverse($moved) as $move){if(is_file($move[0])){@rename($move[0],$move[1]);}}}

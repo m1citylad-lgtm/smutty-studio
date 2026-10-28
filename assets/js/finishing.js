@@ -358,16 +358,22 @@
             operation(async function(){
                 status.textContent='Checking exact record and file dependencies…';
                 var plan=await api('/delete-plan',{uuids:uuids});
-                if(!plan.safe){status.textContent='Nothing was deleted. Selected: '+plan.record_count+' record(s), '+plan.file_count+' associated file(s). Files pending, shared or not safely verified: '+(plan.blocked||[]).join('; ');return;}
-                var titleList=(plan.records||[]).map(function(r){return r.title;}).join(', ');
-                var prompt='Delete '+plan.record_count+' catalogue record(s) and '+plan.file_count+' associated artwork/file(s)?\n\n'+titleList+'\n\nThis cannot be undone. Projects, shared files and backups are checked separately and will be preserved.';
+                if(!plan.safe){status.textContent='Nothing can be deleted safely. '+(plan.blocked||[]).join('; ');return;}
+                var titleList=(plan.eligible_records||[]).map(function(r){return r.title;}).join(', ');
+                var preserved=(plan.preserved_files||[]).map(function(file){return file.filename+' — '+file.reason;});
+                var blocked=(plan.blocked_records||[]).map(function(record){return record.title+' — '+(record.reasons||[]).join(', ');});
+                var prompt='Delete '+plan.record_count+' eligible record(s) out of '+plan.selected_count+' selected?\n\n'+titleList+'\n\nAssociated files eligible for deletion: '+plan.file_count+'\nOutstanding jobs to cancel first: '+plan.jobs_to_cancel+'\nFiles that must be preserved: '+plan.preserved_file_count+(preserved.length?'\n'+preserved.join('\n'):'')+(blocked.length?'\n\nRecords that will be left unchanged:\n'+blocked.join('\n'):'')+'\n\nThis cannot be undone. Unrelated artwork, projects and backups are preserved.';
                 if(!window.confirm(prompt)){status.textContent='Deletion cancelled. Nothing changed.';return;}
                 var revisions={};(plan.records||[]).forEach(function(r){revisions[r.uuid]=r.revision;});
-                var result=await api('/delete',{uuids:uuids,revisions:revisions,confirmed:true,record_count:plan.record_count,file_count:plan.file_count});
-                uuids.forEach(function(uuid){catalogueSelected.delete(uuid);});if(current&&uuids.includes(current.uuid)){current=null;}
+                var result=await api('/delete',{uuids:uuids,revisions:revisions,confirmed:true,record_count:plan.record_count,file_count:plan.file_count,jobs_to_cancel:plan.jobs_to_cancel,preserved_file_count:plan.preserved_file_count});
+                (result.deleted_uuids||[]).forEach(function(uuid){catalogueSelected.delete(uuid);});if(current&&result.deleted_uuids&&result.deleted_uuids.includes(current.uuid)){current=null;}
                 await refresh();render();
-                if(result.cleanup_pending&&result.cleanup_pending.length){status.textContent='Deleted '+result.deleted_records+' record(s) and '+result.deleted_files+' file(s). Cleanup still needs attention for '+result.cleanup_pending.length+' staged file(s): '+result.cleanup_pending.join(', ');}
-                else{status.textContent='Deleted '+result.deleted_records+' catalogue record(s) and '+result.deleted_files+' associated file(s). Unselected records, shared assets, other projects and backups were preserved.';}
+                var summary='Deleted '+result.deleted_records+' record(s) and '+result.deleted_files+' associated file(s).';
+                if(result.preserved_files&&result.preserved_files.length){summary+=' Preserved '+result.preserved_files.length+' shared or referenced file(s).';}
+                if(result.cleanup_pending&&result.cleanup_pending.length){summary+=' Cleanup still needs attention for '+result.cleanup_pending.length+' staged file(s): '+result.cleanup_pending.join(', ');}
+                if(result.blocked_records&&result.blocked_records.length){summary+=' Left '+result.blocked_records.length+' record(s) unchanged: '+result.blocked_records.map(function(record){return record.title+' — '+(record.reasons||[]).join(', ');}).join('; ');}
+                if(!result.deleted_records&&result.blocked_records&&result.blocked_records.length){summary='Nothing was deleted. '+result.blocked_records.map(function(record){return record.title+' — '+(record.reasons||[]).join(', ');}).join('; ');}
+                status.textContent=summary;
             },'Checking the selected catalogue records…',null,function(error){status.textContent='Deletion not completed: '+error.message;});
         }
         function catalogue(){

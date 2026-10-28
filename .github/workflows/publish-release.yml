@@ -39,6 +39,7 @@ jobs:
           node --check assets/js/logic-correction.js
           node tools/test-logic-correction.cjs
           node tools/test-finishing.cjs
+          php tools/test-finishing-delete.php
           node tools/test-flat-background.cjs
           node tools/test-export.cjs
           node tools/test-development.cjs
