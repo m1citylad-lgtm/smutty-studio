@@ -201,14 +201,16 @@
         }
         var viewer=el('sbs-af-proof-viewer'), viewerStage=el('sbs-af-proof-stage'), viewerImage=el('sbs-af-proof-large'), viewerScale=1, viewerX=0, viewerY=0, viewerPointers=new Map(), viewerStart=null, viewerOpener=null;
         var aiFocus=el('sbs-af-ai-focus'), aiFocusStage=el('sbs-af-ai-focus-stage'), aiFocusImage=null, aiFocusMoveState=null, aiFocusData=null, aiFocusOpener=null, aiFocusSide='candidate', aiFocusZoom=4, aiFocusCenter=null, aiFocusPointers=new Map(), aiFocusGesture=null, aiFocusTap=null, aiFocusNoteBase='';
+        var autoCleanupState={};
         function aiFocusFit(image){var bounds=aiFocusStage.getBoundingClientRect();return Math.min(bounds.width/image.naturalWidth,bounds.height/image.naturalHeight);}
         function aiFocusClampScroll(){aiFocusStage.scrollLeft=Math.max(0,Math.min(aiFocusStage.scrollWidth-aiFocusStage.clientWidth,aiFocusStage.scrollLeft));aiFocusStage.scrollTop=Math.max(0,Math.min(aiFocusStage.scrollHeight-aiFocusStage.clientHeight,aiFocusStage.scrollTop));}
         function updateAiFocusMarker(width,height){
             var marker=el('sbs-af-ai-focus-marker');
             if(!aiFocusData||!aiFocusData.focus||!width||!height){marker.setAttribute('hidden','');return;}
-            var side=Math.max(64,Math.min(180,Math.min(width,height)*.08));
-            marker.style.width=side+'px';marker.style.height=side+'px';
-            marker.style.left=(aiFocusData.focus.x*width-side/2)+'px';marker.style.top=(aiFocusData.focus.y*height-side/2)+'px';marker.removeAttribute('hidden');
+            var naturalW=aiFocusImage&&aiFocusImage.naturalWidth||width,naturalH=aiFocusImage&&aiFocusImage.naturalHeight||height;
+            var box=cleanupFocusBox(naturalW,naturalH,aiFocusData.focus);
+            marker.style.width=(box.w/naturalW*width)+'px';marker.style.height=(box.h/naturalH*height)+'px';
+            marker.style.left=(box.x/naturalW*width)+'px';marker.style.top=(box.y/naturalH*height)+'px';marker.removeAttribute('hidden');
         }
         function positionAiFocusImage(){
             if(aiFocus.hidden||!aiFocusImage||!aiFocusImage.complete||!aiFocusImage.naturalWidth)return;
@@ -267,6 +269,70 @@
         document.addEventListener('keydown',function(event){if(event.key==='Escape'){if(!aiFocus.hidden){event.preventDefault();closeAiFocus();}else if(!viewer.hidden){event.preventDefault();closeProofViewer();}}});
         viewerImage.addEventListener('load',resetViewer);
         function friendlyName(title){return (title||'Artwork').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[\u2018\u2019']/g,'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,110)||'Artwork';}
+        function cleanupFocusBox(width,height,focus){
+            var side=Math.max(64,Math.min(180,Math.min(width,height)*.08));
+            side=Math.min(side,width,height);
+            var x=Math.max(0,Math.min(width-side,Math.round(Number(focus.x)*width-side/2)));
+            var y=Math.max(0,Math.min(height-side,Math.round(Number(focus.y)*height-side/2)));
+            return {x:x,y:y,w:side,h:side};
+        }
+        function medianChannel(values){values.sort(function(a,b){return a-b;});return values[Math.floor(values.length/2)]||0;}
+        async function runAutomaticSquareCleanup(finding,button,status){
+            var version=selectedCandidate();
+            if(!current||!version||!finding.focus)throw new Error('Select a candidate and a flagged area first.');
+            button.disabled=true;status.dataset.state='busy';status.textContent='Working…';
+            message('Checking only the highlighted square. The original is unchanged.');
+            try{
+                var image=new Image();image.src=version.asset.url;await image.decode();
+                var canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
+                var ctx=canvas.getContext('2d',{willReadFrequently:true});if(!ctx)throw new Error('Automatic cleanup is unavailable in this browser.');
+                ctx.drawImage(image,0,0);
+                var before=ctx.getImageData(0,0,canvas.width,canvas.height),source=before.data;
+                var box=cleanupFocusBox(canvas.width,canvas.height,finding.focus),out=new Uint8ClampedArray(source);
+                var changed=0,remaining=0,readX=box.x,readY=box.y;
+                function inspectPass(input,write){
+                    var edits=0,pending=[];
+                    for(var y=box.y;y<box.y+box.h;y++){
+                        for(var x=box.x;x<box.x+box.w;x++){
+                            var i=(y*canvas.width+x)*4,a=input[i+3];if(a===0||a===255)continue;
+                            var rs=[],gs=[],bs=[];
+                            for(var ny=Math.max(box.y,y-2);ny<=Math.min(box.y+box.h-1,y+2);ny++){
+                                for(var nx=Math.max(box.x,x-2);nx<=Math.min(box.x+box.w-1,x+2);nx++){
+                                    if(nx===x&&ny===y)continue;var ni=(ny*canvas.width+nx)*4;
+                                    if(input[ni+3]===255){rs.push(input[ni]);gs.push(input[ni+1]);bs.push(input[ni+2]);}
+                                }
+                            }
+                            if(rs.length<5)continue;
+                            var mr=medianChannel(rs),mg=medianChannel(gs),mb=medianChannel(bs),distance=Math.max(Math.abs(input[i]-mr),Math.abs(input[i+1]-mg),Math.abs(input[i+2]-mb));
+                            if(distance>42){remaining++;if(write)pending.push([i,mr,mg,mb,a]);}
+                            
+                        }
+                    }
+                    pending.forEach(function(p){if(input[p[0]]!==p[1]||input[p[0]+1]!==p[2]||input[p[0]+2]!==p[3]||input[p[0]+3]!==p[4]){edits++;if(write){out[p[0]]=p[1];out[p[0]+1]=p[2];out[p[0]+2]=p[3];out[p[0]+3]=p[4];}}});
+                    return edits;
+                }
+                inspectPass(source,true);changed=0;
+                for(var py=box.y;py<box.y+box.h;py++)for(var px=box.x;px<box.x+box.w;px++){var pi=(py*canvas.width+px)*4;if(source[pi]!==out[pi]||source[pi+1]!==out[pi+1]||source[pi+2]!==out[pi+2]||source[pi+3]!==out[pi+3])changed++;}
+                remaining=0;inspectPass(out,false);
+                for(var oy=0;oy<canvas.height;oy++)for(var ox=0;ox<canvas.width;ox++){
+                    if(ox>=box.x&&ox<box.x+box.w&&oy>=box.y&&oy<box.y+box.h)continue;
+                    var oi=(oy*canvas.width+ox)*4;if(source[oi]!==out[oi]||source[oi+1]!==out[oi+1]||source[oi+2]!==out[oi+2]||source[oi+3]!==out[oi+3])throw new Error('Safety check stopped the save because pixels outside the highlighted square changed.');
+                }
+                if(!changed){status.dataset.state='warning';status.textContent='No safe changes found. Don’t repeat this pass.';button.disabled=true;message('No edge pixels could be changed safely. The original and candidate are unchanged.');return;}
+                var after=ctx.createImageData(canvas.width,canvas.height);after.data.set(out);ctx.putImageData(after,0,0);
+                var blob=await new Promise(function(resolve,reject){canvas.toBlob(function(b){b?resolve(b):reject(new Error('Could not prepare the new PNG copy.'));},'image/png');});
+                await saveImageEdit(blob,'touchup',version.uuid,button);
+                var state=autoCleanupState[finding.id]||(autoCleanupState[finding.id]={passes:0,changed:0,stopped:false});
+                state.passes++;state.changed+=changed;state.remaining=remaining;state.sourceVersion=version.uuid;
+                state.stopped=remaining===0||state.passes>=2;
+                status.dataset.state=remaining?'warning':'success';
+                status.textContent=remaining?'Pass '+state.passes+' changed '+changed+' pixels; issues remain. Compare the copy before deciding.':'Pass '+state.passes+' checked. No matching colour fringe remains in this square; compare before saving.';
+                button.disabled=state.stopped;
+                render();
+                var overall=el('sbs-af-ai-status');overall.dataset.state=remaining?'review':'success';overall.textContent=status.textContent;
+                message(status.textContent,remaining>0);
+            }catch(error){status.dataset.state='fail';status.textContent='Fix not saved; check the original and try again later.';button.disabled=false;message(error.message,true);throw error;}
+        }
         function renderAiReview(version){
             var section=el('sbs-af-ai-review'),button=el('sbs-af-ai-review-run'),report=el('sbs-af-ai-review-report'),status=el('sbs-af-ai-status');
             section.hidden=!version;button.disabled=busy||!version;report.replaceChildren();
@@ -279,9 +345,31 @@
             status.textContent=findings.length?'AI check: '+findings.length+' area'+(findings.length===1?'':'s')+' to inspect.':result.overall==='unable'?'AI could not assess the image reliably.':'AI check: no specific issues flagged.';
             if(!findings.length){var none=document.createElement('p');none.textContent=result.overall==='unable'?'Try the 4× comparison and inspect the artwork manually.':'No specific issues flagged. AI can miss defects.';report.appendChild(none);return;}
             var findingsHeading=document.createElement('h4');findingsHeading.textContent='Areas to inspect';report.appendChild(findingsHeading);
-            var zoomHelp=document.createElement('p');zoomHelp.className='sbs-af-ai-zoom-help';zoomHelp.textContent='View area opens at 4× and centres on the estimate. A yellow outline marks the approximate area and follows it during zoom and pan; it is not an exact defect boundary.';report.appendChild(zoomHelp);
+            var zoomHelp=document.createElement('p');zoomHelp.className='sbs-af-ai-zoom-help';zoomHelp.textContent='View area opens at 4×. The outlined square is also the limit for automatic cleanup.';report.appendChild(zoomHelp);
             var findingsList=document.createElement('ol');findingsList.className='sbs-af-review-points sbs-af-ai-findings';
-            findings.forEach(function(finding,index){var item=document.createElement('li');item.dataset.severity=finding.severity;var heading=document.createElement('strong');heading.textContent=(index+1)+'. '+finding.area;item.appendChild(heading);var severity=document.createElement('p');severity.className='sbs-af-finding-status';severity.textContent=finding.severity==='concern'?'ACTION NEEDED — review before approval':'REVIEW — AI suggestion; confirm against the original';item.appendChild(severity);var issue=document.createElement('p');issue.textContent=finding.issue+' Next: '+finding.action;item.appendChild(issue);var saved=(version.review_decisions||{})[finding.id],state=document.createElement('p');state.className='sbs-af-finding-decision';state.textContent=saved?'Your review: '+saved.decision.replace('_',' '):'Not confirmed as a defect until you review it.';item.appendChild(state);var row=document.createElement('div');row.className='sbs-af-finding-actions';function addButton(label,callback){var b=document.createElement('button');b.type='button';b.className='sbs-button';b.textContent=label;b.disabled=!finding.id; b.addEventListener('click',callback);row.appendChild(b);return b;}var zoomButton=document.createElement('button');zoomButton.type='button';zoomButton.className='sbs-button sbs-af-ai-zoom-button';zoomButton.textContent='View area';zoomButton.setAttribute('aria-label','Open 4× view centred on '+finding.area);zoomButton.addEventListener('click',function(){openAiFocus(finding,zoomButton);});row.appendChild(zoomButton);addButton('Accept as intentional',function(){reviewFinding(finding,'intentional');});addButton('False alarm',function(){reviewFinding(finding,'false_alarm');});var fixButton=addButton('Fix here',function(){closeAiFocus();openArtworkEditor(finding);});fixButton.disabled=!finding.focus;addButton('Leave unresolved',function(){reviewFinding(finding,'unresolved');});item.appendChild(row);findingsList.appendChild(item);});
+            findings.forEach(function(finding,index){
+                var item=document.createElement('li');item.dataset.severity=finding.severity;
+                var heading=document.createElement('strong');heading.textContent=(index+1)+'. '+finding.area;item.appendChild(heading);
+                var severity=document.createElement('p');severity.className='sbs-af-finding-status';severity.textContent=finding.severity==='concern'?'ACTION NEEDED — review before approval':'REVIEW — AI suggestion; confirm against the original';item.appendChild(severity);
+                var issue=document.createElement('p');issue.textContent=finding.issue+' Next: '+finding.action;item.appendChild(issue);
+                var saved=(version.review_decisions||{})[finding.id],state=document.createElement('p');state.className='sbs-af-finding-decision';state.textContent=saved?'Your review: '+saved.decision.replace('_',' '):'Not confirmed as a defect until you review it.';item.appendChild(state);
+                var cleanupStatus=document.createElement('p');cleanupStatus.className='sbs-af-cleanup-status';cleanupStatus.dataset.state='not-run';cleanupStatus.setAttribute('role','status');cleanupStatus.setAttribute('aria-live','polite');
+                var cleanup=autoCleanupState[finding.id];cleanupStatus.textContent=cleanup?(cleanup.stopped?'No further automatic passes recommended.':cleanup.remaining===0&&cleanup.passes?'Checked after '+cleanup.passes+' pass(es). Compare the copy.':'Ready. No automatic repeat.'): 'Not run. This careful check only changes the flagged square.';item.appendChild(cleanupStatus);
+                var row=document.createElement('div');row.className='sbs-af-finding-actions';row.setAttribute('role','group');row.setAttribute('aria-label','Steps for '+finding.area);
+                function addButton(label,callback,disabled){var b=document.createElement('button');b.type='button';b.className='sbs-button';b.textContent=label;b.disabled=!!disabled||busy;b.addEventListener('click',callback);row.appendChild(b);return b;}
+                var zoomButton=addButton('1. View square',function(){openAiFocus(finding,zoomButton);},false);zoomButton.classList.add('sbs-af-ai-zoom-button');
+                var cleanupButton=addButton('2. Auto-clean square',function(){runAutomaticSquareCleanup(finding,cleanupButton,cleanupStatus).catch(function(){});},!finding.focus||!!(cleanup&&cleanup.stopped));
+                function addArrow(){var arrow=document.createElement('span');arrow.className='sbs-af-step-arrow';arrow.setAttribute('aria-hidden','true');arrow.textContent='→';row.appendChild(arrow);}
+                addArrow();
+                addButton('3. Compare copy',function(){var view=el('sbs-af-ai-focus-candidate');openAiFocus(finding,view);},false);
+                addArrow();
+                addButton('4. Recheck artwork',function(){operation(function(){return action('ai_review');},'Rechecking the edited copy…',button);},false);
+                addArrow();
+                addButton('Accept as intentional',function(){reviewFinding(finding,'intentional');},!finding.id);
+                addButton('False alarm',function(){reviewFinding(finding,'false_alarm');},!finding.id);
+                addButton('Leave unresolved',function(){reviewFinding(finding,'unresolved');},!finding.id);
+                item.appendChild(row);findingsList.appendChild(item);
+            });
             report.appendChild(findingsList);
         }
         function reviewFinding(finding,decision){if(!finding.id)return;var button=document.activeElement;operation(function(){return action('review_finding',{finding_id:finding.id,decision:decision});},'Saving finding review…',button);}
