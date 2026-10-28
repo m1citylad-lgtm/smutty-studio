@@ -10,6 +10,41 @@
         for(var i=3;i<data.length;i+=4){if(data[i]===0)clear=true;else if(data[i]<255)partial=true;}
         return partial?'Partial alpha':clear?'Genuine transparency':'Opaque';
     }
+    function cleanupFocusBox(width,height,focus){
+        var side=Math.round(Math.max(64,Math.min(180,Math.min(width,height)*.08)));
+        side=Math.min(side,width,height);
+        var x=Math.max(0,Math.min(width-side,Math.round(Number(focus.x)*width-side/2)));
+        var y=Math.max(0,Math.min(height-side,Math.round(Number(focus.y)*height-side/2)));
+        return {x:x,y:y,w:side,h:side};
+    }
+    function medianChannel(values){values.sort(function(a,b){return a-b;});return values[Math.floor(values.length/2)]||0;}
+    function cleanEdgeFringeRegion(data,width,height){
+        if(!data||!data.length||data.length!==width*height*4)throw new Error('Decoded pixels are unavailable');
+        var source=new Uint8ClampedArray(data),out=new Uint8ClampedArray(data),pending=[];
+        function findFringes(input,collect){
+            var count=0;
+            for(var y=0;y<height;y++)for(var x=0;x<width;x++){
+                var i=(y*width+x)*4,a=input[i+3];if(a===0||a===255)continue;
+                var rs=[],gs=[],bs=[];
+                for(var ny=Math.max(0,y-2);ny<=Math.min(height-1,y+2);ny++)for(var nx=Math.max(0,x-2);nx<=Math.min(width-1,x+2);nx++){
+                    if(nx===x&&ny===y)continue;
+                    var ni=(ny*width+nx)*4;if(input[ni+3]===255){rs.push(input[ni]);gs.push(input[ni+1]);bs.push(input[ni+2]);}
+                }
+                if(rs.length<5)continue;
+                var mr=medianChannel(rs),mg=medianChannel(gs),mb=medianChannel(bs);
+                if(Math.max(Math.abs(input[i]-mr),Math.abs(input[i+1]-mg),Math.abs(input[i+2]-mb))>42){
+                    count++;if(collect)pending.push([i,mr,mg,mb]);
+                }
+            }
+            return count;
+        }
+        findFringes(source,true);
+        pending.forEach(function(p){out[p[0]]=p[1];out[p[0]+1]=p[2];out[p[0]+2]=p[3];});
+        var changed=0;
+        for(var i=0;i<source.length;i+=4)if(source[i]!==out[i]||source[i+1]!==out[i+1]||source[i+2]!==out[i+2])changed++;
+        data.set(out);
+        return {changed:changed,remaining:findFringes(out,false)};
+    }
     function init() {
         var root=document.getElementById('sbs-app');if(!root)return;
         var current=null, records=[], busy=false, activeStageMethod='', selectedFile=null, selectedMethod='inspect', exportPickerOpen=false, proofPreviewUrl=null, proofSourceKey='', proofRenderedKey='', activePrintQA=null, activeProofAssetUrl='', flatPreviewBlob=null, flatPreviewUrl=null, flatPreviewKey='', refreshPromise=null, stageRunState={};
@@ -269,14 +304,6 @@
         document.addEventListener('keydown',function(event){if(event.key==='Escape'){if(!aiFocus.hidden){event.preventDefault();closeAiFocus();}else if(!viewer.hidden){event.preventDefault();closeProofViewer();}}});
         viewerImage.addEventListener('load',resetViewer);
         function friendlyName(title){return (title||'Artwork').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[\u2018\u2019']/g,'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,110)||'Artwork';}
-        function cleanupFocusBox(width,height,focus){
-            var side=Math.max(64,Math.min(180,Math.min(width,height)*.08));
-            side=Math.min(side,width,height);
-            var x=Math.max(0,Math.min(width-side,Math.round(Number(focus.x)*width-side/2)));
-            var y=Math.max(0,Math.min(height-side,Math.round(Number(focus.y)*height-side/2)));
-            return {x:x,y:y,w:side,h:side};
-        }
-        function medianChannel(values){values.sort(function(a,b){return a-b;});return values[Math.floor(values.length/2)]||0;}
         async function runAutomaticSquareCleanup(finding,button,status){
             var version=selectedCandidate();
             if(!current||!version||!finding.focus)throw new Error('Select a candidate and a flagged area first.');
@@ -288,32 +315,8 @@
                 var ctx=canvas.getContext('2d',{willReadFrequently:true});if(!ctx)throw new Error('Automatic cleanup is unavailable in this browser.');
                 ctx.drawImage(image,0,0);
                 var box=cleanupFocusBox(canvas.width,canvas.height,finding.focus);
-                var region=ctx.getImageData(box.x,box.y,box.w,box.h),source=region.data,out=new Uint8ClampedArray(source);
-                var changed=0,remaining=0;
-                function inspectPass(input,write){
-                    var edits=0,pending=[];
-                    for(var y=0;y<box.h;y++){
-                        for(var x=0;x<box.w;x++){
-                            var i=(y*box.w+x)*4,a=input[i+3];if(a===0||a===255)continue;
-                            var rs=[],gs=[],bs=[];
-                            for(var ny=Math.max(0,y-2);ny<=Math.min(box.h-1,y+2);ny++){
-                                for(var nx=Math.max(0,x-2);nx<=Math.min(box.w-1,x+2);nx++){
-                                    if(nx===x&&ny===y)continue;var ni=(ny*box.w+nx)*4;
-                                    if(input[ni+3]===255){rs.push(input[ni]);gs.push(input[ni+1]);bs.push(input[ni+2]);}
-                                }
-                            }
-                            if(rs.length<5)continue;
-                            var mr=medianChannel(rs),mg=medianChannel(gs),mb=medianChannel(bs),distance=Math.max(Math.abs(input[i]-mr),Math.abs(input[i+1]-mg),Math.abs(input[i+2]-mb));
-                            if(distance>42){remaining++;if(write)pending.push([i,mr,mg,mb,a]);}
-                            
-                        }
-                    }
-                    pending.forEach(function(p){if(input[p[0]]!==p[1]||input[p[0]+1]!==p[2]||input[p[0]+2]!==p[3]||input[p[0]+3]!==p[4]){edits++;if(write){out[p[0]]=p[1];out[p[0]+1]=p[2];out[p[0]+2]=p[3];out[p[0]+3]=p[4];}}});
-                    return edits;
-                }
-                inspectPass(source,true);changed=0;
-                for(var pi=0;pi<source.length;pi+=4){if(source[pi]!==out[pi]||source[pi+1]!==out[pi+1]||source[pi+2]!==out[pi+2]||source[pi+3]!==out[pi+3])changed++;}
-                remaining=0;inspectPass(out,false);
+                var region=ctx.getImageData(box.x,box.y,box.w,box.h);
+                var cleanup=cleanEdgeFringeRegion(region.data,box.w,box.h),changed=cleanup.changed,remaining=cleanup.remaining;
                 if(!changed){status.dataset.state='warning';status.textContent='No safe changes found. Don’t repeat this pass.';button.disabled=true;message('No edge pixels could be changed safely. The original and candidate are unchanged.');return;}
                 region.data.set(out);ctx.putImageData(region,box.x,box.y);
                 var blob=await new Promise(function(resolve,reject){canvas.toBlob(function(b){b?resolve(b):reject(new Error('Could not prepare the new PNG copy.'));},'image/png');});
@@ -628,6 +631,6 @@
         render();
         refresh().then(async function(){var restoreId=savedUiState.workspace;if(restoreId&&!current&&records.some(function(record){return record.uuid===restoreId;})){current=await api('/'+restoreId);el('sbs-af-resume').value=restoreId;var checkKey=current.uuid+':'+(current.current_version||'');if(savedUiState.checkKey===checkKey&&savedUiState.checks){document.querySelectorAll('[data-af-check]').forEach(function(n){var key=n.getAttribute('data-af-check');n.checked=!!savedUiState.checks[key];});lastCheckKey=checkKey;}render();saveUiState();if(current.pending&&current.pending.replicate_prediction_id){message('Restored the existing upscale and checking its status. No new upscale was started.');await pollReplicate();}else if(current.pending){message('Workspace restored with a queued stage. It has not been run again.');}else{message('Your previous Finishing workspace has been restored.');}}else{render();message('Local workspaces loaded.');}}).catch(function(error){render();message('Workspaces could not be loaded at startup: '+error.message,true);});
     }
-    if(typeof window!=='undefined')window.SBSFinishing={matches:matches,canApprove:canApprove,classifyTransparency:classifyTransparency,init:init};
+    if(typeof window!=='undefined')window.SBSFinishing={matches:matches,canApprove:canApprove,classifyTransparency:classifyTransparency,cleanupFocusBox:cleanupFocusBox,cleanEdgeFringeRegion:cleanEdgeFringeRegion,init:init};
     if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();}
 }());
