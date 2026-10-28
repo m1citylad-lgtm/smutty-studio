@@ -201,7 +201,7 @@
         }
         var viewer=el('sbs-af-proof-viewer'), viewerStage=el('sbs-af-proof-stage'), viewerImage=el('sbs-af-proof-large'), viewerScale=1, viewerX=0, viewerY=0, viewerPointers=new Map(), viewerStart=null, viewerOpener=null;
         var aiFocus=el('sbs-af-ai-focus'), aiFocusStage=el('sbs-af-ai-focus-stage'), aiFocusImage=null, aiFocusMoveState=null, aiFocusData=null, aiFocusOpener=null, aiFocusSide='candidate', aiFocusZoom=4, aiFocusCenter=null, aiFocusPointers=new Map(), aiFocusGesture=null, aiFocusTap=null, aiFocusNoteBase='';
-        var autoCleanupState={},lastAutoCleanup=null;
+        var autoCleanupState={},lastAutoCleanup=null,autoCleanupWorkspace='';
         function aiFocusFit(image){var bounds=aiFocusStage.getBoundingClientRect();return Math.min(bounds.width/image.naturalWidth,bounds.height/image.naturalHeight);}
         function aiFocusClampScroll(){aiFocusStage.scrollLeft=Math.max(0,Math.min(aiFocusStage.scrollWidth-aiFocusStage.clientWidth,aiFocusStage.scrollLeft));aiFocusStage.scrollTop=Math.max(0,Math.min(aiFocusStage.scrollHeight-aiFocusStage.clientHeight,aiFocusStage.scrollTop));}
         function updateAiFocusMarker(width,height){
@@ -319,7 +319,7 @@
                 var blob=await new Promise(function(resolve,reject){canvas.toBlob(function(b){b?resolve(b):reject(new Error('Could not prepare the new PNG copy.'));},'image/png');});
                 await saveImageEdit(blob,'touchup',version.uuid,button);
                 var state=autoCleanupState[finding.id]||(autoCleanupState[finding.id]={passes:0,changed:0,stopped:false});
-                state.passes++;state.changed+=changed;state.remaining=remaining;state.sourceVersion=version.uuid;state.finding=finding;state.stopped=remaining===0||state.passes>=2;state.version=current.current_version;lastAutoCleanup={finding:finding,state:state,version:current.current_version};
+                state.passes++;state.changed+=changed;state.remaining=remaining;state.sourceVersion=version.uuid;state.finding=finding;state.stopped=remaining===0||state.passes>=2;state.version=current.current_version;persistAutoCleanupState();lastAutoCleanup={finding:finding,state:state,version:current.current_version};
                 status.dataset.state='warning';
                 status.textContent=remaining?'Pass '+state.passes+' changed '+changed+' pixels. Issues remain; compare before repeating.':'Pass '+state.passes+' saved. The safe check found no matching fringe; compare and recheck before marking successful.';
                 button.disabled=state.stopped;
@@ -410,7 +410,21 @@
             if(current.qa_manifest){var manifest=current.qa_manifest;lines.push('Finishing QA manifest: '+manifest.overall+' — included as finishing-qa.json in the ZIP.','Candidate SHA-256: '+manifest.candidate_sha256,'Reuse checks only for identical bytes and the same print target. Recheck altered artwork, placement, brand assets and garment variants.','Screen garment colours are contrast previews, not physical print proofs.');status.dataset.state=manifest.overall.toLowerCase();status.textContent=manifest.overall+' — digital finishing only; production approval is separate.';}
             text.value=lines.join('\n');
         }
+        function hydrateAutoCleanupState(){
+            if(!current)return;
+            if(autoCleanupWorkspace!==current.uuid){
+                autoCleanupWorkspace=current.uuid;autoCleanupState={};
+                try{autoCleanupState=JSON.parse(sessionStorage.getItem('sbs-af-cleanup-'+current.uuid)||'{}')||{};}catch(e){autoCleanupState={};}
+            }
+            lastAutoCleanup=null;
+            Object.keys(autoCleanupState).some(function(id){var state=autoCleanupState[id];if(state&&state.version===current.current_version&&state.finding){lastAutoCleanup={finding:state.finding,state:state,version:state.version};return true;}return false;});
+        }
+        function persistAutoCleanupState(){
+            if(!current)return;
+            try{sessionStorage.setItem('sbs-af-cleanup-'+current.uuid,JSON.stringify(autoCleanupState));}catch(e){}
+        }
         function render(){
+            hydrateAutoCleanupState();
             if(flatPreviewBlob&&flatPreviewKey!==flatKey())clearFlatPreview();
             resetChecks();
             el('sbs-af-stage-help').textContent='Run each stage with its button. AI upscale may use paid credits; the untouched original stays unchanged.';var nameField=el('sbs-af-package-name');var workspaceKey=current?current.uuid:'';if(nameField.dataset.workspace!==workspaceKey){nameField.value=current?friendlyName(current.title)+'-local-finishing.zip':'';nameField.dataset.workspace=workspaceKey;}var v=current&&current.versions.find(function(v){return v.uuid===current.current_version;});
