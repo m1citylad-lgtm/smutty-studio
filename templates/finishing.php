@@ -127,7 +127,7 @@
             <button id="sbs-af-ai-focus-original" type="button" class="sbs-button">Original</button>
             <button id="sbs-af-ai-focus-candidate" type="button" class="sbs-button">Candidate</button>
         </div>
-        <div id="sbs-af-ai-focus-stage" class="sbs-af-ai-focus-stage" tabindex="0" aria-label="Issue comparison. Pinch to zoom, drag to pan, tap to switch between original and candidate. Scroll bars are also available."><svg id="sbs-af-ai-focus-marker" class="sbs-af-ai-focus-marker" hidden viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><rect x="4" y="4" width="92" height="92" rx="8"></rect><circle cx="50" cy="50" r="3"></circle></svg></div>
+        <div id="sbs-af-ai-focus-stage" class="sbs-af-ai-focus-stage" tabindex="0" aria-label="Issue comparison. Pinch to zoom, drag to pan, tap to switch between original and candidate. Scroll bars are also available."><svg id="sbs-af-ai-focus-marker" class="sbs-af-ai-focus-marker" hidden viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><rect x="4" y="4" width="92" height="92" rx="8"></rect></svg></div>
         <div class="sbs-af-finding-actions" role="group" aria-label="Review this finding"><button type="button" class="sbs-button" data-af-finding-decision="intentional">Accept as intentional</button><button type="button" class="sbs-button" data-af-finding-decision="false_alarm">False alarm</button><button id="sbs-af-focus-fix" type="button" class="sbs-button">Fix here</button><button type="button" class="sbs-button" data-af-finding-decision="unresolved">Leave unresolved</button></div>
     </div>
     <div id="sbs-af-editor" class="sbs-af-editor" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-editor-title">
