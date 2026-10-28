@@ -90,9 +90,9 @@
         <p id="sbs-af-print-status" class="sbs-af-print-status" role="status" aria-live="polite" data-state="warning">Enter a print size to see the PPI estimate.</p>
         <div id="sbs-af-qa"></div>
         <section id="sbs-af-ai-review" class="sbs-af-ai-review" aria-labelledby="sbs-af-ai-review-title" hidden>
-            <h3 id="sbs-af-ai-review-title">AI quality check</h3>
-            <p>Optional: send both images to OpenAI. This may use credits. It reports issues but does not edit images.</p>
-            <button id="sbs-af-ai-review-run" class="sbs-button" type="button">4. Run AI comparison (optional)</button>
+            <h3 id="sbs-af-ai-review-title">1. Scan artwork</h3>
+            <p>Looks for possible issues without changing the image. This optional AI scan sends the original and candidate to OpenAI and may use credits.</p>
+            <button id="sbs-af-ai-review-run" class="sbs-button" type="button">1. Scan artwork (optional)</button>
             <p id="sbs-af-ai-status" role="status" aria-live="polite" aria-atomic="true">Not run. This check is optional.</p>
             <div id="sbs-af-ai-review-report" class="sbs-af-ai-review-report" aria-live="polite"></div>
         </section>
