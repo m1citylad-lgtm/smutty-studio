@@ -110,7 +110,7 @@
             <label for="sbs-af-handoff-text">Copy this with the ZIP for ChatGPT review<textarea id="sbs-af-handoff-text" rows="9" readonly spellcheck="false"></textarea></label>
             <button id="sbs-af-copy-handoff" class="sbs-button" type="button" disabled>Copy ChatGPT handoff</button>
         </section>
-        <button id="sbs-af-approve" class="sbs-button primary" type="button" disabled>6. Approve this local version</button>
+        <button id="sbs-af-approve" class="sbs-button primary" type="button" disabled><span class="sbs-af-approve-label">6. Approve this local version</span><span class="sbs-af-approve-spinner" aria-hidden="true" hidden></span><span class="sbs-af-approve-done" aria-label="Approved locally" hidden>✓</span></button>
         <label for="sbs-af-package-name">ZIP download filename (editable)<input id="sbs-af-package-name" type="text" maxlength="150" autocomplete="off" aria-describedby="sbs-af-package-name-help"></label>
         <p id="sbs-af-package-name-help">Suggested from the artwork title. Studio adds version and date to avoid duplicate names.</p>
         <button id="sbs-af-export" class="sbs-button" type="button" disabled aria-describedby="sbs-af-package-help">7. Build approved ZIP</button>

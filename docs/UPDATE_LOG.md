@@ -40,12 +40,11 @@
 
 ## Planned for a later build — finishing approval button continuity
 **Recorded:** 25 October 2026  
-**Status:** Planned; not included in v0.2.96.
+**Status:** Implemented in v0.3.2.
 
 Bring **“6. Approve this local version”** into line with the stage buttons:
 
-- Use the same black starting appearance as other enabled action buttons, so it does not look inactive.
-- Show a spinner and processing state while local approval is being saved.
-- After success, show a prominent green tick on the right side of the button.
-- Keep the normal disabled appearance only when approval is genuinely blocked by missing checks or unresolved findings.
-- Preserve the distinction between local finishing approval and production approval.
+- Enabled local approval uses a clear black button treatment; it retains the disabled appearance when checks or unresolved findings block approval.
+- Saving displays a spinner and the processing label.
+- Successful local approval displays a prominent green tick at the right of the button.
+- Local finishing approval remains separate from production approval.
