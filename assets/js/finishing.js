@@ -47,7 +47,7 @@
     }
     function init() {
         var root=document.getElementById('sbs-app');if(!root)return;
-        var current=null, records=[], busy=false, activeStageMethod='', selectedFile=null, selectedMethod='inspect', exportPickerOpen=false, proofPreviewUrl=null, proofSourceKey='', proofRenderedKey='', activePrintQA=null, activeProofAssetUrl='', flatPreviewBlob=null, flatPreviewUrl=null, flatPreviewKey='', refreshPromise=null, stageRunState={};
+        var current=null, records=[], busy=false, activeStageMethod='', selectedFile=null, selectedMethod='inspect', exportPickerOpen=false, proofPreviewUrl=null, proofSourceKey='', proofRenderedKey='', activePrintQA=null, activeProofAssetUrl='', flatPreviewBlob=null, flatPreviewUrl=null, flatPreviewKey='', refreshPromise=null, stageRunState={}, renderedWorkspaceKey=null;
         var uiStateKey='sbs-af-session-v1:'+location.pathname, savedUiState=(function(){try{return JSON.parse(sessionStorage.getItem(uiStateKey)||'{}');}catch(e){return {};}})(),lastCheckKey='';
         if(savedUiState.stage&&['inspect','upscale','print_png','resize'].includes(savedUiState.stage))selectedMethod=savedUiState.stage;
         var el=function(id){return document.getElementById(id);},catalogueReturnFocus=null,catalogueSelected=new Set();
@@ -68,7 +68,9 @@
         function controls(){
             document.querySelectorAll('[data-af-method]').forEach(function(button){button.disabled=busy||!current;});
             el('sbs-af-export').disabled=busy||exportPickerOpen||!current||!current.approval;
-            el('sbs-af-correction-open').disabled=busy||!current||!!(current&&current.pending);
+            var correctionOpen=el('sbs-af-correction-open'),correctionHelp=el('sbs-af-correction-help');
+            correctionOpen.disabled=busy||!current||!!(current&&current.pending);
+            if(correctionHelp)correctionHelp.textContent=!current?'Upload artwork or resume a saved workspace to enable the full-image scan.':current.pending?'A stage is queued or running. Finish or cancel it before scanning corrections.':busy?'Wait for the current action to finish before scanning.':'Ready: scan the entire selected image for possible corrections.';
             el('sbs-af-ai-review-run').disabled=busy||!current||!current.current_version;el('sbs-af-refresh-qa').disabled=busy||!current||!current.current_version;
             var selectedVersion=current&&current.versions.find(function(v){return v.uuid===current.current_version;}),reviewFindings=selectedVersion?Array.from(selectedVersion.qa&&selectedVersion.qa.pixel_review&&selectedVersion.qa.pixel_review.findings||[]).concat(selectedVersion.ai_review&&selectedVersion.ai_review.findings||[]):[],hasUnresolved=reviewFindings.some(function(f){var d=(selectedVersion.review_decisions||{})[f.id];return !d||d.decision==='unresolved';});
             el('sbs-af-approve').disabled=busy||!canApprove(current)||!Object.values(checks()).every(Boolean)||hasUnresolved||!!(selectedVersion&&selectedVersion.review_disposition==='rejected');
@@ -428,6 +430,8 @@
             try{sessionStorage.setItem('sbs-af-cleanup-'+current.uuid,JSON.stringify(autoCleanupState));}catch(e){}
         }
         function render(){
+            var nextWorkspaceKey=current?current.uuid:'';
+            if(nextWorkspaceKey!==renderedWorkspaceKey){stageRunState={};renderedWorkspaceKey=nextWorkspaceKey;}
             if(window.SBSFinishingCorrection&&window.SBSFinishingCorrection.onState)window.SBSFinishingCorrection.onState(current);
             hydrateAutoCleanupState();
             if(flatPreviewBlob&&flatPreviewKey!==flatKey())clearFlatPreview();
@@ -623,6 +627,13 @@
         el('sbs-af-versions').addEventListener('change',function(){var uuid=this.value,button=this;if(uuid)operation(function(){return action('select',{version:uuid});},'Selecting version; new approval will be required…',button);});
         el('sbs-af-resume').addEventListener('change',function(){var uuid=this.value,button=this;if(!uuid||busy)return;operation(async function(){current=await api('/'+uuid);render();saveUiState();if(current.pending&&current.pending.replicate_prediction_id){message('Resumed the existing Replicate upscale. Checking its status; do not queue another request.');await pollReplicate();}else{message('Workspace resumed from private storage.');}},'Loading workspace…',button);});
         el('sbs-af-refresh').addEventListener('click',async function(){try{await refresh();render();message('Local workspaces refreshed.');}catch(error){message('Workspaces could not be refreshed: '+error.message,true);}});
+        el('sbs-af-clear').addEventListener('click',function(){
+            if(busy)return;
+            current=null;selectedFile=null;stageRunState={};savedUiState.workspace='';savedUiState.checks={};
+            el('sbs-af-resume').value='';el('sbs-af-upload').reset();saveUiState();render();
+            message('Artwork cleared from the screen. Saved workspaces are still available in the list below.');
+            uploadMessage('Selected artwork cleared. The saved workspace was kept.','info');
+        });
         document.querySelectorAll('[data-af-check]').forEach(function(n){n.addEventListener('change',function(){saveUiState();controls();renderHandoff(current&&current.versions.find(function(v){return v.uuid===current.current_version;}));});});
         el('sbs-af-copy-handoff').addEventListener('click',async function(){var field=el('sbs-af-handoff-text');try{await navigator.clipboard.writeText(field.value);message('ChatGPT handoff copied. Attach the Studio ZIP when you paste it into ChatGPT.');}catch(error){field.focus();field.select();message('Select and copy the highlighted handoff text, then attach the Studio ZIP in ChatGPT.',true);}});
         el('sbs-af-zoom').addEventListener('change',function(){var width=Number(this.value)*100+'%';['sbs-af-original','sbs-af-candidate'].forEach(function(id){el(id).style.width=width;});document.querySelectorAll('[data-af-proof-image]').forEach(function(img){img.style.width=width;});});

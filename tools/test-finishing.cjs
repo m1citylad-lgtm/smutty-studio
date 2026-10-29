@@ -34,8 +34,15 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0.3.3/);
-assert.match(plugin, /define\('SBS_VERSION', '0.3.3'\)/);
+assert.match(plugin, /Version: 0.3.4/);
+assert.match(template, /id="sbs-af-clear"/);
+assert.match(template, /id="sbs-af-correction-help"/);
+assert.match(finishing, /renderedWorkspaceKey=null/);
+assert.match(finishing, /function render\(\)[\s\S]*?stageRunState=\{\};renderedWorkspaceKey=nextWorkspaceKey/);
+assert.match(finishing, /el\('sbs-af-clear'\)\.addEventListener/);
+assert.match(finishing, /savedUiState\.workspace='';savedUiState\.checks=\{\}/);
+
+assert.match(plugin, /define\('SBS_VERSION', '0.3.4'\)/);
 assert.match(studio, /button\.closest\('\.sbs-character-page-menu'\)\) \{ return; \}/, 'Character menu entries must not receive information buttons');
 const mainNav = studioTemplate.match(/<nav id="sbs-primary-nav"[\s\S]*?<\/nav>/)[0];
 assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="freestyle"'));

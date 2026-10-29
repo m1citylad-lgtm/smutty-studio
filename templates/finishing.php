@@ -14,6 +14,8 @@
             </form>
             <label for="sbs-af-resume">Resume local artwork<select id="sbs-af-resume"><option value="">Choose a workspace</option></select></label>
             <button id="sbs-af-refresh" class="sbs-button" type="button" aria-live="polite"><span id="sbs-af-refresh-label">Refresh workspaces</span><span id="sbs-af-refresh-spinner" aria-hidden="true" hidden> ⌛</span><span id="sbs-af-refresh-done" aria-hidden="true" hidden> ✓</span></button>
+            <button id="sbs-af-clear" class="sbs-button" type="button">Clear selected artwork</button>
+            <p class="sbs-af-help">Clears the current image from this screen and prepares the upload form. It keeps the saved workspace so you can reopen it later.</p>
             <p id="sbs-af-workspace-status" class="sbs-af-workspace-status" role="status" aria-live="polite">Saved workspaces have not been checked yet.</p>
             <section class="sbs-af-print-settings" aria-label="Print target settings">
                 <h3>Print target</h3>
@@ -42,7 +44,8 @@
             <section class="sbs-af-correction-launch" aria-labelledby="sbs-af-correction-heading">
                 <h3 id="sbs-af-correction-heading">Whole-image correction</h3>
                 <p>Scan the entire selected image, review marked areas, then correct one area or run all suggested fixes.</p>
-                <button id="sbs-af-correction-open" class="sbs-button primary" type="button" disabled>Scan and review corrections</button>
+                <button id="sbs-af-correction-open" class="sbs-button primary" type="button" disabled aria-describedby="sbs-af-correction-help">Scan and review corrections</button>
+                <p id="sbs-af-correction-help" class="sbs-af-help" role="status" aria-live="polite">Upload artwork or resume a saved workspace to enable the full-image scan.</p>
             </section>
             <details class="sbs-af-flat-background"><summary>Optional: remove a plain background</summary>
                 <div class="sbs-af-flat-background-content">

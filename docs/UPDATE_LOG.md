@@ -1,5 +1,14 @@
 # Studio Update Log
 
+## Finishing workspace reset and correction readiness
+**Recorded:** 29 October 2026  
+**Status:** Implemented in v0.3.4.
+
+- Add a clear-selection action that removes the current image from the screen and upload form without deleting its saved workspace.
+- Reset transient stage indicators when switching between artwork workspaces so one image's run state cannot carry over to another.
+- Explain why full-image correction scanning is unavailable, including when artwork is not selected or a stage is queued.
+
+
 ## Whole-image finishing corrections and marked review
 **Recorded:** 29 October 2026  
 **Status:** Implemented in v0.3.3.
