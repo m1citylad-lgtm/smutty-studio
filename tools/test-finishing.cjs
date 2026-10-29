@@ -317,7 +317,7 @@ assert.match(finishing, /var pxW=Number\(q\.width\),pxH=Number\(q\.height\),ppi=
 assert.match(finishing, /Comparison not completed: '\+error\.message/);
 assert.match(finishing, /function runStage\(method,button\)/);
 assert.match(finishing, /stageRunState\[method\]=\{state:'complete'\}/);
-assert.match(finishing, /✓ 6\. Approved locally/);
+assert.match(finishing, /approveDone\.hidden=!approved/);
 assert.match(finishing, /Please compare the attached original\/ and candidate\//);
 assert.match(finishing, /filter\(function\(finding\)\{return finding\.severity!=='info';\}\)/);
 assert.match(finishing, /View area/);
