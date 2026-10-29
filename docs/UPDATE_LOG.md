@@ -1,5 +1,18 @@
 # Studio Update Log
 
+## Whole-image finishing corrections and marked review
+**Recorded:** 29 October 2026  
+**Status:** Planned — ready for implementation.
+
+- Add a whole-image inspection workflow for artwork of any subject, including character art and lettering. Detect only correction types that appear necessary; show acceptable or not-needed categories without inviting unnecessary runs.
+- Show every detected issue on the original preview with a clear outline marker. Use a square or an oblong sized to fit the issue, centre the issue within it, and do not shade or cover the image inside the marker.
+- Provide separate correction actions for relevant cleanup categories, including inconsistent edge colours/fringes, stray pixels, opacity recovery for areas intended to print solid (including lettering), and transparency-edge treatment. Preserve intentional partial transparency such as smoke.
+- Let the user select a marker and run the relevant correction on that marked area, or run all suggested corrections across all marked areas in one sweep. Do not require a marker selection for the whole-image sweep.
+- Keep the original unchanged. Show the corrected result in the same review window; tapping the image outside markers toggles between original and corrected. Provide undo for the latest correction and keep correction results as a separate version until accepted.
+- Support touch pinch-to-zoom and two-finger panning. Fit the image within the available preview area initially; allow scrolling within the image viewport when needed.
+- Keep the preview and its controls together in one compact, responsive window, with no navigation required to reach the image, marker list, correction actions, compare control, or undo. Arrange controls compactly to fit the available screen space; confine any necessary scrollbars to the image area.
+- Show per-category/per-marker status: red for suggested, amber for uncertain or requiring review, a spinner while running, green when corrected and rechecked or explicitly accepted, and grey when no correction is needed. Update status after each run so completed or acceptable items are not needlessly rerun.
+
 ## Catalogue deletion for queued and mixed-status workspaces
 **Recorded:** 28 October 2026
 **Status:** Implemented in v0.3.0.
