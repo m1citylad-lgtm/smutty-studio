@@ -36,6 +36,7 @@ jobs:
           node --check assets/js/studio.js
           node --check assets/js/freestyle.js
           node --check assets/js/finishing.js
+          node --check assets/js/transparency-correction.js
           node --check assets/js/logic-correction.js
           node tools/test-logic-correction.cjs
           node tools/test-finishing.cjs

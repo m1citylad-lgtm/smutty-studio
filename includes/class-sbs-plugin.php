@@ -115,6 +115,8 @@ final class SBS_Plugin
         wp_enqueue_script('sbs-freestyle', SBS_PLUGIN_URL . 'assets/js/freestyle.js', array('sbs-studio', 'sbs-flat-background'), SBS_VERSION, true);
         wp_enqueue_script('sbs-finishing', SBS_PLUGIN_URL . 'assets/js/finishing.js', array('sbs-studio', 'sbs-flat-background'), SBS_VERSION, true);
         wp_enqueue_style('sbs-finishing', SBS_PLUGIN_URL . 'assets/css/finishing.css', array('sbs-studio-theme'), SBS_VERSION);
+        wp_enqueue_script('sbs-transparency-correction', SBS_PLUGIN_URL . 'assets/js/transparency-correction.js', array('sbs-finishing'), SBS_VERSION, true);
+        wp_enqueue_style('sbs-transparency-correction', SBS_PLUGIN_URL . 'assets/css/transparency-correction.css', array('sbs-finishing'), SBS_VERSION);
         wp_enqueue_script('sbs-logic-correction', SBS_PLUGIN_URL . 'assets/js/logic-correction.js', array('sbs-studio'), SBS_VERSION, true);
         wp_enqueue_style('sbs-logic-correction', SBS_PLUGIN_URL . 'assets/css/logic-correction.css', array('sbs-studio-theme'), SBS_VERSION);
         include SBS_PLUGIN_DIR . 'templates/studio.php';

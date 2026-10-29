@@ -39,6 +39,11 @@
         </section>
 
         <section class="sbs-card sbs-af-adjustments-card"><h2>Optional artwork adjustments</h2>
+            <section class="sbs-af-correction-launch" aria-labelledby="sbs-af-correction-heading">
+                <h3 id="sbs-af-correction-heading">Whole-image correction</h3>
+                <p>Scan the entire selected image, review marked areas, then correct one area or run all suggested fixes.</p>
+                <button id="sbs-af-correction-open" class="sbs-button primary" type="button" disabled>Scan and review corrections</button>
+            </section>
             <details class="sbs-af-flat-background"><summary>Optional: remove a plain background</summary>
                 <div class="sbs-af-flat-background-content">
                     <p>Local, non-AI operation. It removes selected sampled colours only where connected to the image edge. It can leave fringes or remove edge-touching artwork. It does not detect every checkerboard and is not a complex-scene remover.</p>
@@ -55,7 +60,25 @@
             <label for="sbs-af-notes">Correction notes for this version<textarea id="sbs-af-notes" rows="4" maxlength="6000" spellcheck="true" autocapitalize="sentences" placeholder="Dictate details to check. Notes are recorded; they do not instruct AI or redraw this image."></textarea></label>
         </section>
     </div>
-    <section class="sbs-card"><h2>3. Compare and review</h2>
+<div id="sbs-af-correction-dialog" class="sbs-af-correction-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-correction-title">
+        <header class="sbs-af-correction-head"><div><h2 id="sbs-af-correction-title">Whole-image correction review</h2><p>Clear outline markers show areas to inspect. Select a marker for one-area correction, or run all suggested corrections.</p></div><button id="sbs-af-correction-close" type="button" class="sbs-button" aria-label="Close correction review">Close</button></header>
+        <div class="sbs-af-correction-tools" role="toolbar" aria-label="Image correction actions">
+            <button type="button" class="sbs-button" data-sbs-correction-kind="edge_fringe" disabled>Clean edge-colour fringe</button>
+            <button type="button" class="sbs-button" data-sbs-correction-kind="stray_pixel" disabled>Remove stray pixels</button>
+            <button type="button" class="sbs-button" data-sbs-correction-kind="solid_opacity" disabled>Restore solid opacity</button>
+            <button type="button" class="sbs-button" data-sbs-correction-kind="alpha_edge" disabled>Treat transparency edges</button>
+            <button id="sbs-af-correction-run-all" type="button" class="sbs-button primary" disabled>Run all suggested</button>
+            <button id="sbs-af-correction-undo" type="button" class="sbs-button" disabled>Undo last correction</button>
+        </div>
+        <p id="sbs-af-correction-status" class="sbs-af-correction-status" role="status" aria-live="polite">Choose or resume artwork to scan it.</p>
+        <div class="sbs-af-correction-body">
+            <div id="sbs-af-correction-viewport" class="sbs-af-correction-viewport" tabindex="0" aria-label="Image preview. Pinch to zoom and move with two fingers. Tap outside markers to toggle original and corrected.">
+                <div id="sbs-af-correction-stage" class="sbs-af-correction-stage"><img id="sbs-af-correction-image" alt="Selected artwork correction preview"><div id="sbs-af-correction-markers" class="sbs-af-correction-markers" aria-label="Detected correction areas"></div></div>
+            </div>
+            <aside class="sbs-af-correction-aside"><h3>Marked areas</h3><p>Red: suggested · Amber: review first · Green: corrected · Grey: acceptable</p><div id="sbs-af-correction-categories" class="sbs-af-correction-categories" aria-label="Correction category status"></div><div id="sbs-af-correction-list" class="sbs-af-correction-list"></div></aside>
+        </div>
+    </div>
+        <section class="sbs-card"><h2>3. Compare and review</h2>
         <p id="sbs-af-next" class="sbs-af-notice">Next action: upload or resume artwork.</p>
         <label for="sbs-af-versions">Version history<select id="sbs-af-versions"><option value="">No candidates yet</option></select></label>
         <div class="sbs-af-review-controls"><label for="sbs-af-zoom">Comparison zoom (display only)<select id="sbs-af-zoom" aria-describedby="sbs-af-zoom-help"><option value="1">Fit</option><option value="2">2×</option><option value="4">4×</option></select></label>

@@ -68,6 +68,7 @@
         function controls(){
             document.querySelectorAll('[data-af-method]').forEach(function(button){button.disabled=busy||!current;});
             el('sbs-af-export').disabled=busy||exportPickerOpen||!current||!current.approval;
+            el('sbs-af-correction-open').disabled=busy||!current||!!(current&&current.pending);
             el('sbs-af-ai-review-run').disabled=busy||!current||!current.current_version;el('sbs-af-refresh-qa').disabled=busy||!current||!current.current_version;
             var selectedVersion=current&&current.versions.find(function(v){return v.uuid===current.current_version;}),reviewFindings=selectedVersion?Array.from(selectedVersion.qa&&selectedVersion.qa.pixel_review&&selectedVersion.qa.pixel_review.findings||[]).concat(selectedVersion.ai_review&&selectedVersion.ai_review.findings||[]):[],hasUnresolved=reviewFindings.some(function(f){var d=(selectedVersion.review_decisions||{})[f.id];return !d||d.decision==='unresolved';});
             el('sbs-af-approve').disabled=busy||!canApprove(current)||!Object.values(checks()).every(Boolean)||hasUnresolved||!!(selectedVersion&&selectedVersion.review_disposition==='rejected');
@@ -427,6 +428,7 @@
             try{sessionStorage.setItem('sbs-af-cleanup-'+current.uuid,JSON.stringify(autoCleanupState));}catch(e){}
         }
         function render(){
+            if(window.SBSFinishingCorrection&&window.SBSFinishingCorrection.onState)window.SBSFinishingCorrection.onState(current);
             hydrateAutoCleanupState();
             if(flatPreviewBlob&&flatPreviewKey!==flatKey())clearFlatPreview();
             resetChecks();
@@ -570,6 +572,23 @@
                 message(type==='approve'?'Local finishing version approved. SB production and Drive remain unchanged.':type==='ai_review'?'AI comparison saved. Check its advisory findings alongside the original, candidate and garment proofs.':'Stage '+type+' complete.');
             }
         }
+        window.SBSFinishingCorrection={
+            getState:function(){return current;},
+            save:function(blob,categories,sourceVersion){
+                return new Promise(function(resolve,reject){
+                    if(busy){reject(new Error('Studio is processing another action. Wait for it to finish, then retry.'));return;}
+                    var data=new FormData();data.append('action','pixel_correction');data.append('revision',String(current.revision));data.append('source_version',sourceVersion);data.append('categories',JSON.stringify(categories));data.append('file',new File([blob],'candidate-pixel-correction.png',{type:'image/png'}));
+                    operation(async function(){current=await api('/'+current.uuid+'/action',data);render();saveUiState();try{await refresh();render();saveUiState();}catch(refreshError){message('Correction was saved, but workspace refresh failed: '+refreshError.message,true);}resolve(current);},'Saving corrected image as a separate version…',el('sbs-af-correction-run-all'),reject);
+                });
+            },
+            undo:function(){
+                return new Promise(function(resolve,reject){
+                    if(busy){reject(new Error('Studio is processing another action. Wait for it to finish, then retry.'));return;}
+                    operation(async function(){current=await api('/'+current.uuid+'/action',{action:'undo_pixel_correction',revision:current.revision});render();try{await refresh();render();}catch(refreshError){message('Undo was applied, but workspace refresh failed: '+refreshError.message,true);}saveUiState();resolve(current);},'Undoing the latest pixel correction…',el('sbs-af-correction-undo'),reject);
+                });
+            },
+            onState:null
+        };
         el('sbs-af-file').addEventListener('change',function(){chooseFile(this);});
         el('sbs-af-gallery-file').addEventListener('change',function(){chooseFile(this);});
         el('sbs-af-upload').addEventListener('submit',function(event){event.preventDefault();var submitter=event.submitter||this.querySelector('button[type=submit]'),uploaded=null;uploadMessage('Saving the untouched original in private Studio storage…');operation(async function(){var f=selectedFile||el('sbs-af-file').files[0]||el('sbs-af-gallery-file').files[0];if(!f)throw new Error('Choose one image using Photos / Gallery or Files / My Files first.');if(f.size>20*1024*1024)throw new Error('This file is '+fileSize(f.size)+'. The limit is 20 MB. Choose a smaller copy; your original file will not be changed.');var data=new FormData();data.append('file',f);data.append('title',el('sbs-af-name').value);current=await api('/upload',data);uploaded=current;await refresh();render();selectedFile=null;el('sbs-af-upload').reset();var saved='Saved successfully: “'+current.title+'”. Workspace '+current.uuid+'. The original is unchanged; no AF number was allocated.';message(saved);uploadMessage(saved,'success');},'Uploading original to private Studio storage…',submitter,function(error){if(uploaded){var saved='Original saved successfully: “'+uploaded.title+'”. Workspace '+uploaded.uuid+'. The workspace list did not refresh: '+error.message+' Do not upload it again; press Refresh workspaces.';uploadMessage(saved,'success');}else{uploadMessage('Upload not confirmed: '+error.message,'error');}});});
