@@ -2,7 +2,7 @@
 
 ## Whole-image finishing corrections and marked review
 **Recorded:** 29 October 2026  
-**Status:** Planned — ready for implementation.
+**Status:** Implemented in v0.3.3.
 
 - Add a whole-image inspection workflow for artwork of any subject, including character art and lettering. Detect only correction types that appear necessary; show acceptable or not-needed categories without inviting unnecessary runs.
 - Show every detected issue on the original preview with a clear outline marker. Use a square or an oblong sized to fit the issue, centre the issue within it, and do not shade or cover the image inside the marker.
