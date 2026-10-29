@@ -13,6 +13,8 @@ const theme = read('assets/css/studio-theme.css');
 const studioStyles = read('assets/css/studio-hierarchy.css');
 const finishing = read('assets/js/finishing.js');
 const flatBackground = read('assets/js/flat-background.js');
+const transparencyCorrection = read('assets/js/transparency-correction.js');
+const correctionCss = read('assets/css/transparency-correction.css');
 const studio = read('assets/js/studio.js');
 const backend = read('includes/class-sbs-finishing.php');
 const printQa = read('includes/class-sbs-print-qa.php');
@@ -34,15 +36,24 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0.3.4/);
+assert.match(plugin, /Version: 0.3.5/);
 assert.match(template, /id="sbs-af-clear"/);
 assert.match(template, /id="sbs-af-correction-help"/);
+assert.match(template, /id="sbs-af-correction-open-spinner"/);
+assert.match(template, /id="sbs-af-correction-open-done"/);
+assert.match(transparencyCorrection, /function initializeCorrection\(\)/);
+assert.match(transparencyCorrection, /document\.addEventListener\('DOMContentLoaded',initializeCorrection/);
+assert.match(transparencyCorrection, /setLaunchState\('busy'/);
+assert.match(transparencyCorrection, /setLaunchState\('done'/);
+assert.match(transparencyCorrection, /setLaunchState\('error'/);
+assert.match(correctionCss, /#sbs-af-correction-open\[data-state="done"\].*#145c3b/);
+
 assert.match(finishing, /renderedWorkspaceKey=null/);
 assert.match(finishing, /function render\(\)[\s\S]*?stageRunState=\{\};renderedWorkspaceKey=nextWorkspaceKey/);
 assert.match(finishing, /el\('sbs-af-clear'\)\.addEventListener/);
 assert.match(finishing, /savedUiState\.workspace='';savedUiState\.checks=\{\}/);
 
-assert.match(plugin, /define\('SBS_VERSION', '0.3.4'\)/);
+assert.match(plugin, /define\('SBS_VERSION', '0.3.5'\)/);
 assert.match(studio, /button\.closest\('\.sbs-character-page-menu'\)\) \{ return; \}/, 'Character menu entries must not receive information buttons');
 const mainNav = studioTemplate.match(/<nav id="sbs-primary-nav"[\s\S]*?<\/nav>/)[0];
 assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="freestyle"'));

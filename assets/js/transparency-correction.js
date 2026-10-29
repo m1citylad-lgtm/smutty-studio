@@ -1,12 +1,31 @@
 (function () {
     'use strict';
+    function initializeCorrection(){
     var state=null, baseData=null, workingData=null, canvas=null, ctx=null, baseUrl='', correctedUrl='', baseVersion='original', sourceVersion='original', markers=[], selectedId=null, undoStack=[], completed={}, resolved={}, runningKinds=[], scale=1, fitScale=1, isCorrected=false, busy=false, originalWidth=0, originalHeight=0;
     var names={edge_fringe:'Edge-colour fringe',stray_pixel:'Stray pixels',solid_opacity:'Possible opacity loss',alpha_edge:'Transparency edge'};
     var root=function(id){return document.getElementById(id);};
     var modal=root('sbs-af-correction-dialog'), viewport=root('sbs-af-correction-viewport'), stage=root('sbs-af-correction-stage'), image=root('sbs-af-correction-image'), markerLayer=root('sbs-af-correction-markers'), list=root('sbs-af-correction-list'), status=root('sbs-af-correction-status'), undoButton=root('sbs-af-correction-undo');
-    if(!modal||!window.SBSFinishingCorrection)return;
+    if(!modal)return;
+    if(!window.SBSFinishingCorrection){
+        var launch=root('sbs-af-correction-open'),help=root('sbs-af-correction-help');
+        if(launch){launch.disabled=true;launch.dataset.state='error';}
+        if(help)help.textContent='Correction review did not start. Reload Finishing and try again.';
+        return;
+    }
     canvas=document.createElement('canvas');ctx=canvas.getContext('2d',{willReadFrequently:true});
     function setStatus(text,stateName){status.textContent=text;status.dataset.state=stateName||'info';}
+    function setLaunchState(stateName,detail){
+        var button=root('sbs-af-correction-open'),label=root('sbs-af-correction-open-label'),spinner=root('sbs-af-correction-open-spinner'),done=root('sbs-af-correction-open-done'),help=root('sbs-af-correction-help');
+        if(!button)return;
+        var active=window.SBSFinishingCorrection.getState();
+        button.dataset.state=stateName;
+        button.disabled=stateName==='busy'||!active||!!active.pending;
+        if(stateName==='busy')button.setAttribute('aria-busy','true');else button.removeAttribute('aria-busy');
+        if(label)label.textContent=stateName==='busy'?'Scanning whole image…':stateName==='done'?'Scan complete — open review':stateName==='error'?'Scan failed — retry':'Scan and review corrections';
+        if(spinner)spinner.hidden=stateName!=='busy';
+        if(done)done.hidden=stateName!=='done';
+        if(help&&detail)help.textContent=detail;
+    }
     function assetFor(s){var v=s.current_version&&s.versions.find(function(x){return x.uuid===s.current_version;});return v?v.asset:s.original;}
     function selectedVersion(s){return s.current_version||'original';}
     function tileSize(w,h){return Math.max(64,Math.ceil(Math.sqrt(w*h/90)));}
@@ -66,8 +85,9 @@
         viewport.scrollLeft=left;viewport.scrollTop=top;
     }
     async function open(){
-        state=window.SBSFinishingCorrection.getState();if(!state){setStatus('Choose or resume artwork first.','error');return;}
-        var asset=assetFor(state);if(!asset||!asset.url){setStatus('The selected image is unavailable. Refresh the workspace.','error');return;}
+        state=window.SBSFinishingCorrection.getState();if(!state){setLaunchState('error','Choose or resume artwork first.');setStatus('Choose or resume artwork first.','error');return;}
+        var asset=assetFor(state);if(!asset||!asset.url){setLaunchState('error','The selected image is unavailable. Refresh the workspace.');setStatus('The selected image is unavailable. Refresh the workspace.','error');return;}
+        setLaunchState('busy','Scanning the entire selected image…');
         setStatus('Loading image and scanning for possible corrections…','busy');modal.hidden=false;document.body.classList.add('sbs-correction-open');undoStack=[];selectedId=null;isCorrected=false;scale=0;
         try{
             var latest=state.versions.find(function(v){return v.uuid===state.current_version;}),parentVersion=latest&&latest.options&&latest.options.method==='pixel_correction'?(latest.source_version_uuid||'original'):selectedVersion(state);
@@ -83,7 +103,8 @@
             renderMarkers();display();
             var total=Object.values(result.count).reduce(function(a,b){return a+b;},0);
             setStatus(markers.length?'Scan found '+markers.length+' marked area(s). Findings are suggestions; inspect before running.':'Scan found no correction areas. Current image appears acceptable for these checks.',markers.length?'review':'ok');
-        }catch(error){setStatus(error.message,'error');}
+            setLaunchState('done',markers.length?'Scan complete: '+markers.length+' marked area(s). Review the open window.':'Scan complete: no correction areas detected by these checks.');
+        }catch(error){setStatus(error.message,'error');setLaunchState('error','Scan failed: '+error.message+' You can retry the scan.');}
         undoButton.disabled=true;root('sbs-af-correction-close').focus();
     }
     function close(){modal.hidden=true;document.body.classList.remove('sbs-correction-open');root('sbs-af-correction-open').focus();}
@@ -167,5 +188,15 @@
     viewport.addEventListener('pointerdown',function(e){e.preventDefault();pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(viewport.setPointerCapture)try{viewport.setPointerCapture(e.pointerId);}catch(ignore){}if(pointers.size===2){var p=Array.from(pointers.values());pinchStart=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);scaleStart=scale;lastCenter={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2};gestureMoved=true;}});
     viewport.addEventListener('pointermove',function(e){if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2&&pinchStart>0){var p=Array.from(pointers.values()),dist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y),center={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2},ratio=Math.max(1,Math.min(8,scaleStart*dist/pinchStart/fitScale));scale=fitScale*ratio;display();if(lastCenter){viewport.scrollLeft-=center.x-lastCenter.x;viewport.scrollTop-=center.y-lastCenter.y;}lastCenter=center;}});
     ['pointerup','pointercancel'].forEach(function(ev){viewport.addEventListener(ev,function(e){pointers.delete(e.pointerId);if(pointers.size<2){pinchStart=0;lastCenter=null;setTimeout(function(){gestureMoved=false;},350);}});});
-    window.SBSFinishingCorrection.onState=function(next){if(!modal.hidden&&next&&state&&next.uuid===state.uuid){state=next;}};
+    window.SBSFinishingCorrection.onState=function(next){
+        var changed=!next||!state||next.uuid!==state.uuid||next.current_version!==state.current_version;
+        if(changed)setLaunchState('idle',!next?'Upload artwork or resume a saved workspace to enable the full-image scan.':next.pending?'A stage is queued or running. Finish or cancel it before scanning.':'Artwork is ready to scan.');
+        if(!modal.hidden&&next&&state&&next.uuid===state.uuid){state=next;}
+        else if(next&&state&&next.uuid!==state.uuid&&!modal.hidden){close();state=next;}
+        else{state=next||null;}
+    };
+
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initializeCorrection,{once:true});
+    else initializeCorrection();
 }());

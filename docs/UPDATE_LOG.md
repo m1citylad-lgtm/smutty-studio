@@ -1,5 +1,14 @@
 # Studio Update Log
 
+## Correction scan activation and feedback
+**Recorded:** 29 October 2026  
+**Status:** Implemented in v0.3.5.
+
+- Initialise the correction scan after Finishing has exposed its workspace bridge, so the scan button always receives its click handler.
+- Show a black ready button, animated spinner while scanning, a green completion tick after a successful scan, and a visible error with a retry path if scanning fails.
+- Keep the scan result distinct from a correction: a completed scan means findings are ready to review, not that pixels were changed.
+
+
 ## Finishing workspace reset and correction readiness
 **Recorded:** 29 October 2026  
 **Status:** Implemented in v0.3.4.

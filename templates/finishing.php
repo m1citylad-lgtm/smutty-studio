@@ -44,7 +44,7 @@
             <section class="sbs-af-correction-launch" aria-labelledby="sbs-af-correction-heading">
                 <h3 id="sbs-af-correction-heading">Whole-image correction</h3>
                 <p>Scan the entire selected image, review marked areas, then correct one area or run all suggested fixes.</p>
-                <button id="sbs-af-correction-open" class="sbs-button primary" type="button" disabled aria-describedby="sbs-af-correction-help">Scan and review corrections</button>
+                <button id="sbs-af-correction-open" class="sbs-button primary" type="button" disabled aria-describedby="sbs-af-correction-help" data-state="idle"><span id="sbs-af-correction-open-label">Scan and review corrections</span><span id="sbs-af-correction-open-spinner" class="sbs-correction-spinner" aria-hidden="true" hidden>⏳</span><span id="sbs-af-correction-open-done" aria-hidden="true" hidden> ✓</span></button>
                 <p id="sbs-af-correction-help" class="sbs-af-help" role="status" aria-live="polite">Upload artwork or resume a saved workspace to enable the full-image scan.</p>
             </section>
             <details class="sbs-af-flat-background"><summary>Optional: remove a plain background</summary>
