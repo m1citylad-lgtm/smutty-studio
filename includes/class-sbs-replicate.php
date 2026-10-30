@@ -19,14 +19,49 @@ final class SBS_Replicate
         return self::api_key() !== '';
     }
 
+    // Keep the provider input below its 2,096,704-pixel hardware limit.
+    public static function input_size($width, $height)
+    {
+        $ratio = min(1, sqrt(2000000 / max(1, $width * $height)));
+        return array(max(1, (int) floor($width * $ratio)), max(1, (int) floor($height * $ratio)));
+    }
+
     public static function submit($asset_id, $scale)
     {
         $data_url = SBS_Storage::data_url($asset_id);
         if (is_wp_error($data_url)) {
             return $data_url;
         }
+        $bytes = base64_decode(substr($data_url, strpos($data_url, ',') + 1), true);
+        $size = $bytes ? @getimagesizefromstring($bytes) : false;
+        if (!$size) { return new WP_Error('upscale_input', 'The upscale input could not be read. Original retained.'); }
+        $input = self::input_size($size[0], $size[1]);
+        if ($input[0] !== $size[0] || $input[1] !== $size[1]) {
+            $tmp = wp_tempnam('sbs-upscale-input');
+            if (!$tmp) { return new WP_Error('upscale_temp', 'Could not prepare the upscale input.'); }
+            $output = null;
+            try {
+                if (file_put_contents($tmp, $bytes) === false) { return new WP_Error('upscale_input', 'Could not prepare the upscale input.'); }
+                $editor = wp_get_image_editor($tmp);
+                if (is_wp_error($editor)) { return $editor; }
+                $resized = $editor->resize($input[0], $input[1], false);
+                if (is_wp_error($resized)) { return $resized; }
+                $saved = $editor->save($tmp . '.png', 'image/png');
+                if (is_wp_error($saved)) { return $saved; }
+                $output = $saved['path'];
+                $prepared = file_get_contents($output);
+                $actual = @getimagesizefromstring($prepared);
+                if (!$actual || $actual[0] * $actual[1] > 2000000) { return new WP_Error('upscale_input', 'The resized input exceeds the provider limit. No request sent.'); }
+                $input = array($actual[0], $actual[1]);
+                $data_url = 'data:image/png;base64,' . base64_encode($prepared);
+            } finally {
+                @unlink($tmp);
+                if ($output && is_file($output)) { @unlink($output); }
+                if (is_file($tmp . '.png')) { @unlink($tmp . '.png'); }
+            }
+        }
         $scale = in_array((int) $scale, array(2, 4), true) ? (int) $scale : 2;
-        return self::request('POST', '/predictions', array(
+        $result = self::request('POST', '/predictions', array(
             'version' => sanitize_text_field(get_option('sbs_replicate_model_version', self::DEFAULT_VERSION)),
             'input' => array(
                 'image' => $data_url,
@@ -34,6 +69,8 @@ final class SBS_Replicate
                 'face_enhance' => false,
             ),
         ));
+        if (!is_wp_error($result)) { $result['_studio_input'] = $input; }
+        return $result;
     }
 
     public static function poll($prediction_id)

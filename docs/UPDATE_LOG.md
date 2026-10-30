@@ -1,5 +1,14 @@
 # Studio Update Log
 
+## Finishing input size, print colour and automatic status refresh
+**Recorded:** 30 October 2026  
+**Status:** Implemented in v0.3.6.
+
+- Reduce oversized provider input copies proportionally below 2 million pixels; choose the upscale factor from the actual input size. Keep the original unchanged and record input dimensions.
+- Recognise standard sRGB chromaticities in PNGs without an ICC profile and embed the bundled sRGB profile during Step 3. Continue refusing unsupported colour declarations rather than silently changing colours.
+- Show Inspect results from the current candidate automatically; report a completed upscale separately from print preparation warnings. Keep the three existing buttons in top-to-bottom order.
+
+
 ## Correction scan activation and feedback
 **Recorded:** 29 October 2026  
 **Status:** Implemented in v0.3.5.

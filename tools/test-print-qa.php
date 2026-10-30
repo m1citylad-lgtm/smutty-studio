@@ -39,6 +39,19 @@ try{
     // Non-standard colour declarations are held instead of silently relabelled sRGB.
     $bad_gamma=substr(file_get_contents($source),0,33);$gamma=pack('N',100000);$chunk='gAMA'.$gamma;$bad_gamma.=pack('N',4).$chunk.pack('H*',hash('crc32b',$chunk)).substr(file_get_contents($source),33);file_put_contents($dir.'/gamma.png',$bad_gamma);
     check_qa(is_wp_error(SBS_Print_QA::normalize($dir.'/gamma.png',$options)),'Unverified gamma was silently assigned sRGB');
+    // Standard sRGB cHRM without ICC is common in generated PNGs; accept it and preserve alpha.
+    $standard=pack('N8',31270,32900,64000,33000,30000,60000,15000,6000);$chunk='cHRM'.$standard;
+    $declared=substr(file_get_contents($source),0,33).pack('N',32).$chunk.pack('H*',hash('crc32b',$chunk)).substr(file_get_contents($source),33);
+    file_put_contents($dir.'/srgb-chrm.png',$declared);$normal=SBS_Print_QA::normalize($dir.'/srgb-chrm.png',$options);
+    check_qa(!is_wp_error($normal),'Standard sRGB chromaticities were incorrectly blocked');
+    file_put_contents($dir.'/srgb-chrm-output.png',$normal['bytes']);
+    check_qa(SBS_Print_QA::metadata($dir.'/srgb-chrm-output.png')['profile']==='srgb_icc','Standard colour declaration did not acquire an ICC profile');
+    require dirname(__DIR__).'/includes/class-sbs-replicate.php';
+    foreach(array(array(2480,2538),array(10000,100),array(1240,1269)) as $dimensions){
+        $input=SBS_Replicate::input_size($dimensions[0],$dimensions[1]);
+        check_qa($input[0]*$input[1]<=2000000&&$input[0]<=$dimensions[0]&&$input[1]<=$dimensions[1],'Provider input exceeds limit or was enlarged');
+        check_qa(abs($input[0]/$input[1]-$dimensions[0]/$dimensions[1])<.02,'Provider input aspect ratio changed');
+    }
     // Selected candidates are the source for print conversion, not the lower-resolution original.
     $record_source=array('original'=>array('path'=>$source,'filename'=>'source.png','mime'=>'image/png','sha256'=>$hash),'original_qa'=>array('alpha'=>'Transparency detected (sampled)'),'title'=>'Test','versions'=>array(array('uuid'=>'selected','asset'=>array('path'=>$output,'filename'=>'normalized.png','mime'=>'image/png','sha256'=>hash_file('sha256',$output)))),'current_version'=>'selected');
     $process=new ReflectionMethod('SBS_Finishing','process');$process->setAccessible(true);$processed=$process->invoke(null,$record_source,$options);

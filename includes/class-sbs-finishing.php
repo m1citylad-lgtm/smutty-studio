@@ -418,15 +418,16 @@ final class SBS_Finishing
         $target=$r['pending']??array();$pw=(float)($target['width']??14);$ph=(float)($target['height']??16);$ppi=max((float)($r['original_qa']['width']??0)/$pw,(float)($r['original_qa']['height']??0)/$ph);
         if($ppi>=300){return self::error('upscale_not_needed','This artwork already meets the 300 PPI pixel-dimension target at the selected print size. Use Inspect; no Replicate credits were used.',409);}
         $dimensions=@getimagesize(SBS_Storage::absolute_path($r['original']));$pixels=$dimensions?(int)$dimensions[0]*(int)$dimensions[1]:0;
-        $scale=$ppi>=150?2:4;
+        $input=SBS_Replicate::input_size($dimensions[0]??0,$dimensions[1]??0);
+        $input_ppi=max($input[0]/$pw,$input[1]/$ph);$scale=$input_ppi>=150?2:4;$pixels=$input[0]*$input[1];
         if($pixels*$scale*$scale>40000000&&$scale===4&&$pixels*4<=40000000){$scale=2;}
         if(!$pixels||$pixels*$scale*$scale>40000000){return self::error('upscale_size','This image would exceed Studio’s 40-million-pixel candidate limit at the safe upscale size. No Replicate request was sent.',413);}
         $prediction=SBS_Replicate::submit($r['original']['id'],$scale);if(is_wp_error($prediction)){return $prediction;}
         $status=$prediction['status']??'';
-        $r['pending']['scale']=$scale;$r['pending']['provider']='Replicate';$r['pending']['model']='nightmareai/real-esrgan';$r['pending']['estimated_provider_cost']=(float)get_option('sbs_replicate_cost_per_image','0.002');
+        $r['pending']['input_pixels']=$prediction['_studio_input']??$input;$r['pending']['scale']=$scale;$r['pending']['provider']='Replicate';$r['pending']['model']='nightmareai/real-esrgan';$r['pending']['estimated_provider_cost']=(float)get_option('sbs_replicate_cost_per_image','0.002');
         if(in_array($status,array('succeeded','successful'),true)){$v=self::replicate_version($r,$r['pending'],$prediction);if(is_wp_error($v)){return $v;}$r['versions'][]=$v;$r['current_version']=$v['uuid'];$r['approval']=null;unset($r['pending']);$r['status']='Awaiting Review';$r['next_action']='Compare original and AI-upscaled candidate; complete human review';$r['processing_error']=null;return $r;}
         if(in_array($status,array('starting','processing','queued'),true)&&!empty($prediction['id'])){$r['pending']['replicate_prediction_id']=sanitize_text_field($prediction['id']);$r['status']='AI upscale processing on Replicate';$r['next_action']='Wait for the Replicate result; the original remains unchanged';$r['processing_error']=null;return $r;}
-        return self::error('replicate_failed','Replicate did not start the upscale successfully. The original is unchanged. Check Replicate usage before retrying.',502);
+        return self::error('replicate_failed','Replicate could not complete the upscale. '.sanitize_text_field((string)($prediction['error']??'Try again later.')).' The original is unchanged.',502);
     }
     private static function replicate_version($r,$options,$prediction)
     {
