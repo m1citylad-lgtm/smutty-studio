@@ -19,7 +19,7 @@ final class SBS_Print_QA
         $size=@getimagesize($path);
         $out=array('mime'=>$size['mime']??null,'width'=>$size[0]??null,'height'=>$size[1]??null,
             'bit_depth'=>null,'png_color_type'=>null,'ppi_x'=>null,'ppi_y'=>null,
-            'profile'=>'untagged','profile_sha256'=>null,'gamma'=>null,'chromaticity'=>false);
+            'profile'=>'untagged','profile_sha256'=>null,'gamma'=>null,'chromaticity'=>false,'srgb_chromaticity'=>false);
         $f=@fopen($path,'rb');if(!$f){return $out;}
         if(fread($f,8)!=="\x89PNG\r\n\x1a\n"){
             fclose($f);
@@ -37,7 +37,7 @@ final class SBS_Print_QA
             if($type==='IHDR'&&$n===13){$out['bit_depth']=ord($data[8]);$out['png_color_type']=ord($data[9]);}
             if($type==='pHYs'&&$n===9&&ord($data[8])===1){$p=unpack('Nx/Ny',substr($data,0,8));$out['ppi_x']=round($p['x']*.0254,2);$out['ppi_y']=round($p['y']*.0254,2);}
             if($type==='gAMA'&&$n===4){$out['gamma']=unpack('N',$data)[1]/100000;}
-            if($type==='cHRM'){$out['chromaticity']=true;}
+            if($type==='cHRM'){$out['chromaticity']=true;$out['srgb_chromaticity']=$n===32&&array_values(unpack('N8',$data))===array(31270,32900,64000,33000,30000,60000,15000,6000);}
             if($type==='sRGB'&&$out['profile']==='untagged'){$out['profile']='srgb_chunk';}
             if($type==='iCCP'){
                 $zero=strpos($data,"\0");$profile=$zero!==false&&isset($data[$zero+1])&&ord($data[$zero+1])===0?@gzuncompress(substr($data,$zero+2),2000000):false;
@@ -78,7 +78,7 @@ final class SBS_Print_QA
         if($tw*$th>40000000){return new WP_Error('print_canvas','Choose a target canvas below 40 million pixels. Original unchanged.');}
         $ratio=$canvas?min(1,$tw/$w,$th/$h):1;$nw=max(1,(int)round($w*$ratio));$nh=max(1,(int)round($h*$ratio));$assumption='Existing colour profile converted to sRGB';
         try{
-            if($meta['profile']==='untagged'&&(($meta['gamma']!==null&&abs($meta['gamma']-.45455)>.0001)||$meta['chromaticity'])){throw new Exception('Untagged source has colour/gamma declarations that need an ICC-managed conversion.');}
+            if($meta['profile']==='untagged'&&(($meta['gamma']!==null&&abs($meta['gamma']-.45455)>.0001)||($meta['chromaticity']&&empty($meta['srgb_chromaticity'])))){throw new Exception('Untagged source has colour/gamma declarations that need an ICC-managed conversion.');}
             if(class_exists('Imagick')){
                 $im=new Imagick($path);$im->setIteratorIndex(0);$profiles=$im->getImageProfiles('icc',true);
                 if(!empty($profiles['icc'])){
@@ -87,7 +87,7 @@ final class SBS_Print_QA
                 }else{
                     if($im->getImageColorspace()===Imagick::COLORSPACE_CMYK){throw new Exception('CMYK input needs a valid embedded ICC profile.');}
                     if(strpos($meta['profile'],'invalid')===0){throw new Exception('The source colour metadata is invalid.');}
-                    $assumption=$meta['profile']==='srgb_chunk'?'Source declares sRGB':'Untagged source assumed sRGB — confirm colours manually';
+                    $assumption=$meta['profile']==='srgb_chunk'?'Source declares sRGB':(!empty($meta['srgb_chromaticity'])?'Source declares standard sRGB chromaticities':'Untagged source assumed sRGB — confirm colours manually');
                     $im->setImageColorspace(Imagick::COLORSPACE_SRGB);$im->profileImage('icc',self::profile());
                 }
                 if($nw!==$w||$nh!==$h){$im->resizeImage($nw,$nh,Imagick::FILTER_LANCZOS,1);}
@@ -99,7 +99,7 @@ final class SBS_Print_QA
                 $source=@imagecreatefromstring(file_get_contents($path));if(!$source){throw new Exception('The source could not be decoded.');}
                 $out=imagecreatetruecolor($tw,$th);imagealphablending($out,false);imagesavealpha($out,true);imagefill($out,0,0,imagecolorallocatealpha($out,0,0,0,127));
                 imagecopyresampled($out,$source,(int)floor(($tw-$nw)/2),(int)floor(($th-$nh)/2),0,0,$nw,$nh,$w,$h);ob_start();imagepng($out);$bytes=ob_get_clean();imagedestroy($out);imagedestroy($source);
-                $assumption=$meta['profile']==='untagged'?'Untagged source assumed sRGB — confirm colours manually':'Source declares sRGB';
+                $assumption=$meta['profile']==='untagged'?(!empty($meta['srgb_chromaticity'])?'Source declares standard sRGB chromaticities':'Untagged source assumed sRGB — confirm colours manually'):'Source declares sRGB';
             }else{throw new Exception('This server has no compatible local image editor.');}
         }catch(Throwable $error){return new WP_Error('print_conversion',$error->getMessage().' No candidate was saved; original unchanged.');}
         $bytes=self::tag_png($bytes);

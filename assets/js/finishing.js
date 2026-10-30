@@ -90,6 +90,7 @@
         }
         function stageLabel(method){return ({inspect:'Inspect',resize:'Fit down to print box',print_png:'Prepare print PNG',upscale:'AI upscale'})[method]||'selected stage';}
         function stageVersion(method){
+            if(method==='inspect'&&current){var selected=(current.versions||[]).find(function(v){return v.uuid===current.current_version;});if(selected)return selected;}
             if(!current||!Array.isArray(current.versions))return null;
             for(var i=current.versions.length-1;i>=0;i--){var version=current.versions[i];if(version.options&&version.options.method===method)return version;}
             return null;
@@ -116,9 +117,11 @@
                     button.setAttribute('aria-label',button.querySelector('.sbs-af-stage-button-label').textContent+(completed?' — completed':''));
                     if(failed){setStageReport(method,'error','Needs attention: '+String(runState.message||'The stage did not complete.').slice(0,180));}
                     else if(version){
-                        var warnings=Array.isArray(version.qa&&version.qa.warnings)?version.qa.warnings:[];
+                        var warnings=Array.isArray(version.qa&&version.qa.warnings)?version.qa.warnings.slice():[];
+                        if(method==='upscale')warnings=[];
+                        if(method==='inspect'){var q=version.qa||{},ppi=Math.max(Number(q.width)/Number(el('sbs-af-width').value),Number(q.height)/Number(el('sbs-af-height').value));warnings=warnings.filter(function(w){return !/^Pixel dimensions are below 300 PPI/i.test(w);});if(ppi<300)warnings.unshift('Pixel dimensions are below 300 PPI at the selected print size.');}
                         if(warnings.length){var warning=String(warnings[0]);setStageReport(method,'error','Needs attention: '+warning+(warnings.length>1?' (+'+(warnings.length-1)+' more)':''));}
-                        else{setStageReport(method,'success','Completed: '+stageReportText(version));}
+                        else{setStageReport(method,'success',(method==='inspect'?'Checks refreshed: ':'Completed: ')+stageReportText(version)+(method==='upscale'?' — continue to Step 3.':''));}
                     }
                 }
                 button.dataset.stageState=running?'running':failed?'error':completed?'complete':'idle';
