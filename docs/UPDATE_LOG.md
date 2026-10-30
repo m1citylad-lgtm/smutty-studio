@@ -1,5 +1,14 @@
 # Studio Update Log
 
+## Findings controls unlock after processing
+**Recorded:** 30 October 2026
+**Status:** Implemented in v0.3.7.
+
+- Refresh dynamically created review controls when processing starts and finishes, retaining per-action restrictions for missing locations, missing finding IDs and stopped cleanups.
+- Fix the automatic square cleanup save path to use the existing in-place pixel correction result.
+- Regression checks cover unlocking after busy states and preserving genuinely unavailable actions.
+
+
 ## Finishing input size, print colour and automatic status refresh
 **Recorded:** 30 October 2026  
 **Status:** Implemented in v0.3.6.
