@@ -36,7 +36,7 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0.3.6/);
+assert.match(plugin, /Version: 0.3.7/);
 assert.match(template, /id="sbs-af-clear"/);
 assert.match(template, /id="sbs-af-correction-help"/);
 assert.match(template, /id="sbs-af-correction-open-spinner"/);
@@ -53,7 +53,7 @@ assert.match(finishing, /function render\(\)[\s\S]*?stageRunState=\{\};renderedW
 assert.match(finishing, /el\('sbs-af-clear'\)\.addEventListener/);
 assert.match(finishing, /savedUiState\.workspace='';savedUiState\.checks=\{\}/);
 
-assert.match(plugin, /define\('SBS_VERSION', '0.3.6'\)/);
+assert.match(plugin, /define\('SBS_VERSION', '0.3.7'\)/);
 assert.match(studio, /button\.closest\('\.sbs-character-page-menu'\)\) \{ return; \}/, 'Character menu entries must not receive information buttons');
 const mainNav = studioTemplate.match(/<nav id="sbs-primary-nav"[\s\S]*?<\/nav>/)[0];
 assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="freestyle"'));
@@ -374,3 +374,14 @@ assert.match(studioTemplate, /Set the character's identity/);
 assert.match(studioTemplate, /Costs are estimates\. Check provider invoices for actual charges\./);
 assert.doesNotMatch(studioTemplate, /Usage attributes provider activity to each character/);
 assert.match(studioTemplate, /Each generation or upscale may cost provider credits/);
+
+// Findings created during an async check must unlock on completion, including failure.
+const eligible={dataset:{afReviewBlocked:'false'},disabled:true};
+const blocked={dataset:{afReviewBlocked:'true'},disabled:true};
+const reviewRoot={querySelectorAll:()=>[eligible,blocked]};
+const syncReviewControls=finishingContext.window.SBSFinishing.syncReviewControls;
+syncReviewControls(reviewRoot,true);assert.equal(eligible.disabled,true);
+syncReviewControls(reviewRoot,false);assert.equal(eligible.disabled,false);assert.equal(blocked.disabled,true);
+syncReviewControls(reviewRoot,true);assert.equal(eligible.disabled,true);
+syncReviewControls(reviewRoot,false);assert.equal(eligible.disabled,false);
+assert.doesNotMatch(finishing,/region\.data\.set\(out\)/,'Cleanup uses the in-place result, not an undefined buffer');
