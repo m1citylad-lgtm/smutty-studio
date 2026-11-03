@@ -84,7 +84,8 @@
         image.src=isCorrected?canvas.toDataURL('image/png'):baseUrl;
         viewport.scrollLeft=left;viewport.scrollTop=top;
     }
-    async function open(){
+    var scanOpener=null,scanComplete=false;
+    async function open(){scanOpener=document.activeElement;scanComplete=false;
         state=window.SBSFinishingCorrection.getState();if(!state){setLaunchState('error','Choose or resume artwork first.');setStatus('Choose or resume artwork first.','error');return;}
         var asset=assetFor(state);if(!asset||!asset.url){setLaunchState('error','The selected image is unavailable. Refresh the workspace.');setStatus('The selected image is unavailable. Refresh the workspace.','error');return;}
         setLaunchState('busy','Scanning the entire selected image…');
@@ -100,14 +101,14 @@
             }else{workingData=new Uint8ClampedArray(baseData.data);sourceVersion=baseVersion;isCorrected=false;}
             completed={};resolved={};var result=await analyze(workingData,originalWidth,originalHeight);markers=result.markers;
             if(latest&&latest.options&&latest.options.method==='pixel_correction'){(latest.options.categories||[]).forEach(function(k){if(!markers.some(function(m){return m.categories.indexOf(k)>=0;}))resolved[k]=true;});}
-            renderMarkers();display();
+            renderMarkers();display();scanComplete=true;
             var total=Object.values(result.count).reduce(function(a,b){return a+b;},0);
             setStatus(markers.length?'Scan found '+markers.length+' marked area(s). Findings are suggestions; inspect before running.':'Scan found no correction areas. Current image appears acceptable for these checks.',markers.length?'review':'ok');
             setLaunchState('done',markers.length?'Scan complete: '+markers.length+' marked area(s). Review the open window.':'Scan complete: no correction areas detected by these checks.');
         }catch(error){setStatus(error.message,'error');setLaunchState('error','Scan failed: '+error.message+' You can retry the scan.');}
         undoButton.disabled=true;root('sbs-af-correction-close').focus();
     }
-    function close(){modal.hidden=true;document.body.classList.remove('sbs-correction-open');root('sbs-af-correction-open').focus();}
+    function close(){if(busy){setStatus('Wait for the correction to finish saving.','busy');return;}modal.hidden=true;document.body.classList.remove('sbs-correction-open');if(scanComplete&&state){var a=assetFor(state);document.dispatchEvent(new CustomEvent('sbs:pixel-scan',{detail:{workspace:state.uuid,sha256:a.sha256,remaining:markers.filter(function(m){return m.categories.some(function(k){return !isDone(m,k);});}).length}}));}if(scanOpener&&scanOpener.focus)scanOpener.focus();else root('sbs-af-correction-open').focus();}
     function activeBoxes(kind,all){if(all)return markers.filter(function(m){return m.categories.indexOf(kind)>=0&&!isDone(m,kind);}).map(function(m){return m;});var m=markers.find(function(x){return x.id===selectedId;});return m&&m.categories.indexOf(kind)>=0&&!isDone(m,kind)?[m]:[];}
     async function correctKind(data,kind,boxes){
         var out=new Uint8ClampedArray(data),changed=0,w=originalWidth,h=originalHeight;
@@ -137,7 +138,7 @@
     }
     async function run(kind,all){
         if(busy||!baseData)return;if(kind!=='all'&&selectedId===null){setStatus('Select a marker first, then choose its correction.','review');return;}busy=true;
-        var categories=kind==='all'?Object.keys(names).filter(function(k){return markers.some(function(m){return m.categories.indexOf(k)>=0&&!isDone(m,k);})}):[kind];runningKinds=categories;renderMarkers();
+        var categories=kind==='all'?Object.keys(names).filter(function(k){return k!=='solid_opacity'&&k!=='alpha_edge'&&markers.some(function(m){return m.categories.indexOf(k)>=0&&!isDone(m,k);})}):[kind];runningKinds=categories;renderMarkers();
         var beforeData=new Uint8ClampedArray(workingData),beforeCorrected=isCorrected,oldMarkers=markers.slice(),selectedMarkerId=selectedId;
         var next=new Uint8ClampedArray(workingData),total=0;
         try{
@@ -180,7 +181,7 @@
         finally{busy=false;renderMarkers();}
     }
     function toggle(){isCorrected=!isCorrected;display();setStatus(isCorrected?'Showing corrected image. Tap outside the markers to compare with the original.':'Showing original image. Tap outside the markers to return to the corrected image.','info');}
-    root('sbs-af-correction-open').addEventListener('click',open);root('sbs-af-correction-close').addEventListener('click',close);root('sbs-af-correction-undo').addEventListener('click',undo);root('sbs-af-correction-run-all').addEventListener('click',function(){run('all',true);});
+    window.SBSFinishingPixels={open:open};root('sbs-af-correction-open').addEventListener('click',open);root('sbs-af-correction-close').addEventListener('click',close);root('sbs-af-correction-undo').addEventListener('click',undo);root('sbs-af-correction-run-all').addEventListener('click',function(){run('all',true);});
     document.querySelectorAll('[data-sbs-correction-kind]').forEach(function(b){b.addEventListener('click',function(){run(this.getAttribute('data-sbs-correction-kind'),false);});});
     stage.addEventListener('click',function(e){if(gestureMoved){gestureMoved=false;return;}if(e.target===stage||e.target===image||e.target===markerLayer)toggle();});
     window.addEventListener('resize',function(){if(!modal.hidden&&baseData){scale=0;display();}});
@@ -200,3 +201,4 @@
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initializeCorrection,{once:true});
     else initializeCorrection();
 }());
+

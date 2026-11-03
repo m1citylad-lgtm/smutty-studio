@@ -91,14 +91,13 @@
             if(el('sbs-af-refresh'))el('sbs-af-refresh').disabled=busy||el('sbs-af-refresh').dataset.state==='busy';
             if(el('sbs-af-editor')){el('sbs-af-editor-close').disabled=busy;el('sbs-af-editor').querySelectorAll('button,input').forEach(function(n){if(n.id!=='sbs-af-editor-close')n.disabled=busy;});el('sbs-af-editor-canvas').style.pointerEvents=busy?'none':'auto';el('sbs-af-edit-undo').disabled=busy||!editor.undo.length;el('sbs-af-edit-redo').disabled=busy||!editor.redo.length;el('sbs-af-edit-save').disabled=busy||!editor.dirty;}
             if(el('sbs-af-trim-dialog'))el('sbs-af-trim-dialog').querySelectorAll('button').forEach(function(n){n.disabled=busy;});
-            el('sbs-af-progress-bar').hidden=!busy;
+            el('sbs-af-progress-bar').hidden=!busy;document.dispatchEvent(new CustomEvent('sbs:finishing-state'));
         }
         function stageLabel(method){return ({inspect:'Inspect',resize:'Fit down to print box',print_png:'Prepare print PNG',upscale:'AI upscale'})[method]||'selected stage';}
         function stageVersion(method){
-            if(method==='inspect'&&current){var selected=(current.versions||[]).find(function(v){return v.uuid===current.current_version;});if(selected)return selected;}
             if(!current||!Array.isArray(current.versions))return null;
-            for(var i=current.versions.length-1;i>=0;i--){var version=current.versions[i];if(version.options&&version.options.method===method)return version;}
-            return null;
+            var v=current.versions.find(function(v){return v.uuid===current.current_version;}),seen={};if(method==='inspect')return v||null;
+            while(v&&!seen[v.uuid]){seen[v.uuid]=true;if(v.options&&v.options.method===method)return v;var parent=v.options&&v.options.source_sha256;v=current.versions.find(function(x){return x.uuid!==v.uuid&&x.asset.sha256===parent;});}return null;
         }
         function stageReportText(version){
             var qa=version&&version.qa||{},parts=[];
@@ -126,7 +125,7 @@
                         if(method==='upscale')warnings=[];
                         if(method==='inspect'){var q=version.qa||{},ppi=Math.max(Number(q.width)/Number(el('sbs-af-width').value),Number(q.height)/Number(el('sbs-af-height').value));warnings=warnings.filter(function(w){return !/^Pixel dimensions are below 300 PPI/i.test(w);});if(ppi<300)warnings.unshift('Pixel dimensions are below 300 PPI at the selected print size.');}
                         if(warnings.length){var warning=String(warnings[0]);setStageReport(method,'error','Needs attention: '+warning+(warnings.length>1?' (+'+(warnings.length-1)+' more)':''));}
-                        else{setStageReport(method,'success',(method==='inspect'?'Checks refreshed: ':'Completed: ')+stageReportText(version)+(method==='upscale'?' — continue to Step 3.':''));}
+                        else{setStageReport(method,'success',(method==='inspect'?'Checks refreshed: ':'Completed: ')+stageReportText(version)+(method==='upscale'?' — next: prepare the final print PNG.':''));}
                     }
                 }
                 button.dataset.stageState=running?'running':failed?'error':completed?'complete':'idle';
@@ -135,10 +134,10 @@
         }
         function updateStepButtons(){
             var approved=!!(current&&current.approval&&current.approval.version===current.current_version);
-            var approveButton=el('sbs-af-approve'),approveLabel=approveButton.querySelector('.sbs-af-approve-label'),approveDone=approveButton.querySelector('.sbs-af-approve-done');if(approveLabel)approveLabel.textContent=approved?'6. Approved locally':'6. Approve this local version';else approveButton.textContent=approved?'6. Approved locally':'6. Approve this local version';if(approveDone)approveDone.hidden=!approved;
-            updateStageButtons();
+            var approveButton=el('sbs-af-approve'),approveLabel=approveButton.querySelector('.sbs-af-approve-label'),approveDone=approveButton.querySelector('.sbs-af-approve-done');if(approveLabel)approveLabel.textContent=approved?'Approved — next: save your ZIP':'Approve this finished version';else approveButton.textContent=approved?'Approved — next: save your ZIP':'Approve this finished version';if(approveDone)approveDone.hidden=!approved;
+            updateStageButtons();document.dispatchEvent(new CustomEvent('sbs:finishing-state'));
         }
-        function buttonBusy(button,on){if(!button)return;if(button.id==='sbs-af-approve'){var label=button.querySelector('.sbs-af-approve-label'),spinner=button.querySelector('.sbs-af-approve-spinner'),done=button.querySelector('.sbs-af-approve-done'),approved=!!(current&&current.approval&&current.approval.version===current.current_version);if(label)label.textContent=on?'Saving local approval…':approved?'6. Approved locally':'6. Approve this local version';if(spinner)spinner.hidden=!on;if(done)done.hidden=on||!approved;if(on)button.setAttribute('aria-busy','true');else button.removeAttribute('aria-busy');return;}if(button.querySelector('.sbs-af-stage-button-label')){button.disabled=on;if(on)button.setAttribute('aria-busy','true');else button.removeAttribute('aria-busy');return;}if(on){if(!button.hasAttribute('aria-busy')){button.dataset.previousLabel=button.textContent;button.setAttribute('aria-busy','true');}button.disabled=true;}else{button.removeAttribute('aria-busy');if(button.dataset.previousLabel){button.textContent=button.dataset.previousLabel;delete button.dataset.previousLabel;}}}
+        function buttonBusy(button,on){if(!button)return;if(button.id==='sbs-af-approve'){var label=button.querySelector('.sbs-af-approve-label'),spinner=button.querySelector('.sbs-af-approve-spinner'),done=button.querySelector('.sbs-af-approve-done'),approved=!!(current&&current.approval&&current.approval.version===current.current_version);if(label)label.textContent=on?'Saving local approval…':approved?'Approved — next: save your ZIP':'Approve this finished version';if(spinner)spinner.hidden=!on;if(done)done.hidden=on||!approved;if(on)button.setAttribute('aria-busy','true');else button.removeAttribute('aria-busy');return;}if(button.querySelector('.sbs-af-stage-button-label')){button.disabled=on;if(on)button.setAttribute('aria-busy','true');else button.removeAttribute('aria-busy');return;}if(on){if(!button.hasAttribute('aria-busy')){button.dataset.previousLabel=button.textContent;button.setAttribute('aria-busy','true');}button.disabled=true;}else{button.removeAttribute('aria-busy');if(button.dataset.previousLabel){button.textContent=button.dataset.previousLabel;delete button.dataset.previousLabel;}}}
         async function operation(fn,text,button,onError){if(busy)return;activeStageMethod=button&&button.getAttribute('data-af-method')?button.getAttribute('data-af-method'):button&&button.id==='sbs-af-run'&&current&&current.pending?current.pending.method:'';busy=true;buttonBusy(button,true);controls();updateStepButtons();message(text);try{await fn();}catch(error){message(error.message,true);if(onError)onError(error);}finally{busy=false;activeStageMethod='';el('sbs-af-progress-bar').removeAttribute('value');controls();buttonBusy(button,false);updateStepButtons();}}
         function fileSize(size){return (size/(1024*1024)).toFixed(2)+' MB';}
         function flatColors(){var colors=[[1,3,5].map(function(n){return parseInt(el('sbs-af-flat-colour').value.slice(n,n+2),16);})];if(el('sbs-af-flat-use-second').checked){colors.push([1,3,5].map(function(n){return parseInt(el('sbs-af-flat-colour-2').value.slice(n,n+2),16);}));}return colors;}
@@ -439,7 +438,7 @@
         }
         function render(){
             var nextWorkspaceKey=current?current.uuid:'';
-            if(nextWorkspaceKey!==renderedWorkspaceKey){stageRunState={};renderedWorkspaceKey=nextWorkspaceKey;}
+            if(nextWorkspaceKey!==renderedWorkspaceKey){stageRunState={};renderedWorkspaceKey=nextWorkspaceKey;document.querySelectorAll('[data-af-stage-report]').forEach(function(n){n.hidden=true;});el('sbs-af-ai-status').textContent='Not checked for this artwork.';}
             if(window.SBSFinishingCorrection&&window.SBSFinishingCorrection.onState)window.SBSFinishingCorrection.onState(current);
             hydrateAutoCleanupState();
             if(flatPreviewBlob&&flatPreviewKey!==flatKey())clearFlatPreview();
@@ -584,6 +583,7 @@
                 message(type==='approve'?'Local finishing version approved. SB production and Drive remain unchanged.':type==='ai_review'?'AI comparison saved. Check its advisory findings alongside the original, candidate and garment proofs.':'Stage '+type+' complete.');
             }
         }
+        window.SBSFinishingBridge={getState:function(){return current;},isBusy:function(){return busy;},perform:function(type,data,label,button){return new Promise(function(resolve,reject){if(busy){reject(new Error('Wait for the current action to finish.'));return;}operation(async function(){await action(type,data);resolve(current);},label||'Working…',button,reject);});},runStage:async function(method){await runStage(method,document.querySelector('[data-af-method="'+method+'"]'));if(!current||!current.current_version||current.pending)throw new Error('The file check did not finish. Finish or cancel the waiting action.');},viewArea:function(finding){openAiFocus(finding,document.activeElement);}};
         window.SBSFinishingCorrection={
             getState:function(){return current;},
             save:function(blob,categories,sourceVersion){
@@ -608,7 +608,7 @@
             if(!current||busy)return;
             stageRunState[method]={state:'running'};updateStageButtons();
             var previousCount=(current.versions||[]).length;
-            operation(async function(){
+            return operation(async function(){
                 await action('prepare',{options:{method:method,width:Number(el('sbs-af-width').value),height:Number(el('sbs-af-height').value),notes:el('sbs-af-notes').value,print_canvas:el('sbs-af-print-canvas').checked}});
                 if(!current||!current.pending||current.pending.method!==method)throw new Error('Studio did not confirm that this stage was queued.');
                 await action('run');
@@ -672,3 +672,4 @@
     if(typeof window!=='undefined')window.SBSFinishing={syncReviewControls:syncReviewControls,matches:matches,canApprove:canApprove,classifyTransparency:classifyTransparency,cleanupFocusBox:cleanupFocusBox,cleanEdgeFringeRegion:cleanEdgeFringeRegion,init:init};
     if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();}
 }());
+
