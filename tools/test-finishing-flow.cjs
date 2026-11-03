@@ -8,3 +8,11 @@ const final={uuid:'final',asset:{sha256:'final'},qa:{width:4200,height:4800,pixe
 assert.equal(flow.derive(r,{width:16,height:18},true).step,4);final.ai_review.findings=[{id:'edge'}];assert.equal(flow.derive(r,t,true).step,5);final.review_decisions={edge:{decision:'false_alarm'}};assert.equal(flow.derive(r,t,true).step,6);
 r.versions.push({uuid:'repair',asset:{sha256:'repair'},options:{method:'local_ai_repair',source_sha256:'final'}});r.current_version='repair';assert.equal(flow.review(r),null);assert.equal(flow.derive(r,t,true).step,3);assert.equal(flow.derive({uuid:'b',original:{sha256:'other'},versions:[],flow:r.flow},t,true).step,3);r.pending={kind:'flow_repair'};assert.equal(flow.derive(r,t,true).step,3);
 console.log('Guided finishing order, lineage, image switching, target changes and approval gates passed.');
+
+// The standalone route prints an explicit asset list, independently of enqueue registration.
+const page=fs.readFileSync('templates/studio.php','utf8');
+for(const kind of ['styles','scripts']) {
+ const handles=page.match(new RegExp('wp_print_'+kind+'\\(array\\(([^;]+)\\)\\)'))[1];
+ for(const handle of ['sbs-transparency-correction','sbs-finishing-flow']) assert.ok(handles.includes("'"+handle+"'"),kind+' must print '+handle+' on the real standalone page');
+}
+console.log('Standalone Studio route prints the guided workflow and pixel scanner scripts and styles.');
