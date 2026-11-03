@@ -104,3 +104,10 @@ Artwork Finishing now defaults to a 16 × 18 inch chest-print box and calculates
 
 
 The review controls are present even when the optional AI comparison is not run. Approval is disabled until each current sampled or AI finding is explicitly marked intentional or false alarm; an unresolved finding keeps approval blocked.
+
+
+### Guided Artwork Finishing (v0.4.0)
+
+Follow the six numbered sections in Artwork Finishing. Zoom is available before enlargement. Correct the action list first; enlargement then uses the selected corrected version. For larger images, the button shows the number of paid image sections before starting. Final comparison, a matching pixel scan and the review boxes are required before approval.
+
+An approved ZIP can be downloaded or saved directly to the existing Smutty Bear ZIP archive when Studio's Google connection has folder access. Save verifies the destination, size and checksum and resumes interrupted uploads without creating a second file. Finishing approval and archive saving do not allocate design IDs, apply branding or publish products.

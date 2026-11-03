@@ -26,6 +26,8 @@ jobs:
           php tools/test-settings.php
           php tools/test-updater-rollback.php
           php tools/test-print-qa.php
+          php tools/test-finishing-flow.php
+          php tools/test-finishing-drive.php
           php -n -d extension=json -d extension=gd -d extension=zip tools/test-print-qa.php
       - name: JavaScript and image export checks
         run: |
@@ -35,8 +37,32 @@ jobs:
           node --check assets/js/logic-correction.js
           node tools/test-logic-correction.cjs
           node tools/test-finishing.cjs
+          node --check assets/js/finishing-flow.js
+          node tools/test-finishing-flow.cjs
           node tools/test-flat-background.cjs
           node tools/test-development.cjs
           node tools/test-freestyle.cjs
           node tools/test-export.cjs
           node tools/test-png-resolution.cjs
+
+
+  guided-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser test tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sbs-ui" --no-audit --no-fund playwright@1.62.1
+          node "$RUNNER_TEMP/sbs-ui/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Verify the guided screen and actual button sequence
+        env:
+          NODE_PATH: ${{ runner.temp }}/sbs-ui/node_modules
+        run: node tools/test-finishing-flow-ui.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: guided-finishing-ui
+          path: build/ui-check/

@@ -40,6 +40,8 @@ jobs:
           node --check assets/js/logic-correction.js
           node tools/test-logic-correction.cjs
           node tools/test-finishing.cjs
+          node --check assets/js/finishing-flow.js
+          node tools/test-finishing-flow.cjs
           php tools/test-finishing-delete.php
           node tools/test-flat-background.cjs
           node tools/test-export.cjs
@@ -51,6 +53,8 @@ jobs:
           php tools/test-settings.php
           php tools/test-updater-rollback.php
           php tools/test-print-qa.php
+          php tools/test-finishing-flow.php
+          php tools/test-finishing-drive.php
           php -n -d extension=json -d extension=gd -d extension=zip tools/test-print-qa.php
           node tools/test-png-resolution.cjs
 
@@ -98,3 +102,4 @@ jobs:
         with:
           name: smutty-studio-${{ env.version }}
           path: build/release/
+

@@ -1,5 +1,6 @@
 <section class="sbs-panel sbs-af active" data-panel="finishing" aria-labelledby="sbs-af-title">
     <h1 id="sbs-af-title" tabindex="-1">Artwork Finishing</h1>
+    <?php require SBS_PLUGIN_DIR . 'templates/finishing-flow.php'; ?>
     <p class="sbs-af-notice"><strong>Local Artwork Finishing.</strong> Files stay in private Studio storage. Download the package when ready. Local finishing approval does not approve production.</p>
     <details id="sbs-af-freestyle-source" hidden><summary>Freestyle source history</summary><p id="sbs-af-freestyle-source-summary"></p><p id="sbs-af-freestyle-source-settings"></p><ol id="sbs-af-freestyle-source-lineage"></ol></details>
 <div class="sbs-grid two sbs-af-workflow-layout">
@@ -217,3 +218,4 @@
         <div class="sbs-af-catalogue-viewer-panel"><button id="sbs-af-catalogue-viewer-close" class="sbs-button" type="button">Close artwork view</button><h2 id="sbs-af-catalogue-viewer-title"></h2><img id="sbs-af-catalogue-viewer-image" alt="Artwork preview"></div>
     </div>
 </section>
+

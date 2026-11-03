@@ -3,7 +3,7 @@
  * Plugin Name: Smutty Bear Creative Studio
  * Plugin URI: https://smuttybear.com/
  * Description: A private, reference-grounded character image and merchandise design studio.
- * Version: 0.3.7
+ * Version: 0.4.0
  * Requires at least: 5.8.17
  * Requires PHP: 7.4
  * Author: Smutty Bear
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SBS_VERSION', '0.3.7');
+define('SBS_VERSION', '0.4.0');
 define('SBS_DB_VERSION', '2');
 define('SBS_PLUGIN_FILE', __FILE__);
 define('SBS_PLUGIN_DIR', plugin_dir_path(__FILE__));
@@ -33,6 +33,9 @@ require_once SBS_PLUGIN_DIR . 'includes/class-sbs-rest.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-freestyle.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-print-qa.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-finishing.php';
+require_once SBS_PLUGIN_DIR . 'includes/class-sbs-finishing-flow.php';
+require_once SBS_PLUGIN_DIR . 'includes/class-sbs-finishing-image.php';
+require_once SBS_PLUGIN_DIR . 'includes/class-sbs-finishing-tiles.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-logic-correction.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-google-drive.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-finishing-catalogue.php';
@@ -43,3 +46,4 @@ register_activation_hook(__FILE__, array('SBS_Plugin', 'activate'));
 register_deactivation_hook(__FILE__, array('SBS_Plugin', 'deactivate'));
 
 SBS_Plugin::instance()->boot();
+
