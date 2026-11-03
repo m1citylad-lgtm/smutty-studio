@@ -1,6 +1,6 @@
 # v0.4.2 — Final workflow status checks (3 November 2026)
 
-Step 1 now gives the first instruction immediately. Starting another artwork clears old repair/archive status messages, and saved-archive completion must match the current approval. ZIP report wording reflects the new archive capability. Regression and browser-flow checks cover the corrected states.
+Step 1 now gives the first instruction immediately. Starting another artwork clears old repair/archive status messages, and saved-archive completion must match the current approval. ZIP report wording reflects the new archive capability. The previously inactive Google connection controls now check status, save encrypted client settings and handle connect/disconnect inside Step 6. Regression and browser-flow checks cover the corrected states.
 
 # v0.4.1 — Standalone finishing assets (3 November 2026)
 
