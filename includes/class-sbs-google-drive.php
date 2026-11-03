@@ -23,12 +23,12 @@ final class SBS_Google_Drive
     {
         $path=SBS_Storage::absolute_path($package);return is_array($meta)&&!empty($meta['id'])&&empty($meta['trashed'])&&($meta['mimeType']??'')==='application/zip'&&in_array(self::ARCHIVE_FOLDER,$meta['parents']??array(),true)&&(int)($meta['size']??0)===filesize($path)&&hash_equals(hash_file('md5',$path),(string)($meta['md5Checksum']??''));
     }
-    public static function save_package($package,$workspace,$candidate)
+    public static function save_package($package,$workspace,$candidate,$approval_stamp='')
     {
         $token=self::access_token();if(is_wp_error($token)){return $token;}
         $response=self::api('GET','https://www.googleapis.com/drive/v3/files/'.self::ARCHIVE_FOLDER.'?fields=id,mimeType,trashed,capabilities(canAddChildren)',$token);if(is_wp_error($response)){return $response;}$folder=json_decode(wp_remote_retrieve_body($response),true);
         if(wp_remote_retrieve_response_code($response)!==200||!empty($folder['trashed'])||($folder['mimeType']??'')!=='application/vnd.google-apps.folder'||empty($folder['capabilities']['canAddChildren'])){return SBS_Finishing::error('drive_folder','Studio does not have Google access to the Smutty Studio ZIP archive folder. Download the ZIP for now; reconnect or grant that folder to Studio before direct saving.',403);}
-        $key='sbs_archive_'.hash('sha256',$workspace.'|'.$candidate.'|'.$package['filename']);$saved=get_option($key,array());$fields='id,name,mimeType,parents,size,md5Checksum,webViewLink,trashed';
+        $key='sbs_archive_'.hash('sha256',$workspace.'|'.$candidate.'|'.$package['filename'].'|'.$approval_stamp);$saved=get_option($key,array());$fields='id,name,mimeType,parents,size,md5Checksum,webViewLink,trashed';
         if(!empty($saved['package'])){$p=$saved['package'];$path=SBS_Storage::absolute_path($p);if(is_file($path)&&hash_equals($p['sha256'],hash_file('sha256',$path))){$package=$p;}else{return SBS_Finishing::error('drive_source','The archived upload source is missing. Keep the local ZIP and review this workspace.',409);}}
         if(!empty($saved['id'])){
             $check=self::api('GET','https://www.googleapis.com/drive/v3/files/'.rawurlencode($saved['id']).'?fields='.rawurlencode($fields),$token);if(is_wp_error($check)){return $check;}
