@@ -341,7 +341,7 @@ final class SBS_Logic_Correction
         return array('path' => $path, 'mime' => $row['mime'], 'filename' => $row['filename']);
     }
 
-    private static function review_images($path, $pass)
+    public static function review_images($path, $pass)
     {
         if (!function_exists('imagecreatefromstring') || !function_exists('imagewebp')) { return new WP_Error('logic_image_tools', 'This server needs GD with WebP support for focused image checks.', array('status' => 503)); }
         $bytes = @file_get_contents($path); $source = $bytes !== false ? @imagecreatefromstring($bytes) : false;
@@ -371,7 +371,7 @@ final class SBS_Logic_Correction
         return $images;
     }
 
-    private static function pack_reference_images($pack_uuid)
+    public static function pack_reference_images($pack_uuid)
     {
         global $wpdb;
         $pack = $wpdb->get_row($wpdb->prepare('SELECT p.uuid,p.name,p.status AS pack_status,v.id AS version_id,v.identity_json,v.status AS version_status FROM ' . SBS_DB::table('packs') . ' p JOIN ' . SBS_DB::table('pack_versions') . ' v ON v.pack_id=p.id AND v.version=p.current_version WHERE p.uuid=%s', $pack_uuid), ARRAY_A);
@@ -393,3 +393,4 @@ final class SBS_Logic_Correction
         return array('identity' => $identity, 'images' => $images);
     }
 }
+
