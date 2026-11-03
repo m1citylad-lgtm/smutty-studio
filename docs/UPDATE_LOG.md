@@ -1,3 +1,19 @@
+# v0.4.0 — Guided Artwork Finishing (3 November 2026)
+
+Build in progress; not installed until the signed release and live version are verified.
+
+- One six-section finishing screen: choose artwork, check artwork, fix the action list, upscale/prepare, final check, approve/save ZIP.
+- Clear next-action guidance, written completion states, large controls, saved rules and optional character references within Finishing.
+- Existing whole/close-up/custom/character reviews generate the artwork action list. Local AI repairs show Keep/Reject previews; originals and history remain available.
+- All processing consumes the selected version. Larger upscale inputs use overlapping native-resolution sections instead of shrinking first. Section count and paid-credit use are shown before starting.
+- Local repair composition preserves original pixels outside its allowed rectangle and existing partial alpha inside. Upscaled transparency comes from the selected source, including smoke/fades and opaque white ink.
+- Final comparison and matching pixel-review evidence gate approval. New artwork clears the screen without deleting saved records. Old image checks do not authorize new artwork.
+- Verified resumable ZIP upload to the existing Smutty Bear archive; retries retain one reserved Drive file ID. Folder, file size and checksum must match before Saved is shown.
+- Drive requires the Studio Google connection to have access to the existing archive folder. Local ZIP download remains available. No AF/SB IDs, marketplace publications or production approvals are allocated by this update.
+- The experimental legacy Logic Correction tab remains available. Main finishing work now happens in Artwork Finishing.
+
+Validation: existing regression suite plus real-image alpha/outside-patch checks, current-source lineage, state transitions, tile coverage, interrupted Drive upload and browser workflow tests. Provider artwork-quality and owner-device acceptance remain separate from mocked network tests.
+
 # Studio Update Log
 
 ## Findings controls unlock after processing
@@ -97,3 +113,4 @@ Bring **“6. Approve this local version”** into line with the stage buttons:
 - Saving displays a spinner and the processing label.
 - Successful local approval displays a prominent green tick at the right of the button.
 - Local finishing approval remains separate from production approval.
+

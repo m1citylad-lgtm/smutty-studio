@@ -21,7 +21,7 @@
         button.dataset.state=stateName;
         button.disabled=stateName==='busy'||!active||!!active.pending;
         if(stateName==='busy')button.setAttribute('aria-busy','true');else button.removeAttribute('aria-busy');
-        if(label)label.textContent=stateName==='busy'?'Scanning whole image…':stateName==='done'?'Scan complete — open review':stateName==='error'?'Scan failed — retry':'Scan and review corrections';
+        if(label)label.textContent=stateName==='busy'?'Scanning whole image…':stateName==='done'?'Pixel scan complete — open review':stateName==='error'?'Scan failed — retry':'Check pixels and transparency';
         if(spinner)spinner.hidden=stateName!=='busy';
         if(done)done.hidden=stateName!=='done';
         if(help&&detail)help.textContent=detail;

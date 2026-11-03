@@ -36,7 +36,7 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0.3.7/);
+assert.match(plugin, /Version: 0.4.0/);
 assert.match(template, /id="sbs-af-clear"/);
 assert.match(template, /id="sbs-af-correction-help"/);
 assert.match(template, /id="sbs-af-correction-open-spinner"/);
@@ -53,7 +53,7 @@ assert.match(finishing, /function render\(\)[\s\S]*?stageRunState=\{\};renderedW
 assert.match(finishing, /el\('sbs-af-clear'\)\.addEventListener/);
 assert.match(finishing, /savedUiState\.workspace='';savedUiState\.checks=\{\}/);
 
-assert.match(plugin, /define\('SBS_VERSION', '0.3.7'\)/);
+assert.match(plugin, /define\('SBS_VERSION', '0.4.0'\)/);
 assert.match(studio, /button\.closest\('\.sbs-character-page-menu'\)\) \{ return; \}/, 'Character menu entries must not receive information buttons');
 const mainNav = studioTemplate.match(/<nav id="sbs-primary-nav"[\s\S]*?<\/nav>/)[0];
 assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="freestyle"'));
@@ -255,7 +255,7 @@ assert.match(template, /Recommended first/);
 assert.doesNotMatch(template, /id="sbs-af-method"/);
 assert.match(finishing, /method:method/);
 assert.match(backend, /SBS_Replicate::is_configured\(\)/);
-assert.match(backend, /SBS_Replicate::submit\(\$r\['original'\]\['id'\],\$scale\)/);
+assert.match(backend, /SBS_Replicate::submit\(\$source\['id'\],\$scale\)/);
 assert.match(backend, /SBS_Replicate::poll\(/);
 assert.match(backend, /SBS_Replicate::cancel\(/);
 assert.match(backend, /nightmareai\/real-esrgan/);
@@ -264,7 +264,7 @@ assert.match(backend, /40-million-pixel candidate limit/);
 assert.match(backend, /original is unchanged/);
 assert.match(finishing, /Do not run another upscale/);
 
-assert.match(backend, /\$r\['original_qa'\]\['width'\].*\$pw/);
+assert.match(backend, /\$qa=self::inspect\(\$source,array\('width'=>\$pw,'height'=>\$ph\)\)/);
 assert.match(finishing, /button\.disabled=busy\|\|!current/);
 assert.match(finishing, /await action\('run'\)/);
 assert.match(template, /1\. Scan artwork \(optional\)/);
@@ -354,7 +354,7 @@ assert.match(template, /id="sbs-af-ai-focus-candidate"/);
 assert.match(css, /\.sbs-af-ai-focus-stage\{[^}]*overflow:auto/);
 assert.match(openai, /focus \(object with x and y normalized from 0 to 1/);
 assert.match(openai, /\$item\['focus'\] = array\('x' => \$focus_x, 'y' => \$focus_y\)/);
-assert.match(finishing, /AI check: '\+findings\.length\+' area/);
+assert.match(finishing, /Comparison complete — '\+findings\.length\+' area/);
 assert.match(openai, /only areas that need the user's attention/i);
 assert.match(openai, /array\('review', 'concern'\)/);
 assert.match(finishing, /Comparing images with OpenAI/);
@@ -385,3 +385,4 @@ syncReviewControls(reviewRoot,false);assert.equal(eligible.disabled,false);asser
 syncReviewControls(reviewRoot,true);assert.equal(eligible.disabled,true);
 syncReviewControls(reviewRoot,false);assert.equal(eligible.disabled,false);
 assert.doesNotMatch(finishing,/region\.data\.set\(out\)/,'Cleanup uses the in-place result, not an undefined buffer');
+
