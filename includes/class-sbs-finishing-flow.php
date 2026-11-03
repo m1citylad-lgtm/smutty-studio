@@ -78,7 +78,7 @@ final class SBS_Finishing_Flow
             $r['flow']['pixels']=array('sha256'=>$asset['sha256'],'remaining'=>(int)$count,'alpha'=>$alpha,'reviewed'=>$request->get_param('reviewed')===true,'at'=>gmdate('c'));$r['approval']=null;
         }elseif($action==='flow_drive'){
             if(empty($r['approval'])||$r['approval']['version']!==$r['current_version']){return SBS_Finishing::error('flow_approval','Approve the selected version before archiving.',409);}
-            $package=SBS_Finishing::package($r,$request->get_param('filename'));if(is_wp_error($package)){return $package;}$archive=SBS_Google_Drive::save_package($package,$r['uuid'],$asset['sha256'],$r['approval']['at']??'');if(is_wp_error($archive)){return $archive;}$r['flow']['archive']=$archive;$ids=array_column($r['flow']['archive_history']??array(),'id');if(!in_array($archive['id'],$ids,true)){$r['flow']['archive_history'][]=$archive;}$r['next_action']='Finished: ZIP saved and verified in Smutty Bear Google Drive';
+            $package=SBS_Finishing::package($r,$request->get_param('filename'));if(is_wp_error($package)){return $package;}$archive=SBS_Google_Drive::save_package($package,$r['uuid'],$asset['sha256'],$r['approval']['at']??'');if(is_wp_error($archive)){return $archive;}$archive['approval_at']=$r['approval']['at'];$r['flow']['archive']=$archive;$ids=array_column($r['flow']['archive_history']??array(),'id');if(!in_array($archive['id'],$ids,true)){$r['flow']['archive_history'][]=$archive;}$r['next_action']='Finished: ZIP saved and verified in Smutty Bear Google Drive';
         }return $r;
     }
 }

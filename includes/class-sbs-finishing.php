@@ -625,7 +625,7 @@ final class SBS_Finishing
         $zip->addFromString('metadata.json',wp_json_encode($r,JSON_PRETTY_PRINT));
         $zip->addFromString('finishing-qa.json',wp_json_encode($r['qa_manifest'],JSON_PRETTY_PRINT));
         $zip->addFromString('checksums.sha256',$r['original']['sha256'].'  original/'.$r['original']['filename']."\n".$v['asset']['sha256'].'  candidate/'.$v['asset']['filename']."\n");
-        $zip->addFromString('report.txt',"LOCAL FINISHING PREVIEW ONLY\nNo AF number allocated. No Drive/catalogue writes. Not an SB production approval.\n".wp_json_encode($v['qa'],JSON_PRETTY_PRINT)."\nOriginal SHA-256: ".$r['original']['sha256']."\nCandidate SHA-256: ".$v['asset']['sha256']."\nHuman local approval: ".$r['approval']['at']);
+        $zip->addFromString('report.txt',"LOCAL FINISHING PREVIEW ONLY\nNo AF number allocated. ZIP archiving is separate from catalogue publication. Not an SB production approval.\n".wp_json_encode($v['qa'],JSON_PRETTY_PRINT)."\nOriginal SHA-256: ".$r['original']['sha256']."\nCandidate SHA-256: ".$v['asset']['sha256']."\nHuman local approval: ".$r['approval']['at']);
         if(function_exists('imagewebp')&&SBS_Print_QA::gd_memory_available((int)$v['qa']['width']*(int)$v['qa']['height'])){$im=@imagecreatefromstring(file_get_contents(SBS_Storage::absolute_path($v['asset'])));if($im){$thumb=imagescale($im,min(1200,imagesx($im)));if($thumb){imagesavealpha($thumb,true);ob_start();imagewebp($thumb,null,85);$preview=ob_get_clean();if($preview){$zip->addFromString('preview.webp',$preview);}imagedestroy($thumb);}imagedestroy($im);}}
         if(!$zip->close()){@unlink($path);return self::error('zip','Package could not be completed.',500);}
         $filename=self::package_filename($r['title'],$requested_name,$v['number']);
