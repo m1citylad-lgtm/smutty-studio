@@ -1,6 +1,10 @@
+# v0.4.1 — Standalone finishing assets (3 November 2026)
+
+Corrects the explicit asset list used by Studio's standalone page so the guided workflow and pixel scanner scripts and styles load. The live v0.4.0 check found this omission; regression checks now cover this entry point. Signed release and live verification are tracked separately.
+
 # v0.4.0 — Guided Artwork Finishing (3 November 2026)
 
-Build in progress; not installed until the signed release and live version are verified.
+Released and installed; live verification identified the standalone asset-list correction in v0.4.1.
 
 - One six-section finishing screen: choose artwork, check artwork, fix the action list, upscale/prepare, final check, approve/save ZIP.
 - Clear next-action guidance, written completion states, large controls, saved rules and optional character references within Finishing.
