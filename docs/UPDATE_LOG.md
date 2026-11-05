@@ -1,6 +1,6 @@
 # v0.4.4 — Preserve artwork review decisions (5 November 2026)
 
-Prepared for release; live installation and validation pending.
+Published v0.4.4 on 5 November 2026; live installation and validation pending. Signed release pipeline 42085507330 passed and published smutty-bear-studio-0.4.4.zip. Cloud Browser still shows the unauthenticated v0.4.2 login; no live installation, backup creation or production verification is claimed.
 
 - Reopening the pixel scanner preserves intentional-mark acceptance only for the same image hash, counts and transparency results. Changed results require a new decision.
 - Continuing an unchanged artwork check resumes saved reports and their decisions without another paid call. New artwork, instructions or saved rules start a new review. Existing legacy reports retain their saved decisions and acquire a rules snapshot on first continuation.
