@@ -1,3 +1,13 @@
+# v0.4.3 — Upscale failure recovery (5 November 2026)
+
+Prepared; live validation pending. The v0.4.2 upscale failure was reproduced while polling an existing 1024 × 1536 source job. Exact server fatal remains unconfirmed.
+
+- Request WordPress’s configured image-processing memory allowance before finishing actions; release enlarged PNG bytes before QA decoding.
+- Catch PHP engine errors as structured REST errors, retaining saved versions and provider tracking for recovery.
+- Record memory/time-limit fatal failures in authenticated Settings diagnostics; detailed exception text stays in the server PHP log.
+- Replace raw WordPress HTML in action errors with a readable recovery message.
+- A failed poll never submits another paid prediction automatically.
+
 # v0.4.2 — Final workflow status checks (3 November 2026)
 
 Step 1 now gives the first instruction immediately. Starting another artwork clears old repair/archive status messages, and saved-archive completion must match the current approval. ZIP report wording reflects the new archive capability. The previously inactive Google connection controls now check status, save encrypted client settings and handle connect/disconnect inside Step 6. Regression and browser-flow checks cover the corrected states.

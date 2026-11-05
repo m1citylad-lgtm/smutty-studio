@@ -276,6 +276,9 @@ final class SBS_Admin
             echo '<tr><td>' . esc_html($label) . '</td><td><span class="sbs-status ' . ($ok ? 'ok' : 'bad') . '">' . ($ok ? 'Pass' : 'Needs attention') . '</span></td></tr>';
         }
         echo '</tbody></table><p><strong>Private data path:</strong> <code>' . esc_html(SBS_Storage::base_dir()) . '</code></p><p><strong>Maximum upload:</strong> ' . esc_html(size_format(wp_max_upload_size())) . '</p></div>';
+        $failure=get_option('sbs_finishing_last_failure');
+        if(is_array($failure)){echo '<div class="sbs-card"><h2>Last finishing failure</h2><p>'.esc_html($failure['reason']).'</p><p>'.esc_html($failure['at'].' · '.$failure['action'].' · '.$failure['type'].' · '.$failure['file'].':'.$failure['line']).'</p><p>PHP memory: '.esc_html($failure['memory_limit']).' · Time limit: '.esc_html($failure['time_limit']).' seconds. Saved artwork and job tracking were retained. Detailed error text is in the server PHP log.</p></div>';}
+
     }
 
     private static function submit_button($label, $type = 'primary')
