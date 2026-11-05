@@ -1,3 +1,16 @@
+# v0.4.4 — Preserve artwork review decisions (5 November 2026)
+
+Prepared for release; live installation and validation pending.
+
+- Reopening the pixel scanner preserves intentional-mark acceptance only for the same image hash, counts and transparency results. Changed results require a new decision.
+- Continuing an unchanged artwork check resumes saved reports and their decisions without another paid call. New artwork, instructions or saved rules start a new review. Existing legacy reports retain their saved decisions and acquire a rules snapshot on first continuation.
+- Resolved action-list and final-comparison findings collapse into labelled resolved entries; the comparison counts unresolved findings instead of continuing to call accepted findings action needed. Sampled flags show an explicit resolved state.
+- A separate fresh-check action intentionally replaces the saved AI report and uses provider credits. Ordinary final comparison reuses the selected version's completed report.
+- Step 3 artwork decisions and Step 5 comparison decisions remain separately scoped: they assess different concerns. No fuzzy matching or automatic acceptance of new findings is introduced.
+- Repeating the file check at the same print target refreshes technical checks in place instead of creating another candidate that loses its final comparison decisions.
+- Original images, version history, pixels, alpha and print dimensions are not modified by this repair.
+- Validation: PHP persistence regression and UI refresh/rescan/isolation regressions added to release checks. Record actual results and live validation below after running them.
+
 # v0.4.2 — Final workflow status checks (3 November 2026)
 
 Step 1 now gives the first instruction immediately. Starting another artwork clears old repair/archive status messages, and saved-archive completion must match the current approval. ZIP report wording reflects the new archive capability. The previously inactive Google connection controls now check status, save encrypted client settings and handle connect/disconnect inside Step 6. Regression and browser-flow checks cover the corrected states.

@@ -380,7 +380,7 @@ final class SBS_Finishing
                 $v=self::current($r);
                 if(!$v||$r['status']!=='Awaiting Review'){return self::error('state','Run or select a finishing candidate before requesting an AI comparison.');}
                 if(!self::intact($r['original'])||!self::intact($v['asset'])){return self::error('integrity','Asset checksum mismatch. AI review refused.',409);}
-                $report=SBS_OpenAI::review_finishing_artwork($r['original']['id'],$v['asset']['id'],$r['title']);
+                $report=!empty($v['ai_review'])&&($v['ai_review']['overall']??'')!=='unable'&&$request->get_param('fresh')!==true?$v['ai_review']:SBS_OpenAI::review_finishing_artwork($r['original']['id'],$v['asset']['id'],$r['title']);
                 if(is_wp_error($report)){return $report;}
                 $report_findings=$report['findings']??array();foreach($report_findings as &$finding){$finding['method']='ai_review';$finding['id']=self::finding_id($finding);}unset($finding);$report['findings']=$report_findings;
                 foreach($r['versions'] as &$reviewed_version){if($reviewed_version['uuid']===$v['uuid']){$reviewed_version['ai_review']=$report;break;}}unset($reviewed_version);
