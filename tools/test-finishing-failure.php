@@ -6,11 +6,12 @@ function is_wp_error($v){return $v instanceof WP_Error;}
 function sanitize_key($s){return strtolower(preg_replace('/[^a-zA-Z0-9_-]/','',$s));}
 function add_filter($tag,$callback,$priority,$args){$GLOBALS['filters'][$tag][]=$callback;}
 function wp_raise_memory_limit($context){$GLOBALS['raised']=$context;}
-function update_option($key,$value,$autoload){$GLOBALS['options'][$key]=$value;file_put_contents($GLOBALS['tmp'].'/diagnostic.json',json_encode($value));}
+function update_option($key,$value,$autoload){$GLOBALS['options'][$key]=$value;file_put_contents($GLOBALS['tmp'].($key==='sbs_finishing_last_failure'?'/diagnostic.json':'/checkpoint.json'),json_encode($value));}
 class SBS_Storage {static function ensure_directories(){return true;}static function base_dir(){return $GLOBALS['tmp'];}}
 class SBS_Finishing_Flow {static function handles($action){
  if($GLOBALS['mode']==='provider')return false;
  SBS_Finishing::processing_stage('restore_transparency');
+ if($GLOBALS['mode']==='template'){foreach(($GLOBALS['filters']['wp_php_error_message']??array()) as $callback){$GLOBALS['template_message']=$callback('Original WordPress message',array('message'=>'Maximum execution time of 30 seconds exceeded /private/path secret-api-key','file'=>__FILE__,'line'=>__LINE__));}return false;}
  if(in_array($GLOBALS['mode'],array('fatal','wp-fatal'),true)){$large=str_repeat('x',64*1024*1024);}
  throw new Error('Injected failure /private/path Bearer secret-api-key');
 }}
@@ -22,7 +23,7 @@ $mode=$argv[1]??'engine';$tmp=$argv[2]??sys_get_temp_dir().'/sbs-failure-'.bin2h
 if(!is_dir($tmp))mkdir($tmp);mkdir($tmp.'/finishing');ini_set('error_log',$tmp.'/error.log');
 $path=$tmp.'/finishing/12345678-1234-1234-1234-123456789abc.json';$record=array('revision'=>1,'pending'=>array('method'=>'upscale','replicate_prediction_id'=>'existing-paid-job'),'versions'=>array(),'current_version'=>null);$bytes=json_encode($record);file_put_contents($path,$bytes);
 if($mode==='wp-fatal'){register_shutdown_function(function(){foreach(($GLOBALS['filters']['wp_php_error_message']??array()) as $callback){$callback('Critical error',error_get_last());}exit(255);});}
-if(in_array($mode,array('fatal','wp-fatal'),true)){echo 'Fatal fixture mode='.$mode.' tmp='.$tmp.' PHP='.PHP_VERSION.' sapi='.PHP_SAPI.' prepend='.ini_get('auto_prepend_file').PHP_EOL;register_shutdown_function(function(){echo 'Fixture shutdown reached'.PHP_EOL;});SBS_Finishing::action(new Request());exit(2);}
+if(in_array($mode,array('fatal','wp-fatal'),true)){SBS_Finishing::action(new Request());exit(2);}
 try{
  $result=SBS_Finishing::action(new Request());
  check_failure(is_wp_error($result)&&$result->code==='finishing_processing_failed','Engine error was not contained');
@@ -35,14 +36,18 @@ try{
  $lock=fopen($path.'.lock','c');check_failure(flock($lock,LOCK_EX|LOCK_NB),'Workspace lock not released');flock($lock,LOCK_UN);fclose($lock);
  $mode='provider';$result=SBS_Finishing::action(new Request());check_failure($result->code==='provider_unavailable','Provider error changed');
  check_failure(($GLOBALS['options']['sbs_finishing_last_failure']['stage']??'')==='provider_status','Provider-stage error not recorded');
+ $mode='template';SBS_Finishing::action(new Request());check_failure(($GLOBALS['template_message']??'')==='Original WordPress message','WordPress fatal template was changed');check_failure(strpos($GLOBALS['options']['sbs_finishing_last_failure']['reason']??'','time limit')!==false,'WordPress fatal-template hook lost the safe reason');
  $method=new ReflectionMethod('SBS_Finishing','start_upscale');$method->setAccessible(true);$result=$method->invoke(null,$record);
  check_failure(is_wp_error($result)&&$result->code==='finishing_upscale_exists'&&SBS_Replicate::$submits===0,'Existing job could be submitted again');
  foreach(array('fatal','wp-fatal') as $fatalMode){$fatalDir=$tmp.'/'.$fatalMode;mkdir($fatalDir);$command=escapeshellarg(PHP_BINARY).' -d memory_limit=32M '.escapeshellarg(__FILE__).' '.escapeshellarg($fatalMode).' '.escapeshellarg($fatalDir).' 2>&1';exec($command,$output,$exit);
  check_failure($exit!==0,'Fatal fixture did not reach memory limit');
- $fatal=json_decode(file_get_contents($fatalDir.'/diagnostic.json'),true);if(!$fatal){echo 'Fatal mode '.$fatalMode.' directory '.json_encode(glob($fatalDir.'/*')).PHP_EOL;}if(!$fatal){echo 'Child diagnostic debug: '.implode(' ', $output).' Log: '.(is_file($fatalDir.'/error.log')?file_get_contents($fatalDir.'/error.log'):'missing log').PHP_EOL;}
- check_failure(($fatal['stage']??'')==='restore_transparency'&&strpos($fatal['reason']??'','ran out')!==false,'Real memory fatal did not save safe stage/reason: '.json_encode($fatal).' Child output: '.implode(' ', $output));
+ $checkpoint=json_decode(file_get_contents($fatalDir.'/checkpoint.json'),true);
+ check_failure(($checkpoint['stage']??'')==='restore_transparency'&&($checkpoint['action']??'')==='poll','Memory fatal lost its pre-allocation checkpoint');
+ check_failure(strpos(implode(' ', $output),'Allowed memory size')!==false,'Fixture failed for a reason other than memory');
+ if(is_file($fatalDir.'/diagnostic.json')){$fatal=json_decode(file_get_contents($fatalDir.'/diagnostic.json'),true);check_failure(($fatal['stage']??'')==='restore_transparency'&&strpos($fatal['reason']??'','ran out')!==false,'Shutdown-capable PHP lost the actual fatal reason');}
+ else{check_failure(($checkpoint['state']??'')==='running','Hard PHP exit was incorrectly recorded as completed');echo "PASS: real memory-limit termination retained its stage even when PHP skipped shutdown callbacks\n";}
  check_failure(file_get_contents($fatalDir.'/finishing/'.basename($path))===$bytes,'Memory fatal changed provider tracking');}
- echo "PASS: engine and real memory-fatal diagnostics, secret exclusion, provider failure stage, retained saved job, duplicate-submit refusal and lock release\n";
+ echo "PASS: engine diagnostics and real memory-fatal checkpoints, secret exclusion, provider failure stage, retained saved job, duplicate-submit refusal and lock release\n";
 }finally{
  $it=new RecursiveIteratorIterator(new RecursiveDirectoryIterator($tmp,FilesystemIterator::SKIP_DOTS),RecursiveIteratorIterator::CHILD_FIRST);foreach($it as $f){$f->isDir()?rmdir($f->getPathname()):unlink($f->getPathname());}rmdir($tmp);
 }

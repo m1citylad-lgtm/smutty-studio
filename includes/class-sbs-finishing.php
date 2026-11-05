@@ -424,7 +424,7 @@ final class SBS_Finishing
         } catch (Throwable $error) {
             self::record_processing_failure($request->get_param('action'),get_class($error),$error->getMessage(),$error->getFile(),$error->getLine());
             return self::error('processing_failed','The server could not finish this action. Your saved artwork and existing upscale job are retained. Check Settings → Diagnostics before retrying.',500);
-        } finally {$guard->active=false;$guard->reserve=null;self::$processing_context=null;flock($lock,LOCK_UN);fclose($lock);}
+        } finally {$guard->reserve=null;self::processing_checkpoint($guard->recorded?'failed':'finished');$guard->active=false;self::$processing_context=null;flock($lock,LOCK_UN);fclose($lock);}
     }
     /** Reserve room to record even a PHP memory/time-limit fatal without changing the workspace. */
     private static function processing_guard($action)
@@ -444,6 +444,7 @@ final class SBS_Finishing
             return $message;
         },10,2);}
         if(function_exists('wp_raise_memory_limit')){wp_raise_memory_limit('image');}
+        self::processing_checkpoint('running');
         return $guard;
     }
     private static function record_processing_failure($action,$type,$message,$file,$line)
@@ -457,7 +458,12 @@ final class SBS_Finishing
     }
     public static function processing_stage($stage)
     {
-        if(self::$processing_context){self::$processing_context->stage=sanitize_key($stage);}
+        if(self::$processing_context){self::$processing_context->stage=sanitize_key($stage);self::processing_checkpoint('running');}
+    }
+    private static function processing_checkpoint($state)
+    {
+        if(!self::$processing_context){return;}
+        update_option('sbs_finishing_processing_checkpoint',array('at'=>gmdate('c'),'action'=>self::$processing_context->action,'stage'=>self::$processing_context->stage,'state'=>$state,'memory_limit'=>ini_get('memory_limit'),'time_limit'=>ini_get('max_execution_time'),'peak_memory_bytes'=>memory_get_peak_usage(true)),false);
     }
     public static function processing_result($result)
     {
