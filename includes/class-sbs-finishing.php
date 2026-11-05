@@ -259,7 +259,6 @@ final class SBS_Finishing
     {
         $path=self::path($request['uuid']);if(is_wp_error($path)){return $path;}
         $lock=fopen($path.'.lock','c');if(!$lock||!flock($lock,LOCK_EX|LOCK_NB)){if($lock){fclose($lock);}return self::error('busy','Workspace is busy. Refresh and try again.',409);}
-        $guard=self::processing_guard($request->get_param('action'));
         try {
             $r=self::read($path);if(is_wp_error($r)){return $r;}
             if((int)$request->get_param('revision')!==(int)$r['revision']){return self::error('conflict','Workspace changed. Refresh before renaming.',409);}
@@ -267,10 +266,7 @@ final class SBS_Finishing
             if($title===''||strlen($title)>190){return self::error('title','Enter a title between 1 and 190 bytes.');}
             $r['title']=$title;$r['revision']++;$r['updated_at']=gmdate('c');$r['audit'][]=array('at'=>gmdate('c'),'action'=>'Catalogue title renamed');
             return self::write($path,$r);
-        } catch (Throwable $error) {
-            self::record_processing_failure($request->get_param('action'),get_class($error),$error->getMessage(),$error->getFile(),$error->getLine());
-            return self::error('processing_failed','The server could not finish this action. Your saved artwork and existing upscale job are retained. Check Settings → Diagnostics before retrying.',500);
-        } finally {$guard->active=false;flock($lock,LOCK_UN);fclose($lock);}
+        } finally {flock($lock,LOCK_UN);fclose($lock);}
     }
     public static function links($ideas,$sb)
     {
@@ -332,6 +328,7 @@ final class SBS_Finishing
     {
         $path=self::path($request['uuid']);if(is_wp_error($path)){return $path;}
         $lock=fopen($path.'.lock','c');if(!$lock||!flock($lock,LOCK_EX|LOCK_NB)){if($lock){fclose($lock);}return self::error('busy','Workspace is busy. Retry after refreshing.',409);}
+        $guard=self::processing_guard($request->get_param('action'));
         try {
             $r=self::read($path);if(is_wp_error($r)){return $r;}
             if((int)$request->get_param('revision')!==$r['revision']){return self::error('conflict','Workspace changed. Refresh before retrying.',409);}
@@ -414,7 +411,10 @@ final class SBS_Finishing
             } else {return self::error('action','Unsupported finishing action.');}
             $r['qa_manifest']=SBS_Print_QA::manifest($r);$r['revision']++;$r['updated_at']=gmdate('c');$r['audit'][]=array('at'=>gmdate('c'),'action'=>$action);
             return self::write($path,$r);
-        } finally {flock($lock,LOCK_UN);fclose($lock);}
+        } catch (Throwable $error) {
+            self::record_processing_failure($request->get_param('action'),get_class($error),$error->getMessage(),$error->getFile(),$error->getLine());
+            return self::error('processing_failed','The server could not finish this action. Your saved artwork and existing upscale job are retained. Check Settings → Diagnostics before retrying.',500);
+        } finally {$guard->active=false;flock($lock,LOCK_UN);fclose($lock);}
     }
     /** Reserve room to record even a PHP memory/time-limit fatal without changing the workspace. */
     private static function processing_guard($action)
