@@ -40,6 +40,7 @@ jobs:
           node tools/test-finishing.cjs
           node --check assets/js/finishing-flow.js
           node tools/test-finishing-flow.cjs
+          node tools/test-print-visibility.cjs
           node tools/test-flat-background.cjs
           node tools/test-development.cjs
           node tools/test-freestyle.cjs

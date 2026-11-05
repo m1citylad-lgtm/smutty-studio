@@ -1,3 +1,17 @@
+# v0.4.5 — Review what may show on a T-shirt (5 November 2026)
+
+Prepared; automated and live validation pending.
+
+- Replace grid-cell/single-pixel flags with connected components measured at the selected print box. Starting advisory filters retain compact marks about 0.8 mm across with sufficient ink area, or contrasting continuous lines about 3 mm long. These thresholds are screening defaults, not guarantees of visibility on a particular fabric or printer.
+- Suppress isolated pixels, tiny specks, hidden RGB under zero alpha and narrow ordinary antialiasing. Group nearby related areas. Very dense results become labelled groups with every location retained for Next similar area.
+- Broad partial transparency is labelled double-check: possible smoke, fade or texture. This is a geometric uncertainty label, not reliable semantic smoke recognition. No automatic opacity restoration or bulk cleanup is offered. Scanning and accepting an effect do not edit pixels.
+- Show printed dimensions, a visible scanning/completion state, one selected marker and a centred 4× view. Keep selected area/group as intentional records the decision; unchanged source/policy/print size restores it on reopening.
+- The extra print-area scan is optional. Legacy microscopic scan results no longer block approval. If the new scan is used, its potentially visible findings need review; known opaque backgrounds still require attention. Existing artwork-action/final-comparison/human review gates remain.
+- Bounded point sampling still supplies alpha statistics but does not pretend a sampled point establishes visible defect size. Previous sampled-point findings remain in technical history, outside the required action list.
+- All Studio AI visual-review routes now use the same print-relevance policy: concentrate on visible anatomy, lettering, clipping, blobs and long halos, group related marks, omit microscopic findings, and label possible effects as uncertain. Finishing supplies the print dimensions; other routes explicitly state when dimensions are unknown.
+- Originals, saved image versions, print dimensions and genuine alpha remain untouched by this change. Old AI reports are not silently rerun or charged again.
+- Added synthetic pixel/physical-scale and UI regressions for specks, visible blocks/lines, resolution invariance, smoke alpha, grouped review, zoom, saved decisions and optional completion. Actual validation results will be recorded after running checks.
+
 # v0.4.4 — Preserve artwork review decisions (5 November 2026)
 
 Published v0.4.4 on 5 November 2026; live installation and validation pending. Signed release pipeline 42085507330 passed and published smutty-bear-studio-0.4.4.zip. Cloud Browser still shows the unauthenticated v0.4.2 login; no live installation, backup creation or production verification is claimed.

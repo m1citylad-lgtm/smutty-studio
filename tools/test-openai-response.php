@@ -103,3 +103,27 @@ $native_png=base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQ
 $result=SBS_OpenAI::parse_image_response(array('status'=>'completed','model'=>'router-revision','output'=>array(array('type'=>'image_generation_call','model'=>'image-revision','size'=>'auto','quality'=>'high','result'=>base64_encode($native_png)))));
 check($result['image_metadata']['actual_pixels']===array('width'=>1,'height'=>1)&&$result['image_metadata']['image_model_reported']==='image-revision'&&$result['image_metadata']['reported_size']==='auto','Native generation dimensions/model metadata lost or inferred from requested size');
 echo "PASS: native output metadata distinguishes requested/provider-reported dimensions from decoded pixels\n";
+
+// Print relevance is enforced on actual parsed responses, not only prompt wording.
+$report=array('summary'=>'Review','overall'=>'review','findings'=>array(
+ array('severity'=>'concern','area'=>'One pixel','issue'=>'Tiny dot','action'=>'Remove','print_relevance'=>'microscopic'),
+ array('severity'=>'concern','area'=>'Long outline','issue'=>'Visible continuous fringe','action'=>'Review','print_relevance'=>'visible'),
+ array('severity'=>'concern','area'=>'Soft cloud','issue'=>'Transparency could be a defect','action'=>'Make opaque','print_relevance'=>'double_check','possible_effect'=>'smoke')
+));
+$mock_response_body=json_encode(array('output'=>array(array('type'=>'message','content'=>array(array('type'=>'output_text','text'=>json_encode($report)))))));
+$review=SBS_OpenAI::review_finishing_artwork(101,202,'Print relevance',array('width'=>14,'height'=>16));
+check(!is_wp_error($review)&&count($review['findings'])===2,'Microscopic finding was not filtered');
+check($review['findings'][1]['severity']==='review'&&$review['findings'][1]['possible_effect']==='smoke'&&strpos($review['findings'][1]['action'],'no automatic cleanup')!==false,'Possible smoke was treated as a definite defect or auto-fix');
+$payload=json_decode($captured_requests[count($captured_requests)-1]['args']['body'],true);$prompt=$payload['input'][0]['content'][0]['text'];
+check(strpos($prompt,'14 by 16 inches')!==false&&strpos($prompt,'Ignore isolated stray pixels')!==false,'Actual print target or global visibility policy missing from provider prompt');
+$policy=new ReflectionMethod('SBS_OpenAI','print_review_policy');$policy->setAccessible(true);
+check(strpos($policy->invoke(null),'exact print size is not supplied')!==false,'Unknown print dimensions were invented');
+echo "PASS: physical print context, microscopic-response filtering and uncertain smoke protected from automatic cleanup.\n";
+
+if(!function_exists('wp_generate_uuid4')){function wp_generate_uuid4(){return bin2hex(random_bytes(16));}}
+foreach($report['findings'] as &$f){$f['image_label']='whole';$f['bbox']=array('x'=>.2,'y'=>.2,'width'=>.1,'height'=>.1);$f['category']='Artwork';}unset($f);
+$mock_response_body=json_encode(array('output'=>array(array('type'=>'message','content'=>array(array('type'=>'output_text','text'=>json_encode($report)))))));
+$logic=SBS_OpenAI::review_logic_correction('whole',array(array('label'=>'whole','data_url'=>'data:image/png;base64,'.base64_encode('fixture'))),array(),array(),array('width'=>14,'height'=>16));
+check(!is_wp_error($logic)&&count($logic['findings'])===2,'Logic review retained microscopic findings');
+check($logic['findings'][1]['possible_effect']==='smoke'&&strpos($logic['findings'][1]['action'],'No automatic cleanup')!==false,'Logic review recommended automatically changing smoke');
+echo "PASS: global Studio logic review applies the same print-visibility and possible-effect policy.\n";

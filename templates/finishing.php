@@ -44,7 +44,7 @@
         <section class="sbs-card sbs-af-adjustments-card"><h2>Optional artwork adjustments</h2>
             <section class="sbs-af-correction-launch" aria-labelledby="sbs-af-correction-heading">
                 <h3 id="sbs-af-correction-heading">Whole-image correction</h3>
-                <p>Scan the entire selected image, review marked areas, then correct one area or run all suggested fixes.</p>
+                <p>Optional extra check at your chosen print size. Ignores tiny isolated pixels and groups connected marks or long edges. Smoke, fades and texture are labelled for a double-check.</p>
                 <button id="sbs-af-correction-open" class="sbs-button primary" type="button" disabled aria-describedby="sbs-af-correction-help" data-state="idle"><span id="sbs-af-correction-open-label">Scan and review corrections</span><span id="sbs-af-correction-open-spinner" class="sbs-correction-spinner" aria-hidden="true" hidden>⏳</span><span id="sbs-af-correction-open-done" aria-hidden="true" hidden> ✓</span></button>
                 <p id="sbs-af-correction-help" class="sbs-af-help" role="status" aria-live="polite">Upload artwork or resume a saved workspace to enable the full-image scan.</p>
             </section>
@@ -65,8 +65,8 @@
         </section>
     </div>
 <div id="sbs-af-correction-dialog" class="sbs-af-correction-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="sbs-af-correction-title">
-        <header class="sbs-af-correction-head"><div><h2 id="sbs-af-correction-title">Whole-image correction review</h2><p>Clear outline markers show areas to inspect. Select a marker for one-area correction, or run all suggested corrections.</p></div><button id="sbs-af-correction-close" type="button" class="sbs-button" aria-label="Close correction review">Close</button></header>
-        <div class="sbs-af-correction-tools" role="toolbar" aria-label="Image correction actions">
+        <header class="sbs-af-correction-head"><div><h2 id="sbs-af-correction-title">Possible issues at T-shirt print size</h2><p>Opening this window scans automatically without changing artwork. Tiny isolated pixels are ignored. Select a listed area to centre it at 4×. Smoke, fades and texture are uncertain: double-check, do not automatically repair.</p></div><button id="sbs-af-correction-close" type="button" class="sbs-button" aria-label="Close correction review">Close</button></header>
+        <div class="sbs-af-correction-tools" role="toolbar" aria-label="Image correction actions"><button id="sbs-af-correction-accept" type="button" class="sbs-button" disabled>Keep selected area — intentional</button><button id="sbs-af-correction-next" type="button" class="sbs-button" hidden>Next similar area</button><button id="sbs-af-correction-reset" type="button" class="sbs-button">Reset view</button>
             <button type="button" class="sbs-button" data-sbs-correction-kind="edge_fringe" disabled>Clean edge-colour fringe</button>
             <button type="button" class="sbs-button" data-sbs-correction-kind="stray_pixel" disabled>Remove stray pixels</button>
             <button type="button" class="sbs-button" data-sbs-correction-kind="solid_opacity" disabled>Restore solid opacity</button>
@@ -79,7 +79,7 @@
             <div id="sbs-af-correction-viewport" class="sbs-af-correction-viewport" tabindex="0" aria-label="Image preview. Pinch to zoom and move with two fingers. Tap outside markers to toggle original and corrected.">
                 <div id="sbs-af-correction-stage" class="sbs-af-correction-stage"><img id="sbs-af-correction-image" alt="Selected artwork correction preview"><div id="sbs-af-correction-markers" class="sbs-af-correction-markers" aria-label="Detected correction areas"></div></div>
             </div>
-            <aside class="sbs-af-correction-aside"><h3>Marked areas</h3><p>Red: suggested · Amber: review first · Green: corrected · Grey: acceptable</p><div id="sbs-af-correction-categories" class="sbs-af-correction-categories" aria-label="Correction category status"></div><div id="sbs-af-correction-list" class="sbs-af-correction-list"></div></aside>
+            <aside class="sbs-af-correction-aside"><h3>Marked areas</h3><p>Red: possible visible fringe · Amber: double-check effect or mark · Green: reviewed · Grey: no issue found</p><div id="sbs-af-correction-categories" class="sbs-af-correction-categories" aria-label="Correction category status"></div><div id="sbs-af-correction-list" class="sbs-af-correction-list"></div></aside>
         </div>
     </div>
         <section class="sbs-card"><h2>3. Compare and review</h2>

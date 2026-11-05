@@ -39,7 +39,15 @@ final class SBS_Finishing
     private static function read($path)
     {
         $record=is_file($path)?json_decode(file_get_contents($path),true):null;
-        return is_array($record)?$record:self::error('missing','Local workspace not found.',404);
+        if(!is_array($record)){return self::error('missing','Local workspace not found.',404);}
+        // Older sampled-point suggestions were not assessed at print size. Retain
+        // them as technical history, without demanding decisions on tiny pixels.
+        foreach(($record['versions']??array()) as $i=>$version){
+            $sample=$version['qa']['pixel_review']??array();$keep=array();$technical=$sample['technical_findings']??array();
+            foreach(($sample['findings']??array()) as $f){if(($f['method']??'')==='sampled_alpha'){$technical[]=$f;}else{$keep[]=$f;}}
+            if($technical){$record['versions'][$i]['qa']['pixel_review']['technical_findings']=$technical;$record['versions'][$i]['qa']['pixel_review']['findings']=$keep;}
+        }
+        return $record;
     }
     private static function write($path,$record)
     {
@@ -380,7 +388,7 @@ final class SBS_Finishing
                 $v=self::current($r);
                 if(!$v||$r['status']!=='Awaiting Review'){return self::error('state','Run or select a finishing candidate before requesting an AI comparison.');}
                 if(!self::intact($r['original'])||!self::intact($v['asset'])){return self::error('integrity','Asset checksum mismatch. AI review refused.',409);}
-                $report=!empty($v['ai_review'])&&($v['ai_review']['overall']??'')!=='unable'&&$request->get_param('fresh')!==true?$v['ai_review']:SBS_OpenAI::review_finishing_artwork($r['original']['id'],$v['asset']['id'],$r['title']);
+                $report=!empty($v['ai_review'])&&($v['ai_review']['overall']??'')!=='unable'&&$request->get_param('fresh')!==true?$v['ai_review']:SBS_OpenAI::review_finishing_artwork($r['original']['id'],$v['asset']['id'],$r['title'],$v['options']);
                 if(is_wp_error($report)){return $report;}
                 $report_findings=$report['findings']??array();foreach($report_findings as &$finding){$finding['method']='ai_review';$finding['id']=self::finding_id($finding);}unset($finding);$report['findings']=$report_findings;
                 foreach($r['versions'] as &$reviewed_version){if($reviewed_version['uuid']===$v['uuid']){$reviewed_version['ai_review']=$report;break;}}unset($reviewed_version);
