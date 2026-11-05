@@ -76,7 +76,7 @@ function mockAction(p){calls.push(p.action+(p.pass?':'+p.pass:''));
  const fixtureUrl=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=600;c.height=600;const x=c.getContext('2d');x.fillStyle='#903010';x.fillRect(150,100,250,220);x.fillRect(10,10,1,1);x.fillStyle='rgba(150,150,150,0.43)';x.fillRect(50,400,60,60);return c.toDataURL('image/png');});
  record=JSON.parse(JSON.stringify(record));record.uuid='cccccccc-0000-4000-8000-000000000003';record.title='Print visibility fixture';record.approval=null;
  record.original={...record.original,sha256:'visibility-fixture',url:fixtureUrl};record.original_qa={...record.original_qa,width:600,height:600,effective_ppi:300};
- record.versions=[{uuid:'visibility-version',number:1,asset:record.original,qa:record.original_qa,options:{method:'print_png',width:2,height:2,source_sha256:'visibility-fixture'},ai_review:{overall:'clear',findings:[]}}];record.current_version='visibility-version';
+ record.versions=[{uuid:'visibility-version',number:1,asset:record.original,qa:record.original_qa,comparison:{byte_identical:true,geometry:{status:'proportional'}},options:{method:'print_png',width:2,height:2,source_sha256:'visibility-fixture'},ai_review:{overall:'clear',findings:[]}}];record.current_version='visibility-version';
  record.flow={review:{sha256:'visibility-fixture',passes:{whole:{findings:[]},regions:{findings:[]},custom:{findings:[]}},decisions:{}}};
  await page.locator('#sbs-af-width').fill('2');await page.locator('#sbs-af-height').fill('2');
  await page.evaluate(r=>window.dispatchEvent(new CustomEvent('sbs-finishing-open',{detail:r})),record);
