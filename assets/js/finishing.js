@@ -116,7 +116,7 @@
         }
         function updateStageButtons(){
             document.querySelectorAll('[data-af-method]').forEach(function(button){
-                var method=button.getAttribute('data-af-method'),spinner=button.querySelector('.sbs-af-stage-spinner'),done=button.querySelector('.sbs-af-stage-done'),version=stageVersion(method),runState=stageRunState[method]||{},running=!!(busy&&activeStageMethod===method),failed=runState.state==='error',completed=!!version&&!failed;
+                var method=button.getAttribute('data-af-method'),spinner=button.querySelector('.sbs-af-stage-spinner'),done=button.querySelector('.sbs-af-stage-done'),version=stageVersion(method),runState=stageRunState[method]||{},running=!!(busy&&activeStageMethod===method),failed=runState.state==='error',completed=!!version&&!failed&&!(current&&current.pending&&current.pending.method===method);
                 if(spinner)spinner.hidden=!running;
                 if(done)done.hidden=running||!completed;
                 if(running){button.setAttribute('aria-busy','true');button.setAttribute('aria-label',button.querySelector('.sbs-af-stage-button-label').textContent+' — processing');setStageReport(method,'info','Processing…');}
@@ -124,6 +124,7 @@
                     button.removeAttribute('aria-busy');
                     button.setAttribute('aria-label',button.querySelector('.sbs-af-stage-button-label').textContent+(completed?' — completed':''));
                     if(failed){setStageReport(method,'error','Needs attention: '+String(runState.message||'The stage did not complete.'));}
+                    else if(runState.state==='waiting'){setStageReport(method,'info','Still finishing the saved upscale. Reopen this workspace to continue; do not start another paid upscale.');}
                     else if(version){
                         var warnings=Array.isArray(version.qa&&version.qa.warnings)?version.qa.warnings.slice():[];
                         if(method==='upscale')warnings=[];
@@ -561,18 +562,19 @@
         async function saveImageEdit(blob,kind,sourceVersion,button){if(!current||!sourceVersion)throw new Error('Select the source candidate again before saving.');if(blob.size>64*1024*1024)throw new Error('The PNG copy is '+fileSize(blob.size)+'. Edited copies can be up to 64 MB; no copy was saved.');var before=current.current_version,data=new FormData(),saved=false,refreshError='';data.append('action','edit_candidate');data.append('revision',String(current.revision));data.append('source_version',sourceVersion);data.append('edit_kind',kind);data.append('file',new File([blob],kind==='touchup'?'candidate-touchup.png':'candidate-trimmed.png',{type:'image/png'}));if(kind==='touchup')el('sbs-af-editor-status').textContent='Saving a new candidate version…';await operation(async function(){current=await api('/'+current.uuid+'/action',data);saved=!!current&&current.current_version!==before;if(!saved)throw new Error('Studio did not confirm a new candidate version. Your draft remains open.');render();saveUiState();try{await refresh();render();saveUiState();}catch(error){refreshError=error.message;}var text=kind==='touchup'?'Touch-up saved as a new candidate version. The source remains unchanged.':'Trimmed copy saved as a new candidate version. The source canvas remains in version history.';if(refreshError)text+=' Workspace list refresh failed: '+refreshError;message(text,!!refreshError);if(kind==='touchup')el('sbs-af-editor-status').textContent='Saved successfully as a new candidate version. Closing the editor will keep the saved version.';},kind==='touchup'?'Saving edited copy…':'Saving trimmed copy…',button,function(error){if(kind==='touchup')el('sbs-af-editor-status').textContent=saved?'Your copy was saved, but the workspace list did not refresh: '+error.message:'Save failed: '+error.message+' Your draft and source are unchanged; try Save as new version again.';});return saved;}
         function saveTouchup(){if(!editor.dirty)return;el('sbs-af-editor-status').textContent='Preparing the edited PNG…';editor.canvas.toBlob(function(blob){if(!blob){el('sbs-af-editor-status').textContent='PNG export failed. The draft remains open; the source is unchanged.';return;}var button=el('sbs-af-edit-save');saveImageEdit(blob,'touchup',editor.sourceVersion,button).then(function(saved){if(saved){editor.dirty=false;closeArtworkEditor(true);}}).catch(function(error){el('sbs-af-editor-status').textContent='Save failed: '+error.message+' Your draft and source are unchanged.';});},'image/png');}
         async function pollReplicate(){
-            message('AI upscale is processing on Replicate. The untouched original remains unchanged.');
+            var ownsBusy=!busy,previousMethod=activeStageMethod;activeStageMethod='upscale';if(ownsBusy)busy=true;controls();updateStepButtons();
+            message(current&&current.next_action||'Checking the existing upscale. The untouched original remains unchanged.');
             var attempts=0;stageRunState.upscale={state:'running'};
-            try{while(current&&current.pending&&current.pending.replicate_prediction_id&&attempts<60){
+            try{while(current&&current.pending&&current.pending.replicate_prediction_id&&attempts<300){
                 await new Promise(function(resolve){window.setTimeout(resolve,2000);});
                 var poll=await api('/'+current.uuid+'/action',{action:'poll',revision:current.revision});
                 current=poll;render();attempts++;
-                if(current.processing_error){message(current.processing_error,true);return;}
-                if(current.pending&&current.pending.replicate_prediction_id){message('AI upscale is still processing. The original remains unchanged.');}
+                if(current.processing_error){stageRunState.upscale={state:'error',message:current.processing_error};updateStageButtons();message(current.processing_error,true);return;}
+                if(current.pending&&current.pending.replicate_prediction_id){message(current.next_action||'AI upscale is still processing. The original remains unchanged.');}
             }
-            if(current&&current.pending&&current.pending.replicate_prediction_id){message('Replicate is still processing. Do not run another upscale. You can cancel the current stage after this check stops.');}
+            if(current&&current.pending&&current.pending.replicate_prediction_id){stageRunState.upscale={state:'waiting'};message('The saved upscale is still processing. Reopen this workspace to continue. Do not run another upscale.');}
             else if(current&&!current.processing_error){stageRunState.upscale={state:'complete'};await refresh();render();message('AI upscale finished. Compare the candidate with the untouched original before approval.');}
-            }catch(error){stageRunState.upscale={state:'error',message:error.message};updateStageButtons();throw error;}
+            }catch(error){stageRunState.upscale={state:'error',message:error.message};updateStageButtons();throw error;}finally{activeStageMethod=previousMethod;if(ownsBusy)busy=false;controls();updateStepButtons();}
         }
         async function action(type,extra,saveFolder){
             var data=Object.assign({action:type,revision:current.revision},extra||{});
@@ -624,6 +626,7 @@
                 if(!current||!current.pending||current.pending.method!==method)throw new Error('Studio did not confirm that this stage was queued.');
                 await action('run');
                 if(current&&current.processing_error)throw new Error(current.processing_error);
+                if(method==='upscale'&&current&&current.pending&&current.pending.replicate_prediction_id){stageRunState[method]={state:'waiting'};updateStageButtons();return;}
                 if(!current||!Array.isArray(current.versions)||current.versions.length<=previousCount||!current.versions[current.versions.length-1].options||current.versions[current.versions.length-1].options.method!==method)throw new Error('Studio did not save a completed result for this stage.');
                 stageRunState[method]={state:'complete'};updateStageButtons();
             },'Running '+stageLabel(method)+'…',button,function(error){stageRunState[method]={state:'error',message:error.message};updateStageButtons();});
