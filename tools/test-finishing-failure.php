@@ -39,7 +39,7 @@ try{
  check_failure(is_wp_error($result)&&$result->code==='finishing_upscale_exists'&&SBS_Replicate::$submits===0,'Existing job could be submitted again');
  foreach(array('fatal','wp-fatal') as $fatalMode){$fatalDir=$tmp.'/'.$fatalMode;mkdir($fatalDir);$command=escapeshellarg(PHP_BINARY).' -d memory_limit=32M '.escapeshellarg(__FILE__).' '.escapeshellarg($fatalMode).' '.escapeshellarg($fatalDir).' 2>&1';exec($command,$output,$exit);
  check_failure($exit!==0,'Fatal fixture did not reach memory limit');
- $fatal=json_decode(file_get_contents($fatalDir.'/diagnostic.json'),true);
+ $fatal=json_decode(file_get_contents($fatalDir.'/diagnostic.json'),true);if(!$fatal){echo 'Child diagnostic debug: '.implode(' ', $output).' Log: '.(is_file($fatalDir.'/error.log')?file_get_contents($fatalDir.'/error.log'):'missing log').PHP_EOL;}
  check_failure(($fatal['stage']??'')==='restore_transparency'&&strpos($fatal['reason']??'','ran out')!==false,'Real memory fatal did not save safe stage/reason: '.json_encode($fatal).' Child output: '.implode(' ', $output));
  check_failure(file_get_contents($fatalDir.'/finishing/'.basename($path))===$bytes,'Memory fatal changed provider tracking');}
  echo "PASS: engine and real memory-fatal diagnostics, secret exclusion, provider failure stage, retained saved job, duplicate-submit refusal and lock release\n";

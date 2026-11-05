@@ -107,7 +107,7 @@ function mockAction(p){calls.push(p.action+(p.pass?':'+p.pass:''));
  assert.equal(record.pending.replicate_prediction_id,'saved-paid-job');
  assert.deepEqual(calls.slice(beforeUpscaleCalls),['poll'],'Recovery started another paid request');
  // Reopening repeats only the existing status check; a different artwork has no old failure.
- await page.locator('#sbs-af-resume').selectOption(record.uuid);await page.waitForFunction(()=>!window.SBSFinishingBridge.isBusy());
+ await page.locator('#sbs-af-refresh').click();await page.waitForFunction(()=>!document.getElementById('sbs-af-refresh').disabled);await page.locator('#sbs-af-resume').selectOption(record.uuid);await page.waitForFunction(()=>!window.SBSFinishingBridge.isBusy());
  assert.match(await page.locator('#sbs-flow-next-title').textContent(),/Processing stopped/);
  const freshArtwork={...record,uuid:'dddddddd-0000-4000-8000-000000000004',pending:null};
  await page.evaluate(r=>window.dispatchEvent(new CustomEvent('sbs-finishing-open',{detail:r})),freshArtwork);
