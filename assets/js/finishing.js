@@ -565,7 +565,7 @@
             var ownsBusy=!busy,previousMethod=activeStageMethod;activeStageMethod='upscale';if(ownsBusy)busy=true;controls();updateStepButtons();
             message(current&&current.next_action||'Checking the existing upscale. The untouched original remains unchanged.');
             var attempts=0;stageRunState.upscale={state:'running'};
-            try{while(current&&current.pending&&current.pending.replicate_prediction_id&&attempts<60){
+            try{while(current&&current.pending&&current.pending.replicate_prediction_id&&attempts<300){
                 await new Promise(function(resolve){window.setTimeout(resolve,2000);});
                 var poll=await api('/'+current.uuid+'/action',{action:'poll',revision:current.revision});
                 current=poll;render();attempts++;
