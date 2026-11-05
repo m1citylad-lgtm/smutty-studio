@@ -4,6 +4,7 @@ if (!defined('ABSPATH')) { exit; }
 /** Isolated, local-only finishing workspaces. UUIDs are NOT allocated AF references. */
 final class SBS_Finishing
 {
+    private static $processing_context;
     public static function register_routes()
     {
         foreach (array('' => array('GET','listing'), '/upload' => array('POST','upload'), '/freestyle-sources' => array('GET','freestyle_sources'), '/freestyle-source' => array('POST','import_freestyle'), '/delete-plan' => array('POST','delete_plan'), '/delete' => array('POST','delete'), '/(?P<uuid>[a-f0-9-]{36})' => array('GET','get'), '/(?P<uuid>[a-f0-9-]{36})/rename' => array('POST','rename'), '/(?P<uuid>[a-f0-9-]{36})/action' => array('POST','action')) as $path => $route) {
@@ -336,6 +337,7 @@ final class SBS_Finishing
     {
         $path=self::path($request['uuid']);if(is_wp_error($path)){return $path;}
         $lock=fopen($path.'.lock','c');if(!$lock||!flock($lock,LOCK_EX|LOCK_NB)){if($lock){fclose($lock);}return self::error('busy','Workspace is busy. Retry after refreshing.',409);}
+        $guard=self::processing_guard($request->get_param('action'));
         try {
             $r=self::read($path);if(is_wp_error($r)){return $r;}
             if((int)$request->get_param('revision')!==$r['revision']){return self::error('conflict','Workspace changed. Refresh before retrying.',409);}
@@ -369,7 +371,8 @@ final class SBS_Finishing
                 else{$v=self::process($r,$r['pending']);if(is_wp_error($v)){return $v;}$r['versions'][]=$v;$r['current_version']=$v['uuid'];$r['approval']=null;unset($r['pending']);$r['status']='Awaiting Review';$r['next_action']='Compare original and candidate; complete human review';}
             } elseif($action==='poll'){
                 if(empty($r['pending']['replicate_prediction_id'])){return self::error('state','No Replicate upscale is running.');}
-                $prediction=SBS_Replicate::poll($r['pending']['replicate_prediction_id']);if(is_wp_error($prediction)){return $prediction;}
+                self::processing_stage('provider_status');
+                $prediction=SBS_Replicate::poll($r['pending']['replicate_prediction_id']);if(is_wp_error($prediction)){return self::processing_result($prediction);}
                 $remote_status=$prediction['status']??'';if(!empty($r['pending']['tiles'])&&in_array($remote_status,array('succeeded','successful'),true)){$r=SBS_Finishing_Tiles::advance($r,$prediction);if(is_wp_error($r)){return $r;}$r['revision']++;$r['updated_at']=gmdate('c');$r['qa_manifest']=SBS_Print_QA::manifest($r);return self::write($path,$r);}
                 if(in_array($remote_status,array('succeeded','successful'),true)){$v=self::replicate_version($r,$r['pending'],$prediction);if(is_wp_error($v)){return $v;}$r['versions'][]=$v;$r['current_version']=$v['uuid'];$r['approval']=null;unset($r['pending']);$r['status']='Awaiting Review';$r['next_action']='Compare original and AI-upscaled candidate; complete human review';$r['processing_error']=null;}
                 elseif(in_array($remote_status,array('failed','canceled'),true)){$r['processing_error']='Replicate upscale '.$remote_status.(!empty($prediction['error'])?': '.sanitize_text_field((string)$prediction['error']):'.').' The original is unchanged. You can retry or choose another stage.';unset($r['pending']);$r['status']=$r['current_version']?'Awaiting Review':'Awaiting Finishing';$r['next_action']='Review the existing version or retry a stage';}
@@ -418,10 +421,50 @@ final class SBS_Finishing
             } else {return self::error('action','Unsupported finishing action.');}
             $r['qa_manifest']=SBS_Print_QA::manifest($r);$r['revision']++;$r['updated_at']=gmdate('c');$r['audit'][]=array('at'=>gmdate('c'),'action'=>$action);
             return self::write($path,$r);
-        } finally {flock($lock,LOCK_UN);fclose($lock);}
+        } catch (Throwable $error) {
+            self::record_processing_failure($request->get_param('action'),get_class($error),$error->getMessage(),$error->getFile(),$error->getLine());
+            return self::error('processing_failed','The server could not finish this action. Your saved artwork and existing upscale job are retained. Check Settings → Diagnostics before retrying.',500);
+        } finally {$guard->active=false;$guard->reserve=null;self::$processing_context=null;flock($lock,LOCK_UN);fclose($lock);}
+    }
+    /** Reserve room to record even a PHP memory/time-limit fatal without changing the workspace. */
+    private static function processing_guard($action)
+    {
+        $guard=(object)array('active'=>true,'recorded'=>false,'action'=>sanitize_key((string)$action),'stage'=>'workspace','reserve'=>str_repeat(' ',262144));
+        self::$processing_context=$guard;
+        register_shutdown_function(function()use($guard,$action){
+            if(!$guard->active){return;}$guard->reserve=null;$last=error_get_last();
+            if($last&&in_array($last['type'],array(E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR),true)){
+                self::record_processing_failure($action,'PHP fatal',$last['message'],$last['file'],$last['line']);
+            }
+        });
+        if(function_exists('wp_raise_memory_limit')){wp_raise_memory_limit('image');}
+        return $guard;
+    }
+    private static function record_processing_failure($action,$type,$message,$file,$line)
+    {
+        // Never copy raw exception/provider text, URLs, paths or credentials into diagnostics/logs.
+        $reason=stripos($message,'Allowed memory size')!==false?'The server ran out of image-processing memory.':(stripos($message,'Maximum execution time')!==false?'The server image-processing time limit was reached.':'The server image tools encountered an unexpected error.');
+        $failure=array('at'=>gmdate('c'),'action'=>sanitize_key((string)$action),'stage'=>self::$processing_context->stage??'workspace','reason'=>$reason,'type'=>sanitize_key($type),'file'=>basename($file),'line'=>(int)$line,'memory_limit'=>ini_get('memory_limit'),'time_limit'=>ini_get('max_execution_time'),'peak_memory_bytes'=>memory_get_peak_usage(true));
+        update_option('sbs_finishing_last_failure',$failure,false);
+        if(self::$processing_context){self::$processing_context->recorded=true;}
+        error_log('Smutty Studio finishing failure: '.json_encode($failure));
+    }
+    public static function processing_stage($stage)
+    {
+        if(self::$processing_context){self::$processing_context->stage=sanitize_key($stage);}
+    }
+    public static function processing_result($result)
+    {
+        if(is_wp_error($result)&&self::$processing_context&&!self::$processing_context->recorded){self::record_processing_failure(self::$processing_context->action,$result->get_error_code(),$result->get_error_message(),__FILE__,__LINE__);}
+        return $result;
+    }
+    public static function processing_exception($error)
+    {
+        if(self::$processing_context){self::record_processing_failure(self::$processing_context->action,get_class($error),$error->getMessage(),$error->getFile(),$error->getLine());}
     }
     private static function start_upscale($r)
     {
+        if(!empty($r['pending']['replicate_prediction_id'])){return self::error('upscale_exists','An upscale job is already saved. Reopen this workspace to check that job; do not start another paid upscale.',409);}
         if(!self::intact($r['original'])){return self::error('integrity','Original checksum mismatch. Processing refused.',409);}
         $selected=self::current($r);$source=$selected?$selected['asset']:$r['original'];if(!self::intact($source)){return self::error('source','Selected artwork changed.',409);}$target=$r['pending']??array();$pw=(float)($target['width']??14);$ph=(float)($target['height']??16);$qa=self::inspect($source,array('width'=>$pw,'height'=>$ph));$ppi=$qa['effective_ppi'];
         if($ppi>=300){return self::error('upscale_not_needed','This artwork already meets the 300 PPI pixel-dimension target at the selected print size. Use Inspect; no Replicate credits were used.',409);}
@@ -441,17 +484,23 @@ final class SBS_Finishing
     {
         $source=$options['source_asset']??$r['original'];if(!self::intact($source)){return self::error('source','Upscale source changed.',409);}$local=$prediction['_local_asset']??null;$url=$prediction['output']??null;if(is_array($url)){$url=reset($url);}
         if(!$local&&(!is_string($url)||$url==='')){return self::error('replicate_output','Replicate completed without an image output. The original is unchanged.',502);}
-        $bytes=$local&&self::intact($local)?file_get_contents(SBS_Storage::absolute_path($local)):SBS_Replicate::fetch_output($url);if(is_wp_error($bytes)){return $bytes;}
+        self::processing_stage('download_output');
+        $bytes=$local&&self::intact($local)?file_get_contents(SBS_Storage::absolute_path($local)):SBS_Replicate::fetch_output($url);if(is_wp_error($bytes)){return self::processing_result($bytes);}
+        self::processing_stage('validate_output');
         if(!function_exists('getimagesizefromstring')){return self::error('image','This server cannot validate the Replicate image output. The original is unchanged.',503);}
         $size=@getimagesizefromstring($bytes);$allowed=array('image/png','image/jpeg','image/webp');
         if(!$size||!in_array($size['mime']??'', $allowed, true)||(int)$size[0]*(int)$size[1]>40000000){return self::error('replicate_image','Replicate output is not a supported image within Studio’s 40-million-pixel limit. The original is unchanged.',422);}
         $original_size=@getimagesize(SBS_Storage::absolute_path($source));
         if(!$original_size||($size[0]<=$original_size[0]&&$size[1]<=$original_size[1])){return self::error('replicate_dimensions','Replicate output did not increase either image dimension. No candidate was saved.',422);}
-        $source_qa=self::inspect($source,$options);if(in_array(self::alpha_kind($source_qa),array('transparent','partial'),true)){$bytes=SBS_Finishing_Image::upscale_alpha(SBS_Storage::absolute_path($source),$bytes);if(is_wp_error($bytes)){return $bytes;}$size=getimagesizefromstring($bytes);}
+        self::processing_stage('source_checks');
+        $source_qa=self::inspect($source,$options);if(is_wp_error($source_qa)){return self::processing_result($source_qa);}if(in_array(self::alpha_kind($source_qa),array('transparent','partial'),true)){self::processing_stage('restore_transparency');$bytes=SBS_Finishing_Image::upscale_alpha(SBS_Storage::absolute_path($source),$bytes);if(is_wp_error($bytes)){return self::processing_result($bytes);}$size=getimagesizefromstring($bytes);}
         $ext=$size['mime']==='image/jpeg'?'jpg':($size['mime']==='image/webp'?'webp':'png');
-        $asset=SBS_Storage::store_bytes($bytes,'candidate-upscaled.'.$ext,$size['mime'],'finishing',0,'finishing_candidate',$r['title']);if(is_wp_error($asset)){return $asset;}
+        self::processing_stage('save_candidate');
+        $asset=SBS_Storage::store_bytes($bytes,'candidate-upscaled.'.$ext,$size['mime'],'finishing',0,'finishing_candidate',$r['title']);if(is_wp_error($asset)){return self::processing_result($asset);}
+        unset($bytes); // Do not keep the enlarged PNG in PHP memory during QA decoding.
         unset($options['source_asset']);$options['source_sha256']=$source['sha256'];$options['provider']='Replicate';$options['model']='nightmareai/real-esrgan';$options['model_version']=get_option('sbs_replicate_model_version',SBS_Replicate::DEFAULT_VERSION);$options['scale']=(int)($options['scale']??4);$options['estimated_provider_cost']=(float)get_option('sbs_replicate_cost_per_image','0.002');
-        $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
+        self::processing_stage('candidate_checks');
+        $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return self::processing_result($qa);}
         if(in_array(self::alpha_kind($r['original_qa']),array('transparent','partial'),true)&&self::alpha_kind($qa)==='opaque'){$qa['warnings'][]='The original contains sampled transparency but it was not detected in the AI candidate; inspect alpha edges before approval.';}
         $duration=isset($prediction['metrics']['predict_time'])?(float)$prediction['metrics']['predict_time']:null;
         return array('uuid'=>wp_generate_uuid4(),'number'=>count($r['versions'])+1,'asset'=>$asset,'options'=>$options,'qa'=>$qa,'created_at'=>gmdate('c'),'provider_result'=>array('status'=>'succeeded','prediction_id'=>sanitize_text_field((string)($prediction['id']??'')),'predict_time'=>$duration),'comparison'=>array('byte_identical'=>hash_equals($r['original']['sha256'],$asset['sha256']),'geometry'=>self::geometry_report($r['original'],$asset,$r['original_qa'],$qa),'structural_detection'=>'Not run — human review required','text_face_detection'=>'Not run — human review required'));

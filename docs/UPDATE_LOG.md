@@ -1,3 +1,16 @@
+# v0.4.6 — Upscale failure diagnostics and recovery (5 November 2026)
+
+Prepared from current v0.4.5; validation, signed publication and live installation are tracked separately below.
+
+- A supplied live v0.4.5 screenshot shows a WordPress critical-error response while an upscale remains pending. A second screenshot shows all basic environment checks passing. These checks cannot identify a request-specific fatal. The exact production PHP cause remains unconfirmed; memory exhaustion is not established.
+- Port the previously unmerged upscale recovery patch (#51) onto v0.4.5, retaining its print-visible review and decision persistence changes.
+- Catch PHP engine exceptions, request WordPress's configured image-processing memory allowance, and reserve a small amount of memory for fatal shutdown diagnostics. Release compressed output/section buffers before further image decoding or joining. No change to alpha restoration, pixel resampling, image dimensions or print targets.
+- Diagnostics gains Last finishing failure: safe reason, processing stage, action, exception/error category, PHP source basename/line, configured memory/time limits and peak PHP memory. Raw exception/provider messages, credentials, job IDs and output URLs are excluded from this report and the plugin's diagnostic log entry. PHP's own host logging remains host-controlled. Peak PHP memory does not measure all native Imagick memory.
+- Instrument provider checking, section preparation/downloading/joining, output validation, source checking, transparency restoration, saving and final candidate checks. Known image-tool exceptions record their actual stage without exposing raw text.
+- Replace critical-error HTML/non-JSON replies with a readable failure instruction. A stopped upscale check is labelled Processing stopped rather than continuing to imply work is running. Reopening a saved job checks its existing ID; starting another upscale against an existing ID is refused. Saved workspace bytes are left untouched by failed polling; originals and previous versions remain available.
+- Tests cover an injected PHP engine error, an actual PHP memory-limit fatal in a subprocess, stage/reason recording, secret exclusion, unchanged job tracking, duplicate-submit refusal, lock release, readable UI failure and artwork isolation. Existing image/print tests must also pass before publication. Test provider calls are local stubs and spend no credits.
+- The new report cannot recover a fatal that occurred before this version was installed. The existing job must be checked again after installation to capture the real failing stage. Authenticated live recovery, saved result dimensions/alpha, reopening and installation backup remain unverified until access is available. No claim that the underlying production crash is fixed is made by this diagnostic release.
+
 # v0.4.5 — Review what may show on a T-shirt (5 November 2026)
 
 Published v0.4.5; the live Studio login reports v0.4.5 after a fresh page reload on 5 November 2026. Signed release pipeline 42099524034 passed. Authenticated artwork validation remains pending; the installation mechanism and pre-update backup were not inspected in this session.
