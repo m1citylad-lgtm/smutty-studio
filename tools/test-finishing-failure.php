@@ -22,7 +22,7 @@ $mode=$argv[1]??'engine';$tmp=$argv[2]??sys_get_temp_dir().'/sbs-failure-'.bin2h
 if(!is_dir($tmp))mkdir($tmp);mkdir($tmp.'/finishing');ini_set('error_log',$tmp.'/error.log');
 $path=$tmp.'/finishing/12345678-1234-1234-1234-123456789abc.json';$record=array('revision'=>1,'pending'=>array('method'=>'upscale','replicate_prediction_id'=>'existing-paid-job'),'versions'=>array(),'current_version'=>null);$bytes=json_encode($record);file_put_contents($path,$bytes);
 if($mode==='wp-fatal'){register_shutdown_function(function(){foreach(($GLOBALS['filters']['wp_php_error_message']??array()) as $callback){$callback('Critical error',error_get_last());}exit(255);});}
-if(in_array($mode,array('fatal','wp-fatal'),true)){SBS_Finishing::action(new Request());exit(2);}
+if(in_array($mode,array('fatal','wp-fatal'),true)){echo 'Fatal fixture mode='.$mode.' tmp='.$tmp.PHP_EOL;register_shutdown_function(function(){echo 'Fixture shutdown last='.json_encode(error_get_last()).' options='.json_encode($GLOBALS['options']??null).PHP_EOL;});SBS_Finishing::action(new Request());exit(2);}
 try{
  $result=SBS_Finishing::action(new Request());
  check_failure(is_wp_error($result)&&$result->code==='finishing_processing_failed','Engine error was not contained');
