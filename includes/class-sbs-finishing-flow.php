@@ -33,13 +33,22 @@ final class SBS_Finishing_Flow
             $pass=sanitize_key((string)$request->get_param('pass'));if(!in_array($pass,array('whole','regions','custom','character'),true)){return SBS_Finishing::error('flow_pass','Choose a listed check.');}
             $notes=sanitize_textarea_field((string)$request->get_param('notes'));if(strlen($notes)>12000){return SBS_Finishing::error('flow_notes','Shorten the artwork instructions.');}
             $character=sanitize_text_field((string)$request->get_param('character'));$refs=array();
+            $checks=SBS_Logic_Correction::checks();$rules_hash=hash('sha256',wp_json_encode($checks['checks']));
+            $review=self::review($r);
+            $same=($review['sha256']??'')===$asset['sha256']&&($review['notes']??'')===$notes&&($review['character']??'')===$character&&(!isset($review['rules_hash'])||$review['rules_hash']===$rules_hash);
+            $fresh=$request->get_param('fresh')===true;
+            // Resume saved reports before any image decoding or paid provider request.
+            // Legacy reports have no rules snapshot; preserve the owner's existing decisions.
+            if($same&&!$fresh&&!empty($review['passes'][$pass])){$review['rules_hash']=$rules_hash;$r['flow']['review']=$review;return $r;}
+            if($pass!=='whole'&&!$same){return SBS_Finishing::error('flow_changed','Artwork or instructions changed. Start the artwork check again.',409);}
+            if(!$same||($fresh&&$pass==='whole')){$review=array('sha256'=>$asset['sha256'],'character'=>$character,'notes'=>$notes,'rules_hash'=>$rules_hash,'passes'=>array(),'decisions'=>array());}
             if($pass==='character'){$refs=SBS_Logic_Correction::pack_reference_images($character);if(is_wp_error($refs)){return $refs;}}
             $images=SBS_Logic_Correction::review_images($path,$pass==='custom'?'regions':$pass);if(is_wp_error($images)){return $images;}
             if($refs){$images=array_merge(array_slice($images,0,1),$refs['images']);}
-            $checks=SBS_Logic_Correction::checks();$rules=array_merge($checks['checks'],array('Skin, clothes and boots must look normal: flag unwanted repeated scale or mesh patterns. Preserve natural body hair.','Preserve intentional smoke, lace, hair, feathers, fades and all intended opaque printed colours including white.'));
+            $rules=array_merge($checks['checks'],array('Skin, clothes and boots must look normal: flag unwanted repeated scale or mesh patterns. Preserve natural body hair.','Preserve intentional smoke, lace, hair, feathers, fades and all intended opaque printed colours including white.'));
             if($notes!==''){$rules[]='Artwork-specific instructions and exact wording: '.$notes;}
             $report=SBS_OpenAI::review_logic_correction($pass,$images,$refs['identity']??array(),$rules);if(is_wp_error($report)){return $report;}
-            $review=self::review($r);if(!$review||$pass==='whole'){$review=array('sha256'=>$asset['sha256'],'character'=>$character,'notes'=>$notes,'passes'=>array(),'decisions'=>array());}
+            $review['rules_hash']=$rules_hash;
             if(($review['notes']??'')!==$notes||($review['character']??'')!==$character){return SBS_Finishing::error('flow_changed','Instructions changed during checking. Run the artwork check again.',409);}
             $review['passes'][$pass]=$report;$r['flow']['review']=$review;$r['approval']=null;$r['next_action']='Step 3: fix or review the artwork action list';
         }elseif($action==='flow_decision'||$action==='flow_repair'){
@@ -75,7 +84,11 @@ final class SBS_Finishing_Flow
         }elseif($action==='flow_pixels'){
             if((string)$request->get_param('sha256')!==$asset['sha256']){return SBS_Finishing::error('flow_pixels_stale','Artwork changed. Repeat the pixel scan.',409);}$count=$request->get_param('remaining');if(!is_numeric($count)||$count<0){return SBS_Finishing::error('flow_pixels_count','The pixel scan did not finish.');}
             $alpha=$request->get_param('alpha');$total=0;foreach(array('clear','partial','opaque') as $k){if(!is_array($alpha)||!isset($alpha[$k])||!is_int($alpha[$k])||$alpha[$k]<0){return SBS_Finishing::error('flow_alpha','The full pixel scan did not return valid transparency counts.');}$total+=$alpha[$k];}$size=getimagesize($path);if($total!==$size[0]*$size[1]){return SBS_Finishing::error('flow_alpha_size','Pixel counts do not match the selected image. Repeat the scan.',409);}
-            $r['flow']['pixels']=array('sha256'=>$asset['sha256'],'remaining'=>(int)$count,'alpha'=>$alpha,'reviewed'=>$request->get_param('reviewed')===true,'at'=>gmdate('c'));$r['approval']=null;
+            $previous=$r['flow']['pixels']??array();
+            $same_scan=($previous['sha256']??'')===$asset['sha256']&&($previous['remaining']??null)===(int)$count;
+            foreach(array('clear','partial','opaque') as $k){$same_scan=$same_scan&&($previous['alpha'][$k]??null)===$alpha[$k];}
+            $reviewed=$request->get_param('reviewed')===true||($same_scan&&!empty($previous['reviewed']));
+            $r['flow']['pixels']=array('sha256'=>$asset['sha256'],'remaining'=>(int)$count,'alpha'=>$alpha,'reviewed'=>$reviewed,'at'=>gmdate('c'));$r['approval']=null;
         }elseif($action==='flow_drive'){
             if(empty($r['approval'])||$r['approval']['version']!==$r['current_version']){return SBS_Finishing::error('flow_approval','Approve the selected version before archiving.',409);}
             $package=SBS_Finishing::package($r,$request->get_param('filename'));if(is_wp_error($package)){return $package;}$archive=SBS_Google_Drive::save_package($package,$r['uuid'],$asset['sha256'],$r['approval']['at']??'');if(is_wp_error($archive)){return $archive;}$archive['approval_at']=$r['approval']['at'];$r['flow']['archive']=$archive;$ids=array_column($r['flow']['archive_history']??array(),'id');if(!in_array($archive['id'],$ids,true)){$r['flow']['archive_history'][]=$archive;}$r['next_action']='Finished: ZIP saved and verified in Smutty Bear Google Drive';
