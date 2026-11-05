@@ -259,6 +259,7 @@ final class SBS_Finishing
     {
         $path=self::path($request['uuid']);if(is_wp_error($path)){return $path;}
         $lock=fopen($path.'.lock','c');if(!$lock||!flock($lock,LOCK_EX|LOCK_NB)){if($lock){fclose($lock);}return self::error('busy','Workspace is busy. Refresh and try again.',409);}
+        $guard=self::processing_guard($request->get_param('action'));
         try {
             $r=self::read($path);if(is_wp_error($r)){return $r;}
             if((int)$request->get_param('revision')!==(int)$r['revision']){return self::error('conflict','Workspace changed. Refresh before renaming.',409);}
@@ -266,7 +267,10 @@ final class SBS_Finishing
             if($title===''||strlen($title)>190){return self::error('title','Enter a title between 1 and 190 bytes.');}
             $r['title']=$title;$r['revision']++;$r['updated_at']=gmdate('c');$r['audit'][]=array('at'=>gmdate('c'),'action'=>'Catalogue title renamed');
             return self::write($path,$r);
-        } finally {flock($lock,LOCK_UN);fclose($lock);}
+        } catch (Throwable $error) {
+            self::record_processing_failure($request->get_param('action'),get_class($error),$error->getMessage(),$error->getFile(),$error->getLine());
+            return self::error('processing_failed','The server could not finish this action. Your saved artwork and existing upscale job are retained. Check Settings → Diagnostics before retrying.',500);
+        } finally {$guard->active=false;flock($lock,LOCK_UN);fclose($lock);}
     }
     public static function links($ideas,$sb)
     {
@@ -412,6 +416,26 @@ final class SBS_Finishing
             return self::write($path,$r);
         } finally {flock($lock,LOCK_UN);fclose($lock);}
     }
+    /** Reserve room to record even a PHP memory/time-limit fatal without changing the workspace. */
+    private static function processing_guard($action)
+    {
+        $guard=(object)array('active'=>true,'reserve'=>str_repeat(' ',262144));
+        register_shutdown_function(function()use($guard,$action){
+            if(!$guard->active){return;}$guard->reserve=null;$last=error_get_last();
+            if($last&&in_array($last['type'],array(E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR),true)){
+                self::record_processing_failure($action,'PHP fatal',$last['message'],$last['file'],$last['line']);
+            }
+        });
+        if(function_exists('wp_raise_memory_limit')){wp_raise_memory_limit('image');}
+        return $guard;
+    }
+    private static function record_processing_failure($action,$type,$message,$file,$line)
+    {
+        // Keep exception text in the server log only: it can contain private paths or credentials.
+        error_log('Smutty Studio finishing '.$type.': '.$message.' in '.$file.':'.$line);
+        $reason=stripos($message,'Allowed memory size')!==false?'The server ran out of image-processing memory.':(stripos($message,'Maximum execution time')!==false?'The server image-processing time limit was reached.':'The server image tools encountered an unexpected error.');
+        update_option('sbs_finishing_last_failure',array('at'=>gmdate('c'),'action'=>sanitize_key((string)$action),'reason'=>$reason,'type'=>$type,'file'=>basename($file),'line'=>(int)$line,'memory_limit'=>ini_get('memory_limit'),'time_limit'=>ini_get('max_execution_time')),false);
+    }
     private static function start_upscale($r)
     {
         if(!self::intact($r['original'])){return self::error('integrity','Original checksum mismatch. Processing refused.',409);}
@@ -442,6 +466,7 @@ final class SBS_Finishing
         $source_qa=self::inspect($source,$options);if(in_array(self::alpha_kind($source_qa),array('transparent','partial'),true)){$bytes=SBS_Finishing_Image::upscale_alpha(SBS_Storage::absolute_path($source),$bytes);if(is_wp_error($bytes)){return $bytes;}$size=getimagesizefromstring($bytes);}
         $ext=$size['mime']==='image/jpeg'?'jpg':($size['mime']==='image/webp'?'webp':'png');
         $asset=SBS_Storage::store_bytes($bytes,'candidate-upscaled.'.$ext,$size['mime'],'finishing',0,'finishing_candidate',$r['title']);if(is_wp_error($asset)){return $asset;}
+        unset($bytes); // Do not keep the enlarged PNG in PHP memory during QA decoding.
         unset($options['source_asset']);$options['source_sha256']=$source['sha256'];$options['provider']='Replicate';$options['model']='nightmareai/real-esrgan';$options['model_version']=get_option('sbs_replicate_model_version',SBS_Replicate::DEFAULT_VERSION);$options['scale']=(int)($options['scale']??4);$options['estimated_provider_cost']=(float)get_option('sbs_replicate_cost_per_image','0.002');
         $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
         if(in_array(self::alpha_kind($r['original_qa']),array('transparent','partial'),true)&&self::alpha_kind($qa)==='opaque'){$qa['warnings'][]='The original contains sampled transparency but it was not detected in the AI candidate; inspect alpha edges before approval.';}
