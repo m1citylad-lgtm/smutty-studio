@@ -4,7 +4,7 @@ const {chromium}=require('playwright');
 const read=n=>fs.readFileSync(path.join(__dirname,'..',n),'utf8');
 const svg='data:image/svg+xml;base64,'+Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="240"><rect x="30" y="30" width="140" height="180" fill="#b05b25"/></svg>').toString('base64');
 let record={uuid:'aaaaaaaa-0000-4000-8000-000000000001',title:'Disposable workflow test',original:{id:1,uuid:'asset-original',filename:'source.png',mime:'image/png',sha256:'original',url:svg},original_qa:{width:4200,height:4800,effective_ppi:300,alpha:'Transparency detected (sampled)',warnings:[],pixel_review:{status:'sampled',findings:[]},export_metadata:{}},versions:[],current_version:null,status:'Awaiting Finishing',next_action:'Check artwork',revision:1,audit:[]};
-let failPass=null;const calls=[];
+let failPass=null,pollFailure=null;const calls=[];
 function mockAction(p){calls.push(p.action+(p.pass?':'+p.pass:''));
  if(p.action==='prepare'){record.pending=p.options;record.status='Queued';}
  else if(p.action==='run'){const method=record.pending.method;record.versions.push({uuid:'version-'+(record.versions.length+1),number:record.versions.length+1,asset:{...record.original,sha256:method==='inspect'?'original':'print-hash'},qa:{...record.original_qa},comparison:{byte_identical:method==='inspect',geometry:{status:'proportional'}},options:{...record.pending,source_sha256:record.current_version?record.versions.find(v=>v.uuid===record.current_version).asset.sha256:'original'}});record.current_version=record.versions.at(-1).uuid;record.pending=null;record.status='Awaiting Review';}
@@ -21,7 +21,7 @@ function mockAction(p){calls.push(p.action+(p.pass?':'+p.pass:''));
  const args={headless:true};if(process.env.SBS_CHROMIUM_PATH){args.executablePath=process.env.SBS_CHROMIUM_PATH;args.args=['--no-sandbox','--disable-dev-shm-usage'];}
  const browser=await chromium.launch(args);try{
  const page=await browser.newPage({viewport:{width:1024,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.route('**/api/**',async route=>{let data,url=route.request().url();if(url.endsWith('/google/status'))data={configured:false,connected:false};else if(url.endsWith('/references'))data={references:[]};else if(url.endsWith('/checks'))data={checks:[]};else if(url.endsWith('/action'))data=mockAction(route.request().postDataJSON());else if(url.endsWith('/finishing'))data={records:[record]};else data=record;await route.fulfill({status:data.error?500:200,contentType:'application/json',body:JSON.stringify(data.error?{message:data.error}:data)});});
+ await page.route('**/api/**',async route=>{let data,url=route.request().url();if(url.endsWith('/google/status'))data={configured:false,connected:false};else if(url.endsWith('/references'))data={references:[]};else if(url.endsWith('/checks'))data={checks:[]};else if(url.endsWith('/action')){const payload=route.request().postDataJSON();if(payload.action==='poll'&&pollFailure){calls.push('poll');return route.fulfill({status:500,contentType:'text/html',body:pollFailure});}data=mockAction(payload);}else if(url.endsWith('/finishing'))data={records:[record]};else data=record;await route.fulfill({status:data.error?500:200,contentType:'application/json',body:JSON.stringify(data.error?{message:data.error}:data)});});
  let html=read('templates/finishing.php').replace(/<\?php require SBS_PLUGIN_DIR .*?\?>/,read('templates/finishing-flow.php')).replace(/<\?php[\s\S]*?\?>/g,'');
  const styles=['studio.css','studio-theme.css','finishing.css','transparency-correction.css','finishing-flow.css'].map(n=>'<style>'+read('assets/css/'+n)+'</style>').join(''),scripts=['flat-background.js','finishing.js','transparency-correction.js','finishing-flow.js'].map(n=>'<script>'+read('assets/js/'+n)+'</script>').join('');
  await page.setContent('<!doctype html><html><head><base href="http://studio.test/"><meta name="viewport" content="width=device-width,initial-scale=1">'+styles+'</head><body><main id="sbs-app" data-rest="http://studio.test/api/" data-authenticated="1" data-finishing-csrf="test">'+html+read('templates/finishing-settings.php').replace(/<\?php[\s\S]*?\?>/g,'')+'</main>'+scripts+'</body></html>');
@@ -93,6 +93,27 @@ function mockAction(p){calls.push(p.action+(p.pass?':'+p.pass:''));
  await page.locator('#sbs-flow-final-pixels').click();await page.waitForFunction(()=>document.getElementById('sbs-af-correction-open').dataset.state==='done');
  assert.match(await page.locator('#sbs-af-correction-list button').textContent(),/Reviewed/,'Accepted effect was forgotten on reopen');await page.locator('#sbs-af-correction-close').click();await page.waitForFunction(()=>!window.SBSFinishingBridge.isBusy());
  console.log('UI: one-pixel filtering, grouped smoke advisory, centred 4× view, no automatic opacity/bulk fix, saved intentional review and unchanged image verified.');
+ // A failed check of an existing paid job must stop visibly, never resubmit it.
+ record.pending={method:'upscale',replicate_prediction_id:'saved-paid-job'};record.status='AI upscale processing on Replicate';
+ pollFailure='<p>There has been a critical error on this website.</p>';
+ await page.locator('#sbs-af-refresh').click();await page.waitForFunction(()=>!document.getElementById('sbs-af-refresh').disabled);
+ const beforeUpscaleCalls=calls.length;
+ await page.locator('#sbs-af-resume').selectOption(record.uuid);
+ await page.waitForFunction(()=>!window.SBSFinishingBridge.isBusy());
+ assert.match(await page.locator('#sbs-flow-next-title').textContent(),/Processing stopped.*Diagnostics/);
+ assert.match(await page.locator('[data-af-stage-report="upscale"]').textContent(),/existing job are retained/);
+ assert.doesNotMatch(await page.locator('[data-af-stage-report="upscale"]').textContent(),/<p>|critical error on this website/);
+ assert.equal(await page.locator('[data-af-method="upscale"]').isEnabled(),false);
+ assert.equal(record.pending.replicate_prediction_id,'saved-paid-job');
+ assert.deepEqual(calls.slice(beforeUpscaleCalls),['poll'],'Recovery started another paid request');
+ // Reopening repeats only the existing status check; a different artwork has no old failure.
+ await page.locator('#sbs-af-refresh').click();await page.waitForFunction(()=>!document.getElementById('sbs-af-refresh').disabled);await page.locator('#sbs-af-resume').selectOption(record.uuid);await page.waitForFunction(()=>!window.SBSFinishingBridge.isBusy());
+ assert.match(await page.locator('#sbs-flow-next-title').textContent(),/Processing stopped/);
+ const freshArtwork={...record,uuid:'dddddddd-0000-4000-8000-000000000004',pending:null};
+ await page.evaluate(r=>window.dispatchEvent(new CustomEvent('sbs-finishing-open',{detail:r})),freshArtwork);
+ assert.doesNotMatch(await page.locator('#sbs-flow-next-title').textContent(),/Processing stopped/);
+ assert.equal(await page.locator('[data-af-stage-report="upscale"]').isVisible(),false);
+ console.log('UI: WordPress HTML failure becomes readable, polling stops, existing paid job is retained, reopen only checks status, and other artwork has no stale error.');
  fs.mkdirSync('build/ui-check',{recursive:true});await page.screenshot({path:'build/ui-check/desktop.png',fullPage:true});await page.setViewportSize({width:768,height:1024});await page.screenshot({path:'build/ui-check/tablet.png',fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'Tablet layout overflows horizontally');
  await page.locator('#sbs-af-clear').click();assert.match(await page.locator('#sbs-flow-next-title').textContent(),/Choose your artwork/);assert.equal(await page.locator('#sbs-flow-drive').isEnabled(),false);assert.equal(await page.locator('#sbs-flow-list li').count(),0);assert.equal(await page.locator('#sbs-flow-drive-status').textContent(),'');assert.match(await page.locator('#sbs-flow-step-1 .sbs-flow-status').textContent(),/Next.*Choose your artwork/);assert.equal(await page.locator('#sbs-flow-preview').isVisible(),false);
  assert.deepEqual(errors,[]);console.log('UI: six ordered sections, actual button flow through review/pixel scan/print/final check/approval/archive, and New artwork reset passed.');

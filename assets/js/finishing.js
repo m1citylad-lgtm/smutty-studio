@@ -1,5 +1,8 @@
 (function () {
     'use strict';
+    function serverErrorMessage(message) {
+        return !message||/critical error|<[^>]+>/i.test(message)?'The server could not finish this action. Your saved artwork and existing job are retained. Open Settings → Diagnostics; do not start another paid upscale.':String(message);
+    }
     function matches(record, query) {
         return [record.title, record.uuid, record.af_id || ''].join(' ').toLowerCase().includes(query.toLowerCase());
     }
@@ -62,8 +65,8 @@
             var options={credentials:'same-origin',headers:{'X-SBS-Request':'studio','X-SBS-Finishing':root.getAttribute('data-finishing-csrf')}};
             if(data){options.method='POST';options.body=data instanceof FormData?data:JSON.stringify(data);if(!(data instanceof FormData))options.headers['Content-Type']='application/json';}
             var response=await fetch(root.getAttribute('data-rest')+'finishing'+path,options),result;
-            try{result=await response.json();}catch(e){throw new Error('Unexpected server response. Check the workspace before retrying.');}
-            if(!response.ok){if(response.status===401&&result.code==='studio_auth_required'){showSessionExpired();}throw new Error(result.message||'Request failed. Original retained.');}return result;
+            try{result=await response.json();}catch(e){throw new Error(serverErrorMessage());}
+            if(!response.ok){if(response.status===401&&result.code==='studio_auth_required'){showSessionExpired();}throw new Error(serverErrorMessage(result.message));}return result;
         }
         function saveUiState(){try{var reviewChecks={};document.querySelectorAll('[data-af-check]').forEach(function(n){reviewChecks[n.getAttribute('data-af-check')]=n.checked;});sessionStorage.setItem(uiStateKey,JSON.stringify({workspace:current?current.uuid:(el('sbs-af-resume')&&el('sbs-af-resume').value)||savedUiState.workspace||'',stage:selectedMethod,width:el('sbs-af-width')&&el('sbs-af-width').value||'14',height:el('sbs-af-height')&&el('sbs-af-height').value||'16',printCanvas:!!(el('sbs-af-print-canvas')&&el('sbs-af-print-canvas').checked),notes:el('sbs-af-notes')&&el('sbs-af-notes').value||'',checkKey:current?current.uuid+':'+(current.current_version||''):'',checks:reviewChecks}));}catch(e){}}
         function paintRefresh(state,error){var button=el('sbs-af-refresh');if(!button)return;var label=el('sbs-af-refresh-label'),spinner=el('sbs-af-refresh-spinner'),done=el('sbs-af-refresh-done'),status=el('sbs-af-workspace-status');spinner.hidden=state!=='busy';done.hidden=state!=='done';button.disabled=state==='busy'||busy;button.dataset.state=state;if(state==='busy'){label.textContent='Refreshing workspaces';button.setAttribute('aria-busy','true');if(status)status.textContent='Checking saved workspaces…';}else if(state==='done'){label.textContent='Workspaces refreshed';button.removeAttribute('aria-busy');if(status)status.textContent=records.length?records.length+' saved workspace'+(records.length===1?'':'s')+' found.':'No saved workspaces found. Check Studio sign-in and private storage.';}else{label.textContent='Refresh workspaces';button.removeAttribute('aria-busy');if(status)status.textContent='Could not load saved workspaces: '+(error||'please try again.');}if(error)message('Workspace refresh failed: '+error,true);}
@@ -120,7 +123,7 @@
                 else{
                     button.removeAttribute('aria-busy');
                     button.setAttribute('aria-label',button.querySelector('.sbs-af-stage-button-label').textContent+(completed?' — completed':''));
-                    if(failed){setStageReport(method,'error','Needs attention: '+String(runState.message||'The stage did not complete.').slice(0,180));}
+                    if(failed){setStageReport(method,'error','Needs attention: '+String(runState.message||'The stage did not complete.'));}
                     else if(version){
                         var warnings=Array.isArray(version.qa&&version.qa.warnings)?version.qa.warnings.slice():[];
                         if(method==='upscale')warnings=[];
@@ -559,8 +562,8 @@
         function saveTouchup(){if(!editor.dirty)return;el('sbs-af-editor-status').textContent='Preparing the edited PNG…';editor.canvas.toBlob(function(blob){if(!blob){el('sbs-af-editor-status').textContent='PNG export failed. The draft remains open; the source is unchanged.';return;}var button=el('sbs-af-edit-save');saveImageEdit(blob,'touchup',editor.sourceVersion,button).then(function(saved){if(saved){editor.dirty=false;closeArtworkEditor(true);}}).catch(function(error){el('sbs-af-editor-status').textContent='Save failed: '+error.message+' Your draft and source are unchanged.';});},'image/png');}
         async function pollReplicate(){
             message('AI upscale is processing on Replicate. The untouched original remains unchanged.');
-            var attempts=0;
-            while(current&&current.pending&&current.pending.replicate_prediction_id&&attempts<60){
+            var attempts=0;stageRunState.upscale={state:'running'};
+            try{while(current&&current.pending&&current.pending.replicate_prediction_id&&attempts<60){
                 await new Promise(function(resolve){window.setTimeout(resolve,2000);});
                 var poll=await api('/'+current.uuid+'/action',{action:'poll',revision:current.revision});
                 current=poll;render();attempts++;
@@ -568,7 +571,8 @@
                 if(current.pending&&current.pending.replicate_prediction_id){message('AI upscale is still processing. The original remains unchanged.');}
             }
             if(current&&current.pending&&current.pending.replicate_prediction_id){message('Replicate is still processing. Do not run another upscale. You can cancel the current stage after this check stops.');}
-            else if(current&&!current.processing_error){await refresh();render();message('AI upscale finished. Compare the candidate with the untouched original before approval.');}
+            else if(current&&!current.processing_error){stageRunState.upscale={state:'complete'};await refresh();render();message('AI upscale finished. Compare the candidate with the untouched original before approval.');}
+            }catch(error){stageRunState.upscale={state:'error',message:error.message};updateStageButtons();throw error;}
         }
         async function action(type,extra,saveFolder){
             var data=Object.assign({action:type,revision:current.revision},extra||{});
@@ -586,7 +590,7 @@
                 message(type==='approve'?'Local finishing version approved. SB production and Drive remain unchanged.':type==='ai_review'?'AI comparison saved. Check its advisory findings alongside the original, candidate and garment proofs.':'Stage '+type+' complete.');
             }
         }
-        window.SBSFinishingBridge={getState:function(){return current;},isBusy:function(){return busy;},perform:function(type,data,label,button){return new Promise(function(resolve,reject){if(busy){reject(new Error('Wait for the current action to finish.'));return;}operation(async function(){await action(type,data);var flowMessages={flow_review:'This visual check has been saved.',flow_pixels:'Pixel check saved. Follow the next action above.',flow_decision:'Your decision has been saved.',flow_repair:'Repair requested. Wait for its preview.',flow_keep:'Repair kept. Check the corrected artwork again.',flow_reject:'Repair rejected. The previous image is selected.',flow_drive:'Finished — ZIP saved and verified in Google Drive.'};if(flowMessages[type])message(flowMessages[type]);resolve(current);},label||'Working…',button,reject);});},runStage:async function(method){await runStage(method,document.querySelector('[data-af-method="'+method+'"]'));if(!current||!current.current_version||current.pending)throw new Error('The file check did not finish. Finish or cancel the waiting action.');},viewArea:function(finding){openAiFocus(finding,document.activeElement);}};
+        window.SBSFinishingBridge={getState:function(){return current;},getStageFailure:function(){var s=current&&current.pending&&stageRunState[current.pending.method];return s&&s.state==='error'?s.message:'';},isBusy:function(){return busy;},perform:function(type,data,label,button){return new Promise(function(resolve,reject){if(busy){reject(new Error('Wait for the current action to finish.'));return;}operation(async function(){await action(type,data);var flowMessages={flow_review:'This visual check has been saved.',flow_pixels:'Pixel check saved. Follow the next action above.',flow_decision:'Your decision has been saved.',flow_repair:'Repair requested. Wait for its preview.',flow_keep:'Repair kept. Check the corrected artwork again.',flow_reject:'Repair rejected. The previous image is selected.',flow_drive:'Finished — ZIP saved and verified in Google Drive.'};if(flowMessages[type])message(flowMessages[type]);resolve(current);},label||'Working…',button,reject);});},runStage:async function(method){await runStage(method,document.querySelector('[data-af-method="'+method+'"]'));if(!current||!current.current_version||current.pending)throw new Error('The file check did not finish. Finish or cancel the waiting action.');},viewArea:function(finding){openAiFocus(finding,document.activeElement);}};
         window.SBSFinishingCorrection={
             getState:function(){return current;},
             save:function(blob,categories,sourceVersion){
@@ -677,7 +681,7 @@
         render();
         refresh().then(async function(){var restoreId=savedUiState.workspace;if(restoreId&&!current&&records.some(function(record){return record.uuid===restoreId;})){current=await api('/'+restoreId);el('sbs-af-resume').value=restoreId;var checkKey=current.uuid+':'+(current.current_version||'');if(savedUiState.checkKey===checkKey&&savedUiState.checks){document.querySelectorAll('[data-af-check]').forEach(function(n){var key=n.getAttribute('data-af-check');n.checked=!!savedUiState.checks[key];});lastCheckKey=checkKey;}render();saveUiState();if(current.pending&&current.pending.replicate_prediction_id){message('Restored the existing upscale and checking its status. No new upscale was started.');await pollReplicate();}else if(current.pending){message('Workspace restored with a queued stage. It has not been run again.');}else{message('Your previous Finishing workspace has been restored.');}}else{render();message('Local workspaces loaded.');}}).catch(function(error){render();message('Workspaces could not be loaded at startup: '+error.message,true);});
     }
-    if(typeof window!=='undefined')window.SBSFinishing={findingResolved:findingResolved,syncReviewControls:syncReviewControls,matches:matches,canApprove:canApprove,classifyTransparency:classifyTransparency,cleanupFocusBox:cleanupFocusBox,cleanEdgeFringeRegion:cleanEdgeFringeRegion,init:init};
+    if(typeof window!=='undefined')window.SBSFinishing={serverErrorMessage:serverErrorMessage,findingResolved:findingResolved,syncReviewControls:syncReviewControls,matches:matches,canApprove:canApprove,classifyTransparency:classifyTransparency,cleanupFocusBox:cleanupFocusBox,cleanEdgeFringeRegion:cleanEdgeFringeRegion,init:init};
     if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();}
 }());
 

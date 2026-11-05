@@ -36,7 +36,7 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0.4.5/);
+assert.match(plugin, /Version: 0.4.6/);
 assert.match(template, /id="sbs-af-clear"/);
 assert.match(template, /id="sbs-af-correction-help"/);
 assert.match(template, /id="sbs-af-correction-open-spinner"/);
@@ -53,7 +53,7 @@ assert.match(finishing, /function render\(\)[\s\S]*?stageRunState=\{\};renderedW
 assert.match(finishing, /el\('sbs-af-clear'\)\.addEventListener/);
 assert.match(finishing, /savedUiState\.workspace='';savedUiState\.checks=\{\}/);
 
-assert.match(plugin, /define\('SBS_VERSION', '0.4.5'\)/);
+assert.match(plugin, /define\('SBS_VERSION', '0.4.6'\)/);
 assert.match(studio, /button\.closest\('\.sbs-character-page-menu'\)\) \{ return; \}/, 'Character menu entries must not receive information buttons');
 const mainNav = studioTemplate.match(/<nav id="sbs-primary-nav"[\s\S]*?<\/nav>/)[0];
 assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="freestyle"'));
@@ -389,3 +389,9 @@ assert.doesNotMatch(finishing,/region\.data\.set\(out\)/,'Cleanup uses the in-pl
 
 for (const d of ['intentional','false_alarm',{decision:'intentional'},{decision:'false_alarm'}]) assert.equal(finishingContext.window.SBSFinishing.findingResolved(d),true);
 for (const d of [undefined,null,'unresolved',{decision:'unresolved'}]) assert.equal(finishingContext.window.SBSFinishing.findingResolved(d),false);
+
+const formatError=finishingContext.window.SBSFinishing.serverErrorMessage;
+assert.match(formatError('<p>There has been a critical error on this website.</p>'),/existing job are retained/);
+assert.match(formatError(),/do not start another paid upscale/);
+assert.doesNotMatch(formatError('<a href="https://private.example/key">secret</a>'),/private.example|secret|<a/);
+assert.equal(formatError('Workspace changed. Refresh before retrying.'),'Workspace changed. Refresh before retrying.');

@@ -55,6 +55,7 @@ jobs:
           php tools/test-updater-rollback.php
           php tools/test-print-qa.php
           php tools/test-review-persistence.php
+          php tools/test-finishing-failure.php
           php tools/test-finishing-flow.php
           php tools/test-finishing-drive.php
           php -n -d extension=json -d extension=gd -d extension=zip tools/test-print-qa.php
