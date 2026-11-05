@@ -4,10 +4,11 @@ const {chromium}=require('playwright');
 const read=n=>fs.readFileSync(path.join(__dirname,'..',n),'utf8');
 const svg='data:image/svg+xml;base64,'+Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="240"><rect x="30" y="30" width="140" height="180" fill="#b05b25"/></svg>').toString('base64');
 let record={uuid:'aaaaaaaa-0000-4000-8000-000000000001',title:'Disposable workflow test',original:{id:1,uuid:'asset-original',filename:'source.png',mime:'image/png',sha256:'original',url:svg},original_qa:{width:4200,height:4800,effective_ppi:300,alpha:'Transparency detected (sampled)',warnings:[],pixel_review:{status:'sampled',findings:[]},export_metadata:{}},versions:[],current_version:null,status:'Awaiting Finishing',next_action:'Check artwork',revision:1,audit:[]};
-let failPass=null,pollFailure=null;const calls=[];
+let failPass=null,pollFailure=null,pollStages=[];const calls=[],seenLocalStages=[];
 function mockAction(p){calls.push(p.action+(p.pass?':'+p.pass:''));
  if(p.action==='prepare'){record.pending=p.options;record.status='Queued';}
  else if(p.action==='run'){const method=record.pending.method;record.versions.push({uuid:'version-'+(record.versions.length+1),number:record.versions.length+1,asset:{...record.original,sha256:method==='inspect'?'original':'print-hash'},qa:{...record.original_qa},comparison:{byte_identical:method==='inspect',geometry:{status:'proportional'}},options:{...record.pending,source_sha256:record.current_version?record.versions.find(v=>v.uuid===record.current_version).asset.sha256:'original'}});record.current_version=record.versions.at(-1).uuid;record.pending=null;record.status='Awaiting Review';}
+ else if(p.action==='poll'&&pollStages.length){const stage=pollStages.shift();seenLocalStages.push(stage);if(stage==='complete'){const old=record.versions.find(v=>v.uuid===record.current_version);record.versions.push({...old,uuid:'completed-upscale',number:record.versions.length+1,asset:{...old.asset,sha256:'completed-upscale'},qa:{...old.qa,width:1200,height:1200},options:{method:'upscale',width:2,height:2,source_sha256:old.asset.sha256}});record.current_version='completed-upscale';record.pending=null;record.status='Awaiting Review';record.next_action='Prepare final print PNG';}else{record.pending.local_stage=stage;record.next_action=stage==='candidate'?'Joined output saved; restoring source transparency':'Checking the saved upscale dimensions and transparency';}}
  else if(p.action==='flow_review'){if(p.pass===failPass)return {error:'Simulated provider failure'};if(p.pass==='whole')record.flow={review:{sha256:record.versions.find(v=>v.uuid===record.current_version).asset.sha256,passes:{},decisions:{},character:p.character,notes:p.notes}};record.flow.review.passes[p.pass]={summary:'Checked',findings:[]};}
  else if(p.action==='flow_pixels')record.flow.pixels={sha256:p.sha256,remaining:p.remaining,reviewed:p.reviewed,alpha:p.alpha,policy:p.policy,target:p.target,accepted_ids:p.accepted_ids||[]};
  else if(p.action==='ai_review')record.versions.find(v=>v.uuid===record.current_version).ai_review={summary:'Compared',findings:[]};
@@ -114,6 +115,18 @@ function mockAction(p){calls.push(p.action+(p.pass?':'+p.pass:''));
  assert.doesNotMatch(await page.locator('#sbs-flow-next-title').textContent(),/Processing stopped/);
  assert.equal(await page.locator('[data-af-stage-report="upscale"]').isVisible(),false);
  console.log('UI: WordPress HTML failure becomes readable, polling stops, existing paid job is retained, reopen only checks status, and other artwork has no stale error.');
+ // Saved local finishing stages progress automatically without another run/prepare request.
+ pollFailure=null;pollStages=['candidate','checks','complete'];record.pending.local_stage='assemble';record.next_action='All enlarged sections saved; joining the existing outputs';
+ await page.locator('#sbs-af-refresh').click();await page.waitForFunction(()=>!document.getElementById('sbs-af-refresh').disabled);
+ const beforeLocalCalls=calls.length;await page.locator('#sbs-af-resume').selectOption(record.uuid);
+ await page.waitForFunction(()=>document.getElementById('sbs-af-progress').textContent.includes('restoring source transparency'));
+ assert.equal(await page.locator('[data-af-method="upscale"] .sbs-af-stage-spinner').isVisible(),true,'Saved-job resume has no visible progress');
+ await page.waitForFunction(()=>!window.SBSFinishingBridge.isBusy());
+ assert.deepEqual(seenLocalStages,['candidate','checks','complete']);assert.deepEqual(calls.slice(beforeLocalCalls),['poll','poll','poll'],'Local recovery submitted another upscale');
+ assert.equal(record.current_version,'completed-upscale');assert.equal(record.pending,null);
+ assert.match(await page.locator('[data-af-stage-report="upscale"]').textContent(),/Completed/);
+ assert.match(await page.locator('#sbs-af-progress').textContent(),/AI upscale finished/);
+ console.log('UI: existing local finishing stages show progress/spinner, save completion and consume only status polls with no prepare/run requests.');
  fs.mkdirSync('build/ui-check',{recursive:true});await page.screenshot({path:'build/ui-check/desktop.png',fullPage:true});await page.setViewportSize({width:768,height:1024});await page.screenshot({path:'build/ui-check/tablet.png',fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'Tablet layout overflows horizontally');
  await page.locator('#sbs-af-clear').click();assert.match(await page.locator('#sbs-flow-next-title').textContent(),/Choose your artwork/);assert.equal(await page.locator('#sbs-flow-drive').isEnabled(),false);assert.equal(await page.locator('#sbs-flow-list li').count(),0);assert.equal(await page.locator('#sbs-flow-drive-status').textContent(),'');assert.match(await page.locator('#sbs-flow-step-1 .sbs-flow-status').textContent(),/Next.*Choose your artwork/);assert.equal(await page.locator('#sbs-flow-preview').isVisible(),false);
  assert.deepEqual(errors,[]);console.log('UI: six ordered sections, actual button flow through review/pixel scan/print/final check/approval/archive, and New artwork reset passed.');
