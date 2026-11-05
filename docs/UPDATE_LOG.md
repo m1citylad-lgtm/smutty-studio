@@ -9,7 +9,7 @@ Prepared for release; live installation and validation pending.
 - Step 3 artwork decisions and Step 5 comparison decisions remain separately scoped: they assess different concerns. No fuzzy matching or automatic acceptance of new findings is introduced.
 - Repeating the file check at the same print target refreshes technical checks in place instead of creating another candidate that loses its final comparison decisions.
 - Original images, version history, pixels, alpha and print dimensions are not modified by this repair.
-- Validation: PHP persistence regression and UI refresh/rescan/isolation regressions added to release checks. Record actual results and live validation below after running them.
+- Validation passed on 5 November 2026: PHP 7.4.33 syntax and persistence regressions, Imagick/GD alpha and PNG/export checks, and Chromium guided UI regressions covering accept → refresh → rescan, file-check version preservation and artwork isolation. Evidence: GitHub Actions run 42085259484 at commit aef4336b87b6952705994a52a38e29b09c84d916. Live installation is blocked by the unauthenticated Studio browser session; the live login still reports v0.4.2.
 
 # v0.4.2 — Final workflow status checks (3 November 2026)
 
