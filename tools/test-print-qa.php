@@ -24,9 +24,7 @@ try{
     imagefilledrectangle($im,30,30,35,35,imagecolorallocatealpha($im,255,255,255,0));
     imagesetpixel($im,5,5,imagecolorallocatealpha($im,255,0,0,0));imagesetpixel($im,60,60,$clear);imagesetpixel($im,80,50,imagecolorallocatealpha($im,255,255,255,64));
     $source=$dir.'/original.png';imagepng($im,$source);imagedestroy($im);$hash=hash_file('sha256',$source);
-    $sample=SBS_Print_QA::sample($source);check_qa($sample['status']==='sampled'&&count($sample['findings'])===3,'Missing detached mark, opening or pale-alpha finding');
-    check_qa($sample['findings'][0]['focus']['x']>.05&&$sample['findings'][0]['focus']['x']<.06,'Detached-mark focus is not at the actual mark');
-    foreach($sample['findings'] as $f){check_qa($f['severity']==='review'&&$f['method']==='sampled_alpha','Sampling incorrectly certifies a defect');}
+    $sample=SBS_Print_QA::sample($source);check_qa($sample['status']==='sampled'&&count($sample['findings'])===0,'Point sampling emitted microscopic print warnings');check_qa($sample['partial_samples']>0&&$sample['clear_samples']>0,'Transparency statistics were lost');
     $options=array('width'=>1.0,'height'=>1.0,'ppi'=>300,'method'=>'print_png','print_canvas'=>false,'notes'=>'');
     $converted=SBS_Print_QA::normalize($source,$options);check_qa(!is_wp_error($converted),is_wp_error($converted)?$converted->message:'Conversion failed');
     $output=$dir.'/normalized.png';file_put_contents($output,$converted['bytes']);$meta=SBS_Print_QA::metadata($output);

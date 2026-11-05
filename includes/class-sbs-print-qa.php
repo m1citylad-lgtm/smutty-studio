@@ -117,12 +117,12 @@ final class SBS_Print_QA
             $c=imagecolorsforindex($im,imagecolorat($im,$x,$y));$a=$c['alpha'];$mask.=$a<120?'1':'0';
             if($a===127){$clear++;}elseif($a>0){$partial++;if(!$pale&&$a>8&&$a<120&&min($c['red'],$c['green'],$c['blue'])>235){foreach(array(array($x-$step,$y),array($x+$step,$y),array($x,$y-$step),array($x,$y+$step)) as $neighbor){if($neighbor[0]>=0&&$neighbor[0]<$size[0]&&$neighbor[1]>=0&&$neighbor[1]<$size[1]){$near=imagecolorsforindex($im,imagecolorat($im,$neighbor[0],$neighbor[1]));if($near['alpha']>=120){$pale=array('x'=>$x/$size[0],'y'=>$y/$size[1]);break;}}}}}else{$opaque++;}
         }}imagedestroy($im);
-        $findings=array();$parts=self::components($mask,$gw,$gh,'1');usort($parts,function($a,$b){return $b['area']-$a['area'];});
-        if(count($parts)>1&&$parts[0]['area']>100){foreach(array_slice($parts,1) as $part){if($part['area']<=3){$findings[]=array('severity'=>'review','area'=>'Detached small mark','issue'=>'A sampled small mark is separate from the main artwork; it may be deliberate distress.','action'=>'Confirm whether to retain it.','focus'=>array('x'=>($part['x']+.5)*$step/$size[0],'y'=>($part['y']+.5)*$step/$size[1]));break;}}}
-        foreach(self::components($mask,$gw,$gh,'0') as $part){if(!$part['boundary']&&$part['area']<=2){$findings[]=array('severity'=>'review','area'=>'Small transparent opening','issue'=>'A sampled enclosed transparent opening may be a counter, halftone or accidental hole.','action'=>'Check against the original; retain intentional openings.','focus'=>array('x'=>($part['x']+.5)*$step/$size[0],'y'=>($part['y']+.5)*$step/$size[1]));break;}}
-        if($pale&&$clear){$findings[]=array('severity'=>'review','area'=>'Pale semi-transparent edge','issue'=>'Pale partial-alpha pixels could show a fringe on dark garments; this may be intentional.','action'=>'Inspect on black/navy; keep deliberate fades and opaque white ink.','focus'=>$pale);}
+        // Bounded point samples cannot establish the physical size or continuity of
+        // a defect. Keep alpha statistics, but leave visible-area findings to the
+        // full print-size-aware scan rather than flagging one sampled pixel.
+        $findings=array();
         foreach($findings as &$f){$f['focus']['x']=min(1,$f['focus']['x']);$f['focus']['y']=min(1,$f['focus']['y']);$f['method']='sampled_alpha';}unset($f);
-        return array('status'=>'sampled','grid_step'=>$step,'clear_samples'=>$clear,'partial_samples'=>$partial,'opaque_samples'=>$opaque,'findings'=>$findings,'limitation'=>'Nearest-point alpha samples can miss fine defects. Findings may be intentional; no pixels were removed.');
+        return array('status'=>'sampled','grid_step'=>$step,'clear_samples'=>$clear,'partial_samples'=>$partial,'opaque_samples'=>$opaque,'findings'=>$findings,'limitation'=>'Transparency sampling only. Optional print-area review groups potentially visible connected marks at the chosen print size. No pixels were changed.');
     }
     private static function components($mask,$w,$h,$value)
     {

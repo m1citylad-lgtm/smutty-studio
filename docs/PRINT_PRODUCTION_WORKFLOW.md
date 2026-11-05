@@ -1,3 +1,11 @@
+## Current print-focused review (v0.4.5)
+
+Default warnings concern features that may be visible on the finished T-shirt at the chosen print size. They are estimates, not printer certification. Individual stray pixels and hidden transparent colour data are not actionable warnings. AI review still checks meaningful anatomy, wording, composition and finishing damage.
+
+The optional extra print-area viewer scans automatically on opening, shows progress and completion, groups connected marks/long edges and reports approximate millimetres. Select a list entry to centre a single marker at 4×. Broad transparency is a double-check for possible smoke, fades or texture, never an instruction to make it solid. Intentional decisions preserve image bytes. Close saves the review; changing source bytes or print size requires a new appropriately scoped check. Dense groups retain their locations behind Next similar area.
+
+The scan does not have to be run for approval. When it is run, review its meaningful results or explicitly retain intentional effects. Technical alpha sampling remains available for statistics; historic point flags do not block completion. None of these checks guarantees appearance on a specific garment. A physical proof remains the way to confirm the printer/fabric result.
+
 # Smutty Studio — T-shirt production workflow (2026-10-17)
 
 ## Default rules
