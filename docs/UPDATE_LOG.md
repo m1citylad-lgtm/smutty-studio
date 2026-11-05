@@ -1,6 +1,6 @@
 # v0.4.5 — Review what may show on a T-shirt (5 November 2026)
 
-Prepared; automated and live validation pending.
+Automated validation passed; live installation and validation pending.
 
 - Replace grid-cell/single-pixel flags with connected components measured at the selected print box. Starting advisory filters retain compact marks about 0.8 mm across with sufficient ink area, or contrasting continuous lines about 3 mm long. These thresholds are screening defaults, not guarantees of visibility on a particular fabric or printer.
 - Suppress isolated pixels, tiny specks, hidden RGB under zero alpha and narrow ordinary antialiasing. Group nearby related areas. Very dense results become labelled groups with every location retained for Next similar area.
@@ -10,7 +10,7 @@ Prepared; automated and live validation pending.
 - Bounded point sampling still supplies alpha statistics but does not pretend a sampled point establishes visible defect size. Previous sampled-point findings remain in technical history, outside the required action list.
 - All Studio AI visual-review routes now use the same print-relevance policy: concentrate on visible anatomy, lettering, clipping, blobs and long halos, group related marks, omit microscopic findings, and label possible effects as uncertain. Finishing supplies the print dimensions; other routes explicitly state when dimensions are unknown.
 - Originals, saved image versions, print dimensions and genuine alpha remain untouched by this change. Old AI reports are not silently rerun or charged again.
-- Added synthetic pixel/physical-scale and UI regressions for specks, visible blocks/lines, resolution invariance, smoke alpha, grouped review, zoom, saved decisions and optional completion. Actual validation results will be recorded after running checks.
+- Validation passed: PHP 7.4.33 syntax, print-policy parsing/filtering, optional-scan gates, saved-decision regressions, Imagick/GD alpha and PNG/export tests, synthetic physical-scale tests and Chromium UI tests. UI evidence includes one-pixel suppression, a single smoke advisory, centred 4× review, no automatic opacity/bulk fix, intentional acceptance surviving reopening, and unchanged image bytes. GitHub Actions run 42099110370 at commit 95900ebfb2e41b83e04cf3085afd370c07f4a3d8. My Cloud Browser remains at the v0.4.4 login; no live installation or authenticated production verification is claimed.
 
 # v0.4.4 — Preserve artwork review decisions (5 November 2026)
 
