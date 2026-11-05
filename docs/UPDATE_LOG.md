@@ -1,6 +1,6 @@
 # v0.4.6 — Upscale failure diagnostics and recovery (5 November 2026)
 
-Prepared from current v0.4.5; validation, signed publication and live installation are tracked separately below.
+Validation passed on 5 November 2026 at source commit 0dd889e3987b4db3c688bffe6d090ccfe59f3e61, GitHub Actions run 42113937777: PHP 7.4.33 syntax/regressions, actual memory-limit termination retaining its checkpoint, safe errors, provider/job preservation, duplicate-submit refusal, lock release, WordPress fatal-template hook, Imagick/GD ICC/RGBA/PPI/alpha/ZIP checks and Chromium recovery/artwork-isolation tests. Signed publication and authenticated live installation/recovery remain pending; live screenshots show v0.4.5. The existing signed-package installer creates a rollback backup before replacing plugin files and refuses installation if that backup fails (source reviewed; rollback regression test passed). Creation of a live backup has not been observed.
 
 - A supplied live v0.4.5 screenshot shows a WordPress critical-error response while an upscale remains pending. A second screenshot shows all basic environment checks passing. These checks cannot identify a request-specific fatal. The exact production PHP cause remains unconfirmed; memory exhaustion is not established.
 - Port the previously unmerged upscale recovery patch (#51) onto v0.4.5, retaining its print-visible review and decision persistence changes.
