@@ -22,7 +22,7 @@ $mode=$argv[1]??'engine';$tmp=$argv[2]??sys_get_temp_dir().'/sbs-failure-'.bin2h
 if(!is_dir($tmp))mkdir($tmp);mkdir($tmp.'/finishing');ini_set('error_log',$tmp.'/error.log');
 $path=$tmp.'/finishing/12345678-1234-1234-1234-123456789abc.json';$record=array('revision'=>1,'pending'=>array('method'=>'upscale','replicate_prediction_id'=>'existing-paid-job'),'versions'=>array(),'current_version'=>null);$bytes=json_encode($record);file_put_contents($path,$bytes);
 if($mode==='wp-fatal'){register_shutdown_function(function(){foreach(($GLOBALS['filters']['wp_php_error_message']??array()) as $callback){$callback('Critical error',error_get_last());}exit(255);});}
-if(in_array($mode,array('fatal','wp-fatal'),true)){echo 'Fatal fixture mode='.$mode.' tmp='.$tmp.PHP_EOL;register_shutdown_function(function(){echo 'Fixture shutdown last='.json_encode(error_get_last()).' options='.json_encode($GLOBALS['options']??null).PHP_EOL;});SBS_Finishing::action(new Request());exit(2);}
+if(in_array($mode,array('fatal','wp-fatal'),true)){echo 'Fatal fixture mode='.$mode.' tmp='.$tmp.' PHP='.PHP_VERSION.' sapi='.PHP_SAPI.' prepend='.ini_get('auto_prepend_file').PHP_EOL;register_shutdown_function(function(){echo 'Fixture shutdown reached'.PHP_EOL;});SBS_Finishing::action(new Request());exit(2);}
 try{
  $result=SBS_Finishing::action(new Request());
  check_failure(is_wp_error($result)&&$result->code==='finishing_processing_failed','Engine error was not contained');
@@ -39,7 +39,7 @@ try{
  check_failure(is_wp_error($result)&&$result->code==='finishing_upscale_exists'&&SBS_Replicate::$submits===0,'Existing job could be submitted again');
  foreach(array('fatal','wp-fatal') as $fatalMode){$fatalDir=$tmp.'/'.$fatalMode;mkdir($fatalDir);$command=escapeshellarg(PHP_BINARY).' -d memory_limit=32M '.escapeshellarg(__FILE__).' '.escapeshellarg($fatalMode).' '.escapeshellarg($fatalDir).' 2>&1';exec($command,$output,$exit);
  check_failure($exit!==0,'Fatal fixture did not reach memory limit');
- $fatal=json_decode(file_get_contents($fatalDir.'/diagnostic.json'),true);if(!$fatal){echo 'Child diagnostic debug: '.implode(' ', $output).' Log: '.(is_file($fatalDir.'/error.log')?file_get_contents($fatalDir.'/error.log'):'missing log').PHP_EOL;}
+ $fatal=json_decode(file_get_contents($fatalDir.'/diagnostic.json'),true);if(!$fatal){echo 'Fatal mode '.$fatalMode.' directory '.json_encode(glob($fatalDir.'/*')).PHP_EOL;}if(!$fatal){echo 'Child diagnostic debug: '.implode(' ', $output).' Log: '.(is_file($fatalDir.'/error.log')?file_get_contents($fatalDir.'/error.log'):'missing log').PHP_EOL;}
  check_failure(($fatal['stage']??'')==='restore_transparency'&&strpos($fatal['reason']??'','ran out')!==false,'Real memory fatal did not save safe stage/reason: '.json_encode($fatal).' Child output: '.implode(' ', $output));
  check_failure(file_get_contents($fatalDir.'/finishing/'.basename($path))===$bytes,'Memory fatal changed provider tracking');}
  echo "PASS: engine and real memory-fatal diagnostics, secret exclusion, provider failure stage, retained saved job, duplicate-submit refusal and lock release\n";
