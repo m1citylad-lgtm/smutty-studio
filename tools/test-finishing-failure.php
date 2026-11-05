@@ -4,13 +4,14 @@ define('ABSPATH',__DIR__);
 class WP_Error {public $code;public $message;public function __construct($code,$message,$data=null){$this->code=$code;$this->message=$message;}function get_error_code(){return $this->code;}function get_error_message(){return $this->message;}}
 function is_wp_error($v){return $v instanceof WP_Error;}
 function sanitize_key($s){return strtolower(preg_replace('/[^a-zA-Z0-9_-]/','',$s));}
+function add_filter($tag,$callback,$priority,$args){$GLOBALS['filters'][$tag][]=$callback;}
 function wp_raise_memory_limit($context){$GLOBALS['raised']=$context;}
 function update_option($key,$value,$autoload){$GLOBALS['options'][$key]=$value;file_put_contents($GLOBALS['tmp'].'/diagnostic.json',json_encode($value));}
 class SBS_Storage {static function ensure_directories(){return true;}static function base_dir(){return $GLOBALS['tmp'];}}
 class SBS_Finishing_Flow {static function handles($action){
  if($GLOBALS['mode']==='provider')return false;
  SBS_Finishing::processing_stage('restore_transparency');
- if($GLOBALS['mode']==='fatal'){$large=str_repeat('x',64*1024*1024);}
+ if(in_array($GLOBALS['mode'],array('fatal','wp-fatal'),true)){$large=str_repeat('x',64*1024*1024);}
  throw new Error('Injected failure /private/path Bearer secret-api-key');
 }}
 class SBS_Replicate {static $submits=0;static function poll($id){return new WP_Error('provider_unavailable','Private provider detail Bearer secret-api-key');}static function submit($id,$scale){self::$submits++;}}
@@ -20,7 +21,8 @@ function check_failure($ok,$why){if(!$ok)throw new Exception($why);}
 $mode=$argv[1]??'engine';$tmp=$argv[2]??sys_get_temp_dir().'/sbs-failure-'.bin2hex(random_bytes(4));
 if(!is_dir($tmp))mkdir($tmp);mkdir($tmp.'/finishing');ini_set('error_log',$tmp.'/error.log');
 $path=$tmp.'/finishing/12345678-1234-1234-1234-123456789abc.json';$record=array('revision'=>1,'pending'=>array('method'=>'upscale','replicate_prediction_id'=>'existing-paid-job'),'versions'=>array(),'current_version'=>null);$bytes=json_encode($record);file_put_contents($path,$bytes);
-if($mode==='fatal'){SBS_Finishing::action(new Request());exit(2);}
+if($mode==='wp-fatal'){register_shutdown_function(function(){foreach(($GLOBALS['filters']['wp_php_error_message']??array()) as $callback){$callback('Critical error',error_get_last());}exit(255);});}
+if(in_array($mode,array('fatal','wp-fatal'),true)){SBS_Finishing::action(new Request());exit(2);}
 try{
  $result=SBS_Finishing::action(new Request());
  check_failure(is_wp_error($result)&&$result->code==='finishing_processing_failed','Engine error was not contained');
@@ -35,11 +37,11 @@ try{
  check_failure(($GLOBALS['options']['sbs_finishing_last_failure']['stage']??'')==='provider_status','Provider-stage error not recorded');
  $method=new ReflectionMethod('SBS_Finishing','start_upscale');$method->setAccessible(true);$result=$method->invoke(null,$record);
  check_failure(is_wp_error($result)&&$result->code==='finishing_upscale_exists'&&SBS_Replicate::$submits===0,'Existing job could be submitted again');
- $fatalDir=$tmp.'/fatal';mkdir($fatalDir);$command=escapeshellarg(PHP_BINARY).' -d memory_limit=32M '.escapeshellarg(__FILE__).' fatal '.escapeshellarg($fatalDir).' 2>&1';exec($command,$output,$exit);
+ foreach(array('fatal','wp-fatal') as $fatalMode){$fatalDir=$tmp.'/'.$fatalMode;mkdir($fatalDir);$command=escapeshellarg(PHP_BINARY).' -d memory_limit=32M '.escapeshellarg(__FILE__).' '.escapeshellarg($fatalMode).' '.escapeshellarg($fatalDir).' 2>&1';exec($command,$output,$exit);
  check_failure($exit!==0,'Fatal fixture did not reach memory limit');
  $fatal=json_decode(file_get_contents($fatalDir.'/diagnostic.json'),true);
- check_failure(($fatal['stage']??'')==='restore_transparency'&&strpos($fatal['reason']??'','ran out')!==false,'Real memory fatal did not save safe stage/reason');
- check_failure(file_get_contents($fatalDir.'/finishing/'.basename($path))===$bytes,'Memory fatal changed provider tracking');
+ check_failure(($fatal['stage']??'')==='restore_transparency'&&strpos($fatal['reason']??'','ran out')!==false,'Real memory fatal did not save safe stage/reason: '.json_encode($fatal).' Child output: '.implode(' ', $output));
+ check_failure(file_get_contents($fatalDir.'/finishing/'.basename($path))===$bytes,'Memory fatal changed provider tracking');}
  echo "PASS: engine and real memory-fatal diagnostics, secret exclusion, provider failure stage, retained saved job, duplicate-submit refusal and lock release\n";
 }finally{
  $it=new RecursiveIteratorIterator(new RecursiveDirectoryIterator($tmp,FilesystemIterator::SKIP_DOTS),RecursiveIteratorIterator::CHILD_FIRST);foreach($it as $f){$f->isDir()?rmdir($f->getPathname()):unlink($f->getPathname());}rmdir($tmp);

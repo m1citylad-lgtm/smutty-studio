@@ -437,6 +437,12 @@ final class SBS_Finishing
                 self::record_processing_failure($action,'PHP fatal',$last['message'],$last['file'],$last['line']);
             }
         });
+        // WordPress can exit inside its earlier shutdown handler. Capture the
+        // same error before its default fatal template calls wp_die().
+        if(function_exists('add_filter')){add_filter('wp_php_error_message',function($message,$error)use($guard,$action){
+            if($guard->active&&!$guard->recorded){$guard->reserve=null;self::record_processing_failure($action,'PHP fatal',$error['message']??'',$error['file']??'',(int)($error['line']??0));}
+            return $message;
+        },10,2);}
         if(function_exists('wp_raise_memory_limit')){wp_raise_memory_limit('image');}
         return $guard;
     }
