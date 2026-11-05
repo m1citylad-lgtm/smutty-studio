@@ -87,7 +87,7 @@ function mockAction(p){calls.push(p.action+(p.pass?':'+p.pass:''));
  assert.equal(await page.locator('.sbs-correction-marker:visible').count(),1,'Viewer displays more than the selected issue');
  assert.equal(await page.locator('[data-sbs-correction-kind="solid_opacity"]').isVisible(),false,'Smoke offers an opacity-restoration action');
  assert.equal(await page.locator('#sbs-af-correction-run-all').isVisible(),false,'Ambiguous effects offer bulk cleanup');
- await page.locator('#sbs-af-correction-accept').click();await page.locator('#sbs-af-correction-close').click();await page.waitForFunction(()=>!window.SBSFinishingBridge.isBusy());
+ await page.locator('#sbs-af-correction-accept').click();await page.locator('#sbs-af-correction-close').click();await page.waitForFunction(()=>!window.SBSFinishingBridge.isBusy()).catch(async e=>{console.error('Print save debug',await page.locator('#sbs-af-progress').textContent(),await page.locator('#sbs-flow-repair-status').textContent(),calls.slice(-8),errors,record.flow.pixels);throw e;});
  assert.equal(record.flow.pixels.policy,'print-impact-v1');assert.equal(record.flow.pixels.remaining,0);assert.ok(record.flow.pixels.accepted_ids.length===1,'Intentional area decision not saved');
  assert.equal(record.versions.length,1,'Reviewing smoke created an edited candidate');assert.equal(record.original.url,fixtureUrl,'Smoke review changed image bytes');
  await page.locator('#sbs-flow-final-pixels').click();await page.waitForFunction(()=>document.getElementById('sbs-af-correction-open').dataset.state==='done');
