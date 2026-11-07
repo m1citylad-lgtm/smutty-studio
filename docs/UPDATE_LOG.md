@@ -1,3 +1,11 @@
+# v0.4.8 — Gentle Artwork Finishing completion sound (7 November 2026)
+
+Implementation in progress; automated regression and signed publication checks pending.
+
+- Add a short two-note, locally synthesized bamboo-like cue after Artwork Finishing actions reach success or failure. The cue plays once after the visual status updates and never during the processing spinner.
+- Add an accessible on/off control, enabled by default and persisted in the browser. Keep visual success/error feedback authoritative; audio is supplemental and no external service or credits are used.
+- Stage-button spinner/tick/error states and the square issue marker without a centre dot are already present in v0.4.7 source. They still need current owner-device acceptance before the older log items can be closed.
+
 # v0.4.7 — Resume upscale finishing within the server time limit (5 November 2026)
 
 Validation passed on 5 November 2026 at source commit bc5bb4ada6966ac7ccf8fb6aed836a833c8793d0, GitHub Actions run 42119943188: PHP 7.4.33 syntax/regressions; actual PNG single/tiled resumed stages; injected save timeout and final-check failure; one provider poll/download and zero duplicate paid submissions during single-image recovery; preserved target/dimensions/clear and partial alpha/opaque white ink; legacy last-tile and next-section sequencing; Imagick/GD print/export/rollback regressions; and Chromium progress/completion plus a real page reload retaining the same workspace/job and running indicator. Signed publication pipeline 42120210960 passed at merge commit 0ac42fbd42c21471109cf0f35bdd1cfdae2cdcaa and published v0.4.7. A fresh Cloud Browser reload of the live Studio reports v0.4.7. The agent session is still at the Studio password screen: the private affected job, its completed saved result and live dimensions/alpha remain unverified; installation mechanism and live backup creation were not observed.

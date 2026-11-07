@@ -192,6 +192,8 @@ body#sbs-studio-page .sbs-af-catalogue-row .sbs-danger-tool { justify-self:end; 
 .sbs-af-stage-done{display:inline-grid;place-items:center;width:20px;height:20px;box-sizing:border-box;border:2px solid #8be28b;border-radius:4px;color:#8be28b;font-size:14px;font-weight:800;line-height:1;flex:0 0 20px}
 .sbs-af-stage-card button[data-stage-state="running"]{border-color:#ffe08a}
 .sbs-af-stage-card button[data-stage-state="complete"]{border-color:#8be28b}
+.sbs-af-completion-sound{display:flex;align-items:center;gap:.6rem;min-height:44px;margin:.4rem 0 .8rem;color:#fff3d7;font-weight:600}
+.sbs-af-completion-sound input{width:22px;height:22px;accent-color:#ffb12d}
 @keyframes sbs-af-stage-spin{to{transform:rotate(360deg)}}
 #sbs-af-stage-options-title{margin-bottom:.35rem}
 @media(prefers-reduced-motion:reduce){.sbs-af-stage-spinner{animation:none}}
