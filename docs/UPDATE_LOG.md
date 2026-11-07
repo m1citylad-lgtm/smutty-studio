@@ -1,6 +1,16 @@
+# v0.4.10 — Complete the Drive run register (7 November 2026)
+
+Implementation in progress; PHP/JavaScript/browser regressions and signed publication pending.
+
+- Extend the `Studio Production Register.csv` created by v0.4.9 with an explicit row for each run folder, plus one row for every individual artifact. Keep the folder row linked to the same prefix/title/version/repeat name as the files.
+- Add separate `Transfer status` and `Production status` fields. A successful upload is recorded as `Verified` and begins at `Awaiting inspection`, so the register can continue through later inspection and production steps.
+- Preserve idempotent retries: re-running a successful transfer must not duplicate the folder or artifact rows. A lost response after a successful register write must be safe to retry.
+- This is a CSV register written by the Studio's existing Drive connection, not a native Google Sheet. The request allowed a register in any form; keeping CSV avoids asking the owner to grant a new Google Sheets OAuth scope. It remains readable/editable from Drive for later ChatGPT review and status updates.
+- The owner still needs to verify Drive permissions and complete one real approved-artwork transfer after the signed release is installed. No live file-transfer test is claimed yet.
+
 # v0.4.9 — Direct Artwork Finishing transfer and Drive register (7 November 2026)
 
-Implementation in progress; PHP/JavaScript/browser regression and signed release checks pending.
+Published and confirmed on the live Studio page as v0.4.9 on 7 November 2026. PHP/JavaScript and guided browser workflows passed in GitHub Actions. Real account Drive transfer and register update remain unverified.
 
 - Replace the final Google Drive ZIP upload action with individual verified uploads: original artwork, selected final artwork, metadata, finishing QA, SHA-256 checksums and a short transfer report. The Studio does not assemble a ZIP for this Drive path; the optional local ZIP download remains available as a manual backup.
 - Create each output folder with the two-letter prefix first, followed by a readable title, version and repeat number, for example `MB-Madam-Butterfly-v3-R01`. Suggest the two letters from the artwork title and let the owner edit them. Do not put a date at the start of the folder name.
