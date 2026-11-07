@@ -31,6 +31,7 @@ jobs:
           php tools/test-upscale-resume.php
           php tools/test-finishing-flow.php
           php tools/test-finishing-drive.php
+          php tools/test-finishing-drive-files.php
           php -n -d extension=json -d extension=gd -d extension=zip tools/test-print-qa.php
       - name: JavaScript and image export checks
         run: |

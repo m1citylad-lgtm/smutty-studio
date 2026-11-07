@@ -1,6 +1,17 @@
+# v0.4.9 — Direct Artwork Finishing transfer and Drive register (7 November 2026)
+
+Implementation in progress; PHP/JavaScript/browser regression and signed release checks pending.
+
+- Replace the final Google Drive ZIP upload action with individual verified uploads: original artwork, selected final artwork, metadata, finishing QA, SHA-256 checksums and a short transfer report. The Studio does not assemble a ZIP for this Drive path; the optional local ZIP download remains available as a manual backup.
+- Create each output folder with the two-letter prefix first, followed by a readable title, version and repeat number, for example `MB-Madam-Butterfly-v3-R01`. Suggest the two letters from the artwork title and let the owner edit them. Do not put a date at the start of the folder name.
+- Maintain `Studio Production Register.csv` in the main Smutty Bear Drive folder, with one row per verified transferred file, including folder, artwork/version, artifact type, filename, MIME type, size, SHA-256, Drive file ID/link, Studio workspace and approval time.
+- Resume uploads using retained Drive file IDs and resumable sessions, verify each file by parent folder, name, size and MD5 against its local source, and make retries idempotent. Update the register under an atomic WordPress option lock and avoid duplicate register rows when an earlier update succeeded but its response was lost.
+- Make the Drive folder and register links available in the finishing completion state and the ChatGPT handoff. Folder creation, file transfer and register update are separate verified steps; a register failure remains visible and can be retried without creating duplicate artwork files.
+- Live Google Drive connection, folder permissions, resumable retry and register update still require a real owner-account transfer after the signed package is published. No live artwork transfer is claimed before that check.
+
 # v0.4.8 — Gentle Artwork Finishing completion sound (7 November 2026)
 
-Implementation in progress; automated regression and signed publication checks pending.
+Published and confirmed on the live Studio page as v0.4.8 on 7 November 2026. PHP/JavaScript and guided browser workflows passed in GitHub Actions. Signed installer backup creation and authenticated owner-device playback remain unobserved; the live page currently shows the Studio sign-in screen.
 
 - Add a short two-note, locally synthesized bamboo-like cue after Artwork Finishing actions reach success or failure. The cue plays once after the visual status updates and never during the processing spinner.
 - Add an accessible on/off control, enabled by default and persisted in the browser. Keep visual success/error feedback authoritative; audio is supplemental and no external service or credits are used.
