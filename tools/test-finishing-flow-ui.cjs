@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 5966)
-Total output lines: 138
-
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require('playwright');
@@ -31,7 +28,67 @@ function mockAction(p){calls.push(p.action+(p.pass?':'+p.pass:''));
  const fixtureHtml='<!doctype html><html><head><meta charset="utf-8"><base href="http://studio.test/"><meta name="viewport" content="width=device-width,initial-scale=1">'+styles+'</head><body><main id="sbs-app" data-rest="http://studio.test/api/" data-authenticated="1" data-finishing-csrf="test">'+html+read('templates/finishing-settings.php').replace(/<\?php[\s\S]*?\?>/g,'')+'</main>'+scripts+'</body></html>';
  await page.route('http://studio.test/',route=>route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:fixtureHtml}));await page.goto('http://studio.test/');
  assert.deepEqual(errors,[]);assert.match(await page.locator('#sbs-flow-step-1 .sbs-flow-status').textContent(),/Next.*Choose your artwork/);assert.equal(await page.locator('[data-flow-step]').count(),6);const titles=await page.locator('[data-flow-step] h2:visible').allTextContents();assert.deepEqual(titles,['1. Choose artwork and print size','2. Check the artwork','3. Fix the action list','4. Upscale and prepare the print file','5. Check the finished artwork','6. Approve and save your ZIP']);
- await page.locator('#sbs-flow-connect').click();await page.waitForFunction(()=>d…2466 tokens truncated…rs an opacity-restoration action');
+ await page.locator('#sbs-flow-connect').click();await page.waitForFunction(()=>document.getElementById('sbs-flow-google-setup').open);assert.equal(await page.locator('#sbs-flow-google-setup').getAttribute('open'),'');assert.match(await page.locator('#sbs-google-status').textContent(),/One-time Google Drive setup/);assert.equal(await page.locator('#sbs-google-connect').isEnabled(),false);
+ await page.evaluate(r=>window.dispatchEvent(new CustomEvent('sbs-finishing-open',{detail:r})),record);
+ await page.locator('#sbs-flow-check').click();await page.waitForFunction(()=>document.getElementById('sbs-flow-check-status').textContent.includes('Check complete'),null,{timeout:10000}).catch(async e=>{console.error('Check debug',await page.locator('#sbs-flow-check-status').textContent(),await page.locator('#sbs-af-progress').textContent(),calls,errors);throw e;});
+ assert.equal(await page.locator('#sbs-af-completion-sound').isChecked(),true,'Completion sound should default on');await page.waitForFunction(()=>window.__sbsBlips>=2);const soundCount=await page.evaluate(()=>window.__sbsBlips);await page.locator('label.sbs-af-completion-sound').click();assert.equal(await page.locator('#sbs-af-completion-sound').isChecked(),false);assert.equal(await page.evaluate(()=>localStorage.getItem('sbs-af-completion-sound')),'off');await page.locator('#sbs-flow-check').click();await page.waitForFunction(()=>!window.SBSFinishingBridge.isBusy());await page.waitForTimeout(150);assert.equal(await page.evaluate(()=>window.__sbsBlips),soundCount,'Muted completion sound played');await page.locator('label.sbs-af-completion-sound').click();assert.equal(await page.locator('#sbs-af-completion-sound').isChecked(),true);
+ assert.deepEqual(calls.filter(x=>x.startsWith('flow_review')),['flow_review:whole','flow_review:regions','flow_review:custom']);assert.equal(await page.locator('[data-af-method="print_png"]').isEnabled(),true,'Optional print-area scan blocked preparation');
+ await page.locator('#sbs-af-correction-open').click();await page.waitForFunction(()=>document.getElementById('sbs-af-correction-open').dataset.state==='done');await page.locator('#sbs-af-correction-close').click();await page.waitForFunction(()=>document.getElementById('sbs-flow-next-title').textContent.includes('Upscale if needed'));
+ assert.equal(await page.locator('[data-af-method="upscale"]').isEnabled(),false,'Enough pixels must skip paid enlargement');await page.locator('[data-af-method="print_png"]').click();await page.waitForFunction(()=>document.getElementById('sbs-flow-next-title').textContent.includes('final check'));
+ await page.locator('#sbs-af-ai-review-run').click();await page.waitForFunction(()=>document.getElementById('sbs-af-ai-status').textContent.includes('Comparison complete'),null,{timeout:8000}).catch(async e=>{console.error('Comparison debug',await page.locator('#sbs-af-ai-status').textContent(),await page.locator('#sbs-af-progress').textContent(),calls,errors);throw e;});await page.locator('#sbs-flow-final-pixels').click();await page.waitForFunction(()=>document.getElementById('sbs-af-correction-open').dataset.state==='done');await page.locator('#sbs-af-correction-close').click();for(const box of await page.locator('[data-af-check]').all())await box.check();
+ await page.waitForFunction(()=>!document.getElementById('sbs-af-approve').disabled);await page.locator('#sbs-af-approve').click();await page.waitForFunction(()=>!document.getElementById('sbs-flow-drive').disabled);await page.locator('#sbs-flow-drive').click();await page.waitForFunction(()=>document.getElementById('sbs-flow-drive-status').textContent.includes('Finished'));
+ // Reproduce Purple's independent action-list/final-report decisions and refresh cycle.
+ record.approval=null;
+ record.flow.review.passes.whole.findings=[{id:'texture',category:'Texture',issue:'Cap texture may be intentional',action:'Inspect the cap',bbox:{x:0,y:0,width:.2,height:.2}}];
+ record.flow.review.decisions={};
+ const finalVersion=record.versions.find(v=>v.uuid===record.current_version);
+ finalVersion.ai_review={summary:'Review',overall:'review',findings:[{id:'shoulder',area:'Shoulder',severity:'concern',issue:'Check the shoulder edge',action:'Inspect',focus:{x:.5,y:.5}}]};
+ finalVersion.review_decisions={};
+ await page.evaluate(r=>window.dispatchEvent(new CustomEvent('sbs-finishing-open',{detail:r})),record);
+ assert.match(await page.locator('#sbs-flow-next-title').textContent(),/Review 1 artwork action/);
+ await page.locator('#sbs-flow-list').getByRole('button',{name:'This is intentional',exact:true}).click();
+ await page.waitForFunction(()=>document.querySelector('#sbs-flow-list li').dataset.reviewState==='resolved');
+ assert.match(await page.locator('#sbs-flow-actions-status').textContent(),/All artwork actions resolved/);
+ await page.locator('#sbs-af-ai-review-report').getByRole('button',{name:'Accept as intentional',exact:true}).click();
+ await page.waitForFunction(()=>document.getElementById('sbs-af-ai-status').textContent.includes('0 unresolved; 1 resolved'));
+ assert.equal(await page.locator('#sbs-af-ai-review-report [data-review-state="resolved"] details').count(),1);
+ assert.equal(await page.locator('#sbs-af-ai-review-report').getByText('ACTION NEEDED — review before approval',{exact:true}).count(),0);
+ await page.locator('#sbs-af-refresh').click();
+ await page.waitForFunction(()=>!document.getElementById('sbs-af-refresh').disabled);
+ assert.match(await page.locator('#sbs-af-ai-status').textContent(),/0 unresolved; 1 resolved/);
+ assert.equal(record.flow.review.decisions.texture,'intentional');
+ assert.equal(finalVersion.review_decisions.shoulder.decision,'intentional');
+ const versionBeforeCheck=record.current_version,versionsBeforeCheck=record.versions.length;
+ await page.locator('[data-af-method="inspect"]').click();
+ await page.waitForFunction(()=>!window.SBSFinishingBridge.isBusy());
+ assert.equal(record.current_version,versionBeforeCheck,'Read-only file check changed the selected version');
+ assert.equal(record.versions.length,versionsBeforeCheck,'Read-only file check added another version');
+ assert.equal(finalVersion.review_decisions.shoulder.decision,'intentional');
+ // A scan of the same image must not withdraw the owner's intentional-mark decision.
+ record.flow.pixels={sha256:'print-hash',remaining:2,reviewed:true,policy:'print-impact-v1',target:{width:14,height:16},alpha:{clear:1,partial:0,opaque:47999}};
+ await page.evaluate(r=>window.dispatchEvent(new CustomEvent('sbs-finishing-open',{detail:r})),record);
+ await page.evaluate(()=>document.dispatchEvent(new CustomEvent('sbs:pixel-scan',{detail:{workspace:'aaaaaaaa-0000-4000-8000-000000000001',sha256:'print-hash',remaining:2,policy:'print-impact-v1',target:{width:14,height:16},alpha:{clear:1,partial:0,opaque:47999}}})));
+ await page.waitForFunction(()=>!window.SBSFinishingBridge.isBusy());
+ assert.equal(record.flow.pixels.reviewed,true,'Same-image rescan reset the intentional marks');
+ const other=JSON.parse(JSON.stringify(record));other.uuid='bbbbbbbb-0000-4000-8000-000000000002';other.title='Different artwork';other.flow.review.decisions={};other.versions.find(v=>v.uuid===other.current_version).review_decisions={};
+ await page.evaluate(r=>window.dispatchEvent(new CustomEvent('sbs-finishing-open',{detail:r})),other);
+ assert.match(await page.locator('#sbs-flow-next-title').textContent(),/Review 1 artwork action/,'Different artwork inherited resolved state');
+ await page.evaluate(r=>window.dispatchEvent(new CustomEvent('sbs-finishing-open',{detail:r})),record);
+ console.log('UI regression: accepted findings collapse, final warning counts clear, decisions survive refresh/rescan and other artwork keeps its own unresolved decisions.');
+ // Real canvas fixture: a microscopic dot and broad partial-alpha smoke.
+ const fixtureUrl=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=600;c.height=600;const x=c.getContext('2d');x.fillStyle='#903010';x.fillRect(150,100,250,220);x.fillRect(10,10,1,1);x.fillStyle='rgba(150,150,150,0.43)';x.fillRect(50,400,60,60);return c.toDataURL('image/png');});
+ record=JSON.parse(JSON.stringify(record));record.uuid='cccccccc-0000-4000-8000-000000000003';record.title='Print visibility fixture';record.approval=null;
+ record.original={...record.original,sha256:'visibility-fixture',url:fixtureUrl};record.original_qa={...record.original_qa,width:600,height:600,effective_ppi:300};
+ record.versions=[{uuid:'visibility-version',number:1,asset:record.original,qa:record.original_qa,comparison:{byte_identical:true,geometry:{status:'proportional'}},options:{method:'print_png',width:2,height:2,source_sha256:'visibility-fixture'},ai_review:{overall:'clear',findings:[]}}];record.current_version='visibility-version';
+ record.flow={review:{sha256:'visibility-fixture',passes:{whole:{findings:[]},regions:{findings:[]},custom:{findings:[]}},decisions:{}}};
+ await page.locator('#sbs-af-width').fill('2');await page.locator('#sbs-af-height').fill('2');
+ await page.evaluate(r=>window.dispatchEvent(new CustomEvent('sbs-finishing-open',{detail:r})),record);
+ await page.locator('#sbs-flow-final-pixels').click();await page.waitForFunction(()=>document.getElementById('sbs-af-correction-open').dataset.state==='done');
+ assert.match(await page.locator('#sbs-af-correction-status').textContent(),/Scan complete — 1 possible print area/);
+ assert.equal(await page.locator('#sbs-af-correction-list button').count(),1,'Microscopic dot became an individual issue');
+ await page.locator('#sbs-af-correction-list button').click();assert.match(await page.locator('#sbs-af-correction-status').textContent(),/possible smoke, fade or texture.*5.1.*Centred at 4×/);
+ assert.equal(await page.locator('.sbs-correction-marker:visible').count(),1,'Viewer displays more than the selected issue');
+ assert.equal(await page.locator('[data-sbs-correction-kind="solid_opacity"]').isVisible(),false,'Smoke offers an opacity-restoration action');
  assert.equal(await page.locator('#sbs-af-correction-run-all').isVisible(),false,'Ambiguous effects offer bulk cleanup');
  await page.locator('#sbs-af-correction-accept').click();await page.locator('#sbs-af-correction-close').click();await page.waitForFunction(()=>!window.SBSFinishingBridge.isBusy()).catch(async e=>{console.error('Print save debug',await page.locator('#sbs-af-progress').textContent(),await page.locator('#sbs-flow-repair-status').textContent(),calls.slice(-8),errors,record.flow.pixels);throw e;});
  assert.equal(record.flow.pixels.policy,'print-impact-v1');assert.equal(record.flow.pixels.remaining,0);assert.ok(record.flow.pixels.accepted_ids.length===1,'Intentional area decision not saved');
