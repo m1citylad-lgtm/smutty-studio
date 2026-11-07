@@ -1,6 +1,16 @@
+# v0.4.11 — Inspect tiled upscale joins (7 November 2026)
+
+Implementation in progress; local analysis, PHP/JavaScript regressions, guided browser validation and signed publication pending.
+
+- Record normalized internal tile-boundary positions on tiled upscale versions and carry them through later finishing edits and print-PNG preparation.
+- Add an automatic local seam check to the existing final comparison. Downsample candidate and original to the intended print box, compare pixels only along recorded joins, and report sustained new discontinuities or transparency gaps. Ignore isolated pixels and unchanged original detail; no image is modified and the scan uses no AI credits.
+- Show PASS, REVIEW, FAIL or NOT APPLICABLE, with numbered join locations that open the existing zoomable original/candidate comparison. A flagged or unavailable scan needs an explicit owner review before approval; decisions are retained in this browser per candidate checksum.
+- Extend the existing optional AI comparison with the recorded join positions so its usual scan can inspect possible texture breaks, shifted outlines or lettering. It uses the existing AI scan and does not add a separate call.
+- Preserve originals. The scan is conservative screening, not a guarantee that all print-visible defects will be detected. Verify on transparent, halftone, smoke and lettering samples before accepting the release.
+
 # v0.4.10 — Complete the Drive run register (7 November 2026)
 
-Implementation in progress; PHP/JavaScript/browser regressions and signed publication pending.
+Published and confirmed on the live Studio page as v0.4.10 on 7 November 2026. Release checks passed; owner-account Drive transfer still requires a real approved-artwork test.
 
 - Extend the `Studio Production Register.csv` created by v0.4.9 with an explicit row for each run folder, plus one row for every individual artifact. Keep the folder row linked to the same prefix/title/version/repeat name as the files.
 - Add separate `Transfer status` and `Production status` fields. A successful upload is recorded as `Verified` and begins at `Awaiting inspection`, so the register can continue through later inspection and production steps.

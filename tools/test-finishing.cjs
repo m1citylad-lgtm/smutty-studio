@@ -26,17 +26,25 @@ const finishingContext = { window: {}, document: undefined };
 vm.createContext(finishingContext);
 vm.runInContext(finishing, finishingContext);
 const classifyTransparency = finishingContext.window.SBSFinishing.classifyTransparency;
+const analyzeSeams = finishingContext.window.SBSFinishing.analyzeSeams;
 assert.equal(classifyTransparency(new Uint8ClampedArray([20,20,20,255,220,220,220,255])), 'Opaque', 'Opaque/checkerboard pixels must not be called transparent');
 assert.equal(classifyTransparency(new Uint8ClampedArray([20,20,20,0,220,220,220,255])), 'Genuine transparency');
 assert.equal(classifyTransparency(new Uint8ClampedArray([20,20,20,128])), 'Partial alpha');
 assert.throws(() => classifyTransparency(new Uint8ClampedArray([20,20,20])), /Decoded pixels are unavailable/);
+const seamFixture=(width,height)=>new Uint8ClampedArray(width*height*4).fill(255);
+const seamOriginal=seamFixture(200,200),seamClean=seamFixture(200,200);
+assert.equal(analyzeSeams(seamClean,seamOriginal,200,200,{x:[0.5],y:[]}).status,'PASS','A clean join should pass without noisy flags');
+const seamBroken=seamFixture(200,200);for(let y=20;y<180;y++)for(let x=100;x<200;x++){const i=(y*200+x)*4;seamBroken[i]=80;seamBroken[i+1]=80;seamBroken[i+2]=80;}
+const seamResult=analyzeSeams(seamBroken,seamOriginal,200,200,{x:[0.5],y:[]});assert.equal(seamResult.status,'FAIL','A long, new, strong seam should fail');assert.equal(seamResult.findings.length,1);assert.equal(seamResult.findings[0].method,'seam_inspection');
+const seamSpeck=seamFixture(200,200);let seamPixel=(100*200+100)*4;seamSpeck[seamPixel]=0;seamSpeck[seamPixel+1]=0;seamSpeck[seamPixel+2]=0;assert.equal(analyzeSeams(seamSpeck,seamOriginal,200,200,{x:[0.5],y:[]}).status,'PASS','A single pixel must not be reported as a print-visible seam');
+const seamGap=seamFixture(200,200);for(let y=20;y<180;y++)seamGap[(y*200+100)*4+3]=0;assert.equal(analyzeSeams(seamGap,seamOriginal,200,200,{x:[0.5],y:[]}).status,'FAIL','A continuous alpha gap across a join should fail');
 assert.match(template, /id="sbs-af-original-transparency"/);
 assert.match(template, /id="sbs-af-candidate-transparency"/);
 assert.match(template, /Red = opaque · Amber = partial alpha · Green = transparent with no partial alpha · Grey = not checked/);
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0.4.10/);
+assert.match(plugin, /Version: 0.4.11/);
 assert.match(template, /id="sbs-af-clear"/);
 assert.match(template, /id="sbs-af-correction-help"/);
 assert.match(template, /id="sbs-af-correction-open-spinner"/);
@@ -53,7 +61,13 @@ assert.match(finishing, /function render\(\)[\s\S]*?stageRunState=\{\};renderedW
 assert.match(finishing, /el\('sbs-af-clear'\)\.addEventListener/);
 assert.match(finishing, /savedUiState\.workspace='';savedUiState\.checks=\{\}/);
 
-assert.match(plugin, /define\('SBS_VERSION', '0.4.10'\)/);
+assert.match(plugin, /define\('SBS_VERSION', '0.4.11'\)/);
+assert.match(template, /id="sbs-af-seam-review"/);
+assert.match(template, /no AI credits/);
+assert.match(finishing, /function analyzeSeams\(/);
+assert.match(finishing, /seamInspectionState/);
+assert.match(backend, /inherit_tile_seams/);
+assert.match(backend, /tile_seams/);
 assert.match(studio, /button\.closest\('\.sbs-character-page-menu'\)\) \{ return; \}/, 'Character menu entries must not receive information buttons');
 const mainNav = studioTemplate.match(/<nav id="sbs-primary-nav"[\s\S]*?<\/nav>/)[0];
 assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="freestyle"'));
@@ -74,6 +88,7 @@ for (const page of ['characters', 'library', 'development', 'references', 'creat
 }
 assert.doesNotMatch(studio, /sbs-character-page-trigger/);
 const openai = read('includes/class-sbs-openai.php');
+assert.match(openai, /Inspect these joins specifically/);
 assert.match(openai, /finishing_review_input\(\(int\) \$original_asset_id\)/);
 assert.match(openai, /finishing_review_input\(\(int\) \$candidate_asset_id\)/);
 assert.match(openai, /'image_url' => \$data_url, 'detail' => 'high'/);
