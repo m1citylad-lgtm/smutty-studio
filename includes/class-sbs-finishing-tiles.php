@@ -4,6 +4,7 @@ if(!defined('ABSPATH')){exit;}
 final class SBS_Finishing_Tiles
 {
     public static function plan($w,$h){$out=array();for($y=0;$y<$h;$y+=1280){for($x=0;$x<$w;$x+=1280){$left=max(0,$x-48);$top=max(0,$y-48);$cw=min(1280,$w-$x);$ch=min(1280,$h-$y);$out[]=array('x'=>$x,'y'=>$y,'width'=>$cw,'height'=>$ch,'left'=>$left,'top'=>$top,'crop_width'=>min($w-$left,$cw+$x-$left+48),'crop_height'=>min($h-$top,$ch+$y-$top+48));}}return $out;}
+    public static function seam_boundaries($tiles,$w,$h){$x=array();$y=array();if($w<1||$h<1){return array('x'=>array(),'y'=>array());}foreach((array)$tiles as $tile){if(!empty($tile['x'])&&$tile['x']<$w){$x[]=(float)$tile['x']/(float)$w;}if(!empty($tile['y'])&&$tile['y']<$h){$y[]=(float)$tile['y']/(float)$h;}}$x=array_values(array_unique($x));$y=array_values(array_unique($y));sort($x);sort($y);return array('x'=>$x,'y'=>$y);}
     public static function begin($r,$source,$scale)
     {
         if(!class_exists('Imagick')){return SBS_Finishing::error('tile_tools','Large-image upscaling needs the server image tools to preserve native detail.',503);}
