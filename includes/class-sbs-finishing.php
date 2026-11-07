@@ -723,6 +723,27 @@ final class SBS_Finishing
         $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
         return array('uuid'=>wp_generate_uuid4(),'number'=>count($r['versions'])+1,'asset'=>$asset,'options'=>$options,'qa'=>$qa,'created_at'=>gmdate('c'),'comparison'=>array('byte_identical'=>hash_equals($r['original']['sha256'],$asset['sha256']),'geometry'=>self::geometry_report($r['original'],$asset,$r['original_qa'],$qa),'structural_detection'=>'Not run — human review required','text_face_detection'=>'Not run — human review required'));
     }
+    public static function drive_artifacts($r)
+    {
+        $v=self::current($r);
+        if($v&&isset($r['original']['sha256'],$v['asset']['sha256'])&&hash_equals($r['original']['sha256'],$v['asset']['sha256'])&&empty($r['flow']['review'])){return self::error('unchanged_candidate','The selected candidate is identical to the original. Select the upscaled or edited version before transferring files.',409);}
+        if(!$v||!self::intact($r['original'])||!self::intact($v['asset'])||empty($r['approval']['sha256'])||!hash_equals($r['approval']['sha256'],$v['asset']['sha256'])){return self::error('integrity','The selected artwork failed its transfer integrity check.',409);}
+        $r['qa_manifest']=SBS_Print_QA::manifest($r);
+        $report="SMUTTY STUDIO DIRECT FILE TRANSFER\nNo ZIP archive was created. Files are stored individually in the matching artwork folder.\nThis is not a final print master or a production approval.\n\n";
+        $report.="Artwork: ".sanitize_text_field((string)$r['title'])."\nCandidate version: ".(int)$v['number']."\nHuman approval: ".(string)$r['approval']['at']."\nOriginal SHA-256: ".$r['original']['sha256']."\nCandidate SHA-256: ".$v['asset']['sha256']."\n\nPrint QA:\n".wp_json_encode($v['qa'],JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)."\n";
+        $checksums=$r['original']['sha256']."  original/".basename((string)$r['original']['filename'])."\n".$v['asset']['sha256']."  final/".basename((string)$v['asset']['filename'])."\n";
+        $metadata=wp_json_encode($r,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
+        $qa=wp_json_encode($r['qa_manifest'],JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
+        if(!is_string($metadata)||!is_string($qa)){return self::error('metadata','Transfer records could not be prepared.',500);}
+        $generated=array();
+        foreach(array(array('metadata.json',$metadata,'application/json','finishing_metadata'),array('finishing-qa.json',$qa,'application/json','finishing_qa'),array('checksums.sha256',$checksums,'text/plain','finishing_checksums'),array('report.txt',$report,'text/plain','finishing_report')) as $item){
+            $asset=SBS_Storage::store_bytes($item[1],$item[0],$item[2],'finishing',0,$item[3],$r['title']);if(is_wp_error($asset)){return $asset;}$generated[]=array('type'=>$item[3],'suffix'=>$item[0],'asset'=>$asset,'mimeType'=>$item[2]);
+        }
+        return array_merge(array(
+            array('type'=>'original','suffix'=>'original'.(pathinfo($r['original']['filename'],PATHINFO_EXTENSION)?'.'.strtolower(pathinfo($r['original']['filename'],PATHINFO_EXTENSION)):'.png'),'asset'=>$r['original'],'mimeType'=>$r['original']['mime']),
+            array('type'=>'final','suffix'=>'final'.(pathinfo($v['asset']['filename'],PATHINFO_EXTENSION)?'.'.strtolower(pathinfo($v['asset']['filename'],PATHINFO_EXTENSION)):'.png'),'asset'=>$v['asset'],'mimeType'=>$v['asset']['mime'])
+        ),$generated);
+    }
     private static function package_filename($title,$requested,$version)
     {
         $base=is_string($requested)&&trim($requested)!==''?$requested:$title;

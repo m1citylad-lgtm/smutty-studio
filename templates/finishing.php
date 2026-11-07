@@ -1,7 +1,7 @@
 <section class="sbs-panel sbs-af active" data-panel="finishing" aria-labelledby="sbs-af-title">
     <h1 id="sbs-af-title" tabindex="-1">Artwork Finishing</h1>
     <?php require SBS_PLUGIN_DIR . 'templates/finishing-flow.php'; ?>
-    <p class="sbs-af-notice"><strong>Local Artwork Finishing.</strong> Files stay in private Studio storage. Download the package when ready. Local finishing approval does not approve production.</p>
+    <p class="sbs-af-notice"><strong>Local Artwork Finishing.</strong> Files stay in private Studio storage until you transfer them to Drive. Local finishing approval does not approve production.</p>
     <details id="sbs-af-freestyle-source" hidden><summary>Freestyle source history</summary><p id="sbs-af-freestyle-source-summary"></p><p id="sbs-af-freestyle-source-settings"></p><ol id="sbs-af-freestyle-source-lineage"></ol></details>
 <div class="sbs-grid two sbs-af-workflow-layout">
         <section class="sbs-card sbs-af-workspace-card"><h2>1. Choose artwork</h2>
@@ -135,7 +135,7 @@
         <section id="sbs-af-handoff" class="sbs-af-handoff" aria-labelledby="sbs-af-handoff-title">
             <h3 id="sbs-af-handoff-title">Final checks and ChatGPT handoff</h3>
             <p id="sbs-af-readiness" role="status" aria-live="polite" aria-atomic="true" data-state="review">REVIEW — select a candidate to check readiness.</p>
-            <label for="sbs-af-handoff-text">Copy this with the ZIP for ChatGPT review<textarea id="sbs-af-handoff-text" rows="9" readonly spellcheck="false"></textarea></label>
+            <label for="sbs-af-handoff-text">Copy this handoff for ChatGPT review<textarea id="sbs-af-handoff-text" rows="9" readonly spellcheck="false"></textarea></label>
             <button id="sbs-af-copy-handoff" class="sbs-button" type="button" disabled>Copy ChatGPT handoff</button>
         </section>
         <button id="sbs-af-approve" class="sbs-button primary" type="button" disabled><span class="sbs-af-approve-label">6. Approve this local version</span><span class="sbs-af-approve-spinner" aria-hidden="true" hidden></span><span class="sbs-af-approve-done" aria-label="Approved locally" hidden>✓</span></button>

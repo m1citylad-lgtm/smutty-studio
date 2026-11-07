@@ -2,7 +2,7 @@
 <section class="sbs-card sbs-af" aria-labelledby="sbs-google-title">
     <h2 id="sbs-google-title">Artwork Finishing — Google Drive</h2>
     <p id="sbs-google-status" role="status" aria-live="polite" aria-atomic="true"><?php echo $sbs_google_signed_in ? 'Connection not checked. Use Check connection status to see the saved settings.' : 'Studio sign-in required. Sign in above before saving or checking Google settings.'; ?></p>
-    <p>Google sign-in is separate from ChatGPT. Approved ZIPs can be saved when the connected account has archive-folder access.</p>
+    <p>Google sign-in is separate from ChatGPT. Approved artwork and inspection files can be transferred individually when the connected account has access to the Smutty Bear folder. The production register is updated after uploads are verified.</p>
     <details><summary>Google Cloud client settings</summary>
         <form id="sbs-google-config"><label for="sbs-google-client">OAuth web application client ID<input id="sbs-google-client" type="text" autocomplete="off" required <?php disabled(!$sbs_google_signed_in); ?>></label><label for="sbs-google-secret">Client secret — encrypted on the server<input id="sbs-google-secret" type="password" autocomplete="new-password" <?php disabled(!$sbs_google_signed_in); ?>></label><p>Secret stays encrypted. Leave blank to keep it. Disconnect before changing it. Studio password holders can edit these shared settings.</p><button class="sbs-button" type="submit" <?php disabled(!$sbs_google_signed_in); ?>>Save encrypted Google client settings</button></form>
     </details>
