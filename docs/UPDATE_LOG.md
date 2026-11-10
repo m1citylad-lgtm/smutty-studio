@@ -252,3 +252,8 @@ Limitations: the assessment estimates existing style from appearance; it cannot 
 ## 10 November 2026 — v0.5.3 treatment handoff repair
 
 Treatment now automatically loads the selected workspace PNG on entering the final stages. The clean source is visible in both comparison panes until a treatment result exists. The default is Vintage 70/20/10, and changing treatment immediately updates assessment availability. Automatic loading attempts once per source and retains a visible manual retry on failure. Regressions cover stage entry without a separate load click, visible source panes and enabled/disabled assessment across preset changes. Live checks remain subject to restored browser access.
+
+
+## 10 November 2026 — v0.5.4 treatment script bootstrap
+
+Live v0.5.3 showed correct source handoff but the treatment controller script was absent from document.scripts. WordPress enqueued it, but the isolated Studio template prints an explicit list and omitted sbs-treatment. Added it to that list and added a regression assertion against the production template. Existing browser tests injected their own script list, which is why they missed this production bootstrap defect. Live assessment/preview checks follow installation.
