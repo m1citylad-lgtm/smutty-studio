@@ -171,7 +171,7 @@ function mockAction(p){calls.push(p.action+(p.pass?':'+p.pass:''));
  assert.equal(await page.locator('#sbs-final-save-preview').isEnabled(),true);
  await page.locator('#sbs-final-fullscreen').click();assert.equal(await page.locator('#sbs-final-view-dialog').isVisible(),true);
  await page.locator('#sbs-final-view-in').click();assert.match(await page.locator('#sbs-final-view-state').textContent(),/130%/);
- await page.locator('#sbs-final-view-toggle').click();assert.match(await page.locator('#sbs-final-view-state').textContent(),/Source.*130%/);
+ await page.locator('#sbs-final-view-toggle').click();await page.waitForFunction(()=>document.getElementById('sbs-final-view-state').textContent.startsWith('Source'));assert.match(await page.locator('#sbs-final-view-state').textContent(),/Source.*130%/);
  await page.locator('#sbs-final-view-close').click();await page.locator('#sbs-final-reset-effects').click();
  await page.locator('#sbs-final-apply').click();await page.waitForFunction(()=>document.getElementById('sbs-final-treatment-message').textContent.includes('Preview ready'));
  assert.equal(await page.locator('#sbs-final-save-preview').isEnabled(),false,'Zero effect created redundant save');
