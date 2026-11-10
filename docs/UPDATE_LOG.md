@@ -1,6 +1,8 @@
 # v0.5.0 — Optional final finish, logo and mockup stages (10 November 2026)
 
-Development candidate; live installation and owner-account verification pending. Do not mark SS-012–SS-016 complete until the release has passed checks and is installed.
+Signed v0.5.0 published; the refreshed live Studio and updater reported v0.5.0 on 10 November 2026. Automated PHP, real-image and guided browser regressions passed. Final owner-account workflow acceptance remains open; do not mark the whole change log complete.
+
+Live verification observed the three internal stages and retained v0.4.11 rollback backups dated 20261110-134333 and 20261110-134205. The actual installation action was not observed by the agent. A later disposable-copy import setup stalled; the browser runtime reset and the recovered page was signed out. Whether that upload saved is unknown. Restore authentication and reconcile any UPDATE TEST workspace before retrying. Genuine series-logo imports, live new-stage finish/branding/proof checks and the real new-package Drive/register transfer remain outstanding. Device touch/audio and physical supplier calibration are not claimed. The authoritative Google change log records the release and exact remaining work.
 
 - Add three internal stages while retaining the existing six-step preparation flow. Independent library/device PNG entry runs no upscaler or generative model.
 - Keep Original is a real unchanged-file decision; package aliases share the clean SHA-256 and avoid duplicate large files. New deterministic colour/optional owner-masked RGB-dot treatments preserve alpha, dimensions, sRGB and print metadata. Flattened artwork is not automatically semantically segmented; visual review stays explicit.
