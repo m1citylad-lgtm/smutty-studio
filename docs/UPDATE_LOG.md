@@ -229,3 +229,14 @@ Bring **“6. Approve this local version”** into line with the stage buttons:
 - Successful local approval displays a prominent green tick at the right of the button.
 - Local finishing approval remains separate from production approval.
 
+
+
+## 10 November 2026 — v0.5.1 explicit workspace downloads
+
+Requested: choose an exact saved file in Artwork Finishing and download the treatment directly.
+
+- Added a shared Download a workspace file selector across all three stages, showing workspace title, role, filename, preview, pixel dimensions and file reference. Original upload, saved versions, saved clean/finished/branded assets and web proofs are listed from the selected workspace. This lists Studio assets, not unrelated Drive folder contents.
+- No file is selected automatically. Workspace switches and replacement of a selected asset clear the selection. Choosing a download does not change the editing source or approval. Web proofs are marked NOT FOR PRINTING.
+- Added direct saved-result download beside the treatment comparison, with filename and approval status. Keep Original uses its exact existing bytes. Downloading is separate from Drive package export.
+- Corrected earlier chat guidance: v0.5.0 did not contain the Download finished PNG button described to the owner.
+- Validation and live installation status will be recorded after checks and deployment.

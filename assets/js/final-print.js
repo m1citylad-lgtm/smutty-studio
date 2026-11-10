@@ -6,10 +6,24 @@ function bendOffset(t,bends,height){return bends.reduce((v,b)=>{const d=Math.abs
 function align(points){
  const n=points.length;if(n<2)throw Error('Set at least two corresponding anatomical markers.');const a=points.reduce((s,p)=>({x:s.x+p.ax/n,y:s.y+p.ay/n}),{x:0,y:0}),b=points.reduce((s,p)=>({x:s.x+p.bx/n,y:s.y+p.by/n}),{x:0,y:0});let top=0,bot=0;points.forEach(p=>{top+=(p.ax-a.x)*(p.bx-b.x)+(p.ay-a.y)*(p.by-b.y);bot+=(p.ax-a.x)**2+(p.ay-a.y)**2;});if(bot<1e-9||top<=0)throw Error('The anatomical landmarks cannot be aligned proportionally. Check wearer-left and wearer-right.');const scale=top/bot,x=b.x-scale*a.x,y=b.y-scale*a.y;return {scale,x,y,residuals:points.map(p=>({id:p.id,x:scale*p.ax+x-p.bx,y:scale*p.ay+y-p.by,distance:Math.hypot(scale*p.ax+x-p.bx,scale*p.ay+y-p.by)}))};
 }
+function workspaceFiles(record){
+ if(!record)return [];
+ const files=[],add=(key,label,asset,qa)=>{if(asset&&asset.url)files.push({key:key+':'+(asset.sha256||asset.uuid||asset.url),label,asset,qa:qa||{}});};
+ add('original','Original upload',record.original,record.original_qa);
+ (record.versions||[]).forEach(v=>add('version:'+v.uuid,'Version '+v.number+' — '+(v.options&&v.options.method||'saved artwork')+(v.uuid===record.current_version?' — editing source':''),v.asset,v.qa));
+ const f=record.final_print;if(f){
+  const source=(record.versions||[]).find(v=>v.uuid===record.current_version),active=f.clean&&f.clean.sha256===(source?source.asset:record.original).sha256,suffix=active?'':' — from previous source';
+  add('clean','Clean treatment source'+suffix,f.clean,f.clean_qa);
+  if(f.finished)add('finished',(f.finished.settings.preset==='original'?'Kept original — no extra finish':'Treatment result — '+f.finished.settings.preset)+suffix,f.finished.asset,f.clean_qa);
+  if(f.branded)add('branded','Artwork with saved logo'+suffix,f.branded.asset,f.clean_qa);
+  (f.proofs||[]).forEach((p,i)=>add('proof:'+i+':'+p.asset.sha256,'WEB MOCKUP — '+p.colour+' — NOT FOR PRINTING'+suffix,p.asset));
+ }
+ return files;
+}
 function init(){
  const $=id=>document.getElementById('sbs-final-'+id),root=document.getElementById('sbs-final');if(!root||!window.SBSFinishingBridge)return;
  const bridge=window.SBSFinishingBridge,panel=root.closest('[data-panel]'),app=document.getElementById('sbs-app'),apiBase=app.getAttribute('data-rest').replace(/\/$/,''),prefix='sbs-final-',nav=document.createElement('div'),prepare=document.createElement('div');nav.className='sbs-final-nav';nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Artwork stages');prepare.className='sbs-final-prepare';prepare.id='sbs-final-prepare';
- Array.from(panel.children).forEach(n=>{if(n!==root&&n.id!=='sbs-af-title')prepare.appendChild(n);});panel.append(prepare);panel.insertBefore(nav,root);
+ Array.from(panel.children).forEach(n=>{if(n!==root&&n.id!=='sbs-af-title')prepare.appendChild(n);});panel.append(prepare);panel.insertBefore(nav,root);panel.insertBefore($('downloads'),nav);
  let stage=1,items=[],sourceRecords=[],busy=false,lastKey='',draftKey='',zones=[],logo={x:.5,y:.8,width:.22,bends:[]},print={x:.5,y:.5,width:1,bends:[]},undo=[],imgCache=new Map(),drawEpoch=0,loadedSettings='',dirty=false,toggle=false,drag=null,markerDrag=null;
  const shirts={};['black','white','red','navy'].forEach(c=>{shirts[c]=new URL('../mockups/generic-'+c+'.webp',(document.querySelector('script[src*="final-print.js"]')||{src:document.baseURI+'assets/js/final-print.js'}).src).href;});
  const artAnchors={AL:{x:.73,y:.3},AR:{x:.27,y:.3},S:{x:.5,y:.3},AB:{x:.5,y:.78}},shirtAnchors={C0:{x:.5,y:.16},X0:{x:.5,y:.5},A:{x:.5,y:.30},NL:{x:.73,y:.381},NR:{x:.27,y:.381},B:{x:.5,y:.687}};
@@ -43,6 +57,23 @@ function init(){
  function selectedLogo(){return items.find(i=>i.id===$('logo').value);}function selectedTemplate(){return items.find(i=>i.id===$('template').value);}function finalAsset(){const f=post();return f&&(f.branded||f.finished)&&((f.branded||f.finished).asset);}function brandBase(){const f=post();return f&&f.finished&&f.finished.asset;}
  function settings(){return {logo_id:$('logo').value,logo:logo,print:print,template_id:$('template').value,colour:$('colour').value,view:$('view').value,product:$('product').value,garment_size:$('garment-size').value,physical_width_estimate_mm:Number($('mm').value),physical_verified:false,evidence:$('evidence').value,scaling_hypothesis:$('scaling').value,torso:$('torso').value,torso_layout:$('torso-layout').value,art_anchors:artAnchors,shirt_anchors:shirtAnchors,calibration:'UNVERIFIED'};}
  function restore(s){if(!s||!Object.keys(s).length)return;logo=s.logo||logo;print=s.print||print;const pairs={logo:'logo_id',template:'template_id',colour:'colour',view:'view',product:'product','garment-size':'garment_size',mm:'physical_width_estimate_mm',evidence:'evidence',scaling:'scaling_hypothesis',torso:'torso','torso-layout':'torso_layout'};Object.keys(pairs).forEach(k=>{if(s[pairs[k]]!==undefined)$(k).value=s[pairs[k]];});if(s.art_anchors)Object.assign(artAnchors,s.art_anchors);if(s.shirt_anchors)Object.assign(shirtAnchors,s.shirt_anchors);$('curve').checked=logo.bends.length>0;}
+ function downloadLink(link,asset,disabled){link.hidden=!asset||disabled;link.removeAttribute('href');link.removeAttribute('download');if(asset&&!disabled){link.href=asset.url;link.download=asset.filename||'workspace-image.png';}}
+ function showDownload(){
+  const r=state(),file=workspaceFiles(r).find(f=>f.key===$('download-file').value),asset=file&&file.asset,preview=$('download-preview');
+  downloadLink($('download-link'),asset,busy||bridge.isBusy());preview.hidden=!asset;
+  if(!asset){preview.removeAttribute('src');$('download-detail').textContent='Select a file to see its preview and filename.';return;}
+  const details=[r.title,file.label,asset.filename||'Saved image'];if(file.qa.width&&file.qa.height)details.push(file.qa.width+' × '+file.qa.height+' pixels');if(asset.bytes)details.push((asset.bytes/1024/1024).toFixed(2)+' MB');if(asset.sha256)details.push('File reference: '+asset.sha256.slice(0,12));
+  $('download-detail').textContent=details.join('\n');preview.alt=r.title+' — '+file.label;preview.onload=()=>{if(preview.naturalWidth)$('download-detail').textContent=details.join('\n')+'\nPreview dimensions: '+preview.naturalWidth+' × '+preview.naturalHeight+' pixels';};preview.src=asset.url;
+ }
+ function renderDownloads(r,active){
+  const select=$('download-file'),workspace=r?r.uuid:'',chosen=select.dataset.workspace===workspace?select.value:'';select.dataset.workspace=workspace;
+  const files=workspaceFiles(r);select.replaceChildren(new Option('Choose a file — no file selected',''));files.forEach(f=>select.add(new Option(f.label+' · '+(f.asset.filename||'Saved image'),f.key)));select.value=files.some(f=>f.key===chosen)?chosen:'';select.disabled=!r||busy||bridge.isBusy();
+  $('download-workspace').textContent=r?'Workspace: '+r.title:'Choose a workspace first.';showDownload();
+  const f=r&&r.final_print,result=active&&f.finished,asset=result&&result.asset;downloadLink($('treatment-download'),asset,busy||bridge.isBusy());
+  $('treatment-download').textContent=result&&result.settings.preset==='original'?'Download kept-original PNG':'Download this treated PNG';
+  $('treatment-download-detail').textContent=asset?r.title+' — '+(result.settings.preset==='original'?'Kept original / no extra finish':result.settings.preset+' treatment')+'\n'+asset.filename+'\n'+(result.approval?'Approved result.':'Saved candidate — review before printing.'):'Apply a treatment or choose Keep Original to save a downloadable result.';
+ }
+ $('download-file').onchange=showDownload;
  function render(force=false){
   const r=state(),f=post(),v=selected(),hash=v&&v.asset.sha256,key=r?r.uuid+':'+hash:'none';apply.disabled=keep.disabled=busy||bridge.isBusy()||!r||!r.approval;
   if(key!==lastKey){lastKey=key;Object.assign(artAnchors,JSON.parse(JSON.stringify(defaultArt)));Object.assign(shirtAnchors,JSON.parse(JSON.stringify(defaultShirt)));$('torso').value='none';zones=[];undo=[];logo={x:.5,y:.8,width:.22,bends:[]};print={x:.5,y:.5,width:1,bends:[]};draftKey='';loadedSettings='';dirty=false;['visual','warnings','brand-review','source-reviewed','package-review'].forEach(k=>$(k).checked=false);$('prefix').value=(r&&/^(SB|MB|PW|TT)\b/i.test(r.title)?r.title.slice(0,2):'SB').toUpperCase();}
@@ -51,6 +82,7 @@ function init(){
   if(valid&&JSON.stringify(f.settings)!==loadedSettings&&!dirty){restore(f.settings);loadedSettings=JSON.stringify(f.settings);}
   $('project').textContent=r?r.title+'\nSelected source '+hash.slice(0,12)+(valid?' · '+nextAction():' · Load this source to begin.'): 'Choose a saved artwork or import a high-resolution PNG.';
   const active=!!valid,processing=busy||bridge.isBusy();$('load').disabled=processing||!r||!!r.pending;$('load').hidden=active;
+  renderDownloads(r,active);
   ['apply','keep','check','vision','accept'].forEach(k=>$(k).disabled=processing||!active||(k==='check'||k==='vision'||k==='accept')&&!f.finished);
   ['save-brand','save-settings'].forEach(k=>$(k).disabled=processing||!active||!f.finished||!f.finished.approval);
   $('brand-approve').disabled=processing||!active||!f.branded;$('brand-vision').disabled=processing||!active||!f.branded;$('proofs').disabled=processing||!active||!f.finished;$('export').disabled=processing||!active||!f.finished||!f.finished.approval||!!(f.branded&&!f.branded.approval)||!f.brand_decision||!f.proofs.length||dirty;
@@ -116,5 +148,5 @@ function init(){
  $('library-archive').onclick=async()=>{if(!$('library-item').value)return;if(!window.confirm('Archive this imported asset? Existing saved artwork and packages keep their references.'))return;try{await api('/final-library',{id:$('library-item').value,operation:'archive',confirm:true});await loadLibrary();$('library-status').textContent='Imported asset archived. Existing artwork is retained.';}catch(e){$('library-status').textContent=e.message;}};
  document.addEventListener('sbs:finishing-state',()=>render());loadLibrary().then(()=>{render();}).catch(e=>status(e.message,true));choose(1);
 }
-if(typeof module!=='undefined')module.exports={fit,centre,align,bendOffset,PRODUCTS};if(typeof window!=='undefined')window.SBSFinalPrint={fit,centre,align,bendOffset,init};if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();}
+if(typeof module!=='undefined')module.exports={fit,centre,align,bendOffset,PRODUCTS,workspaceFiles};if(typeof window!=='undefined')window.SBSFinalPrint={fit,centre,align,bendOffset,init};if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();}
 })();

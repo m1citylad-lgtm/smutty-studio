@@ -1,4 +1,13 @@
 <section id="sbs-final" class="sbs-final-stage" hidden aria-label="Final artwork stages">
+ <section id="sbs-final-downloads" class="sbs-card" aria-labelledby="sbs-final-download-title">
+  <h2 id="sbs-final-download-title">Download a workspace file</h2>
+  <p id="sbs-final-download-workspace" role="status">Choose a workspace first.</p>
+  <label>Exact saved file to download<select id="sbs-final-download-file"><option value="">Choose a file — no file selected</option></select></label>
+  <p>Choose an original, a saved artwork version, a treatment result or a web mockup. Selecting a download does not change the artwork you are editing.</p>
+  <img id="sbs-final-download-preview" class="sbs-final-download-preview" alt="Selected download preview" hidden>
+  <p id="sbs-final-download-detail" role="status">Select a file to see its preview and filename.</p>
+  <a id="sbs-final-download-link" class="sbs-button primary" hidden>Download selected file</a>
+ </section>
  <p id="sbs-final-project" class="sbs-final-readout" role="status">Choose a saved artwork or import a high-resolution PNG.</p>
  <details id="sbs-final-entry"><summary>Open another saved artwork / import high-resolution PNG</summary>
   <label>Studio Library<select id="sbs-final-sources"><option value="">Choose saved artwork</option></select></label>
@@ -14,6 +23,8 @@
   <div class="sbs-final-actions"><button type="button" id="sbs-final-apply" class="sbs-button">Apply finish as new candidate</button><button type="button" id="sbs-final-keep" class="sbs-button primary">Keep Original &amp; Continue</button></div>
   <details><summary>Fine-tune and protected areas</summary><label>Finish strength<input id="sbs-final-strength" type="range" min="0" max="1" step=".05" value=".25"></label><p>All areas are protected from repeating textures by default. Tonal softening affects colour only. For selective RGB halftone, mark shadow/decorative areas below. Keep skin, clothes, boots, faces and lettering outside these areas. Flattened images are not automatically segmented.</p><label><input type="checkbox" id="sbs-final-zone-mode"> Select a texture rectangle by dragging on the clean preview</label><button id="sbs-final-zone-clear" type="button" class="sbs-button">Clear texture areas — protect everything</button><p id="sbs-final-zones-count">No texture areas selected.</p><div class="sbs-final-canvas-wrap"><canvas id="sbs-final-mask" width="700" height="700" aria-label="Select decorative shadow areas; all other areas are protected"></canvas></div><p>70/20/10 describes the intended aesthetic balance. It is not a pixel quota. These presets use restrained tonal changes and optional RGB dots; no alpha holes or random distress are introduced.</p></details>
   <div class="sbs-final-compare"><figure><figcaption>Clean high-resolution source</figcaption><div><img id="sbs-final-clean" alt="Unchanged clean source"></div></figure><figure><figcaption>Selected finish</figcaption><div><img id="sbs-final-candidate" alt="Finish candidate for comparison"></div></figure></div>
+  <p id="sbs-final-treatment-download-detail" role="status">Apply a treatment or choose Keep Original to save a downloadable result.</p>
+  <a id="sbs-final-treatment-download" class="sbs-button primary" hidden>Download this treated PNG</a>
   <div class="sbs-final-actions"><button type="button" id="sbs-final-toggle" class="sbs-button">Toggle clean / finish</button><button type="button" id="sbs-final-zoom" class="sbs-button">Toggle 2× comparison zoom</button><button type="button" id="sbs-final-difference" class="sbs-button">Show changed areas</button></div><canvas id="sbs-final-diff" width="700" height="700" hidden aria-label="Changed RGB/alpha area overlay"></canvas>
   <p id="sbs-final-finish-qa" class="sbs-final-qa" role="status">Technical: NOT CHECKED · Visual: NOT CHECKED</p>
   <button type="button" id="sbs-final-check" class="sbs-button">Check finished artwork</button>
