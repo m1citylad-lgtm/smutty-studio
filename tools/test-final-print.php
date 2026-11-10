@@ -6,7 +6,7 @@ class SBS_Storage {
  public static function absolute_path($a){return $a['path'];}
  public static function base_dir(){return $GLOBALS['tmp'];}
  public static function ensure_directories(){return true;}
- public static function store_bytes($b,$name,$mime,$owner,$oid,$role,$label,$meta=array()){$path=$GLOBALS['tmp'].'/'.bin2hex(random_bytes(5)).'-'.$name;file_put_contents($path,$b);return array('path'=>$path,'filename'=>$name,'mime'=>$mime,'sha256'=>hash('sha256',$b),'url'=>'https://example.test/private/'.$name,'metadata_json'=>json_encode($meta));}
+ public static function store_bytes($b,$name,$mime,$owner,$oid,$role,$label,$meta=array()){$path=$GLOBALS['tmp'].'/'.bin2hex(random_bytes(5)).'-'.$name;file_put_contents($path,$b);return array('id'=>random_int(1,100000000),'path'=>$path,'filename'=>$name,'mime'=>$mime,'sha256'=>hash('sha256',$b),'url'=>'https://example.test/private/'.$name,'metadata_json'=>json_encode($meta));}
 }
 class SBS_Finishing {
  public static function error($c,$m,$s=400){return new WP_Error($c,$m);}
@@ -15,6 +15,7 @@ class SBS_Finishing {
 }
 class SBS_Finishing_Flow {public static function source($r){return $r['selected']??$r['original'];}}
 class SBS_Google_Drive {public static function save_artifacts($artifacts,$workspace,$candidate,$stamp,$title,$prefix,$version,$run){$GLOBALS['exports'][]=array('artifacts'=>$artifacts,'stamp'=>$stamp,'run'=>$run);if($GLOBALS['fail_transfer']??false)return new WP_Error('injected','Injected lost transfer response');return array('id'=>'folder-'.$run,'verified'=>true,'url'=>'https://example.test/folder','register'=>array('verified'=>true,'url'=>'https://example.test/register'));}}
+class SBS_OpenAI {public static $calls=0;public static function review_finishing_artwork($a,$b,$title,$o,$seams,$context){self::$calls++;return array('overall'=>'clear','summary'=>'Advisory clear','findings'=>array());}}
 class Request {private $params;function __construct($p){$this->params=$p;}function get_param($k){return $this->params[$k]??null;}}
 require SBS_PLUGIN_DIR.'includes/class-sbs-print-qa.php';require SBS_PLUGIN_DIR.'includes/class-sbs-final-print.php';
 function check($value,$message){if(!$value){throw new Exception($message);}}function run($r,$a,$p=array()){$out=SBS_Final_Print::handle($r,new Request(array_merge(array('action'=>$a),$p)));if(is_wp_error($out)){throw new Exception($out->message);}return $out;}
@@ -39,6 +40,7 @@ try {
  $br=run($no_finish,'final_brand',array('logo_id'=>'approved-signature','placement'=>array('x'=>.5,'y'=>.8,'width'=>.1,'bends'=>array(array('x'=>.5,'y'=>.1)))));check($br['final_print']['branded']['asset']['sha256']!==$source['sha256'],'Branded derivative was not created');check(empty($br['final_print']['branded']['approval']),'Branding silently approved');check(SBS_Final_Print::intact($source)&&SBS_Final_Print::intact($la),'Branding changed a master');$bm=SBS_Print_QA::metadata($br['final_print']['branded']['asset']['path']);check($bm['png_color_type']===6&&$bm['profile']==='srgb_icc','Branding lost RGBA/ICC');
  check(is_wp_error(SBS_Final_Print::handle($no_finish,new Request(array('action'=>'final_brand','logo_id'=>'approved-signature','placement'=>array('x'=>0,'y'=>0,'width'=>.1))))),'Clipped logo was accepted');
  $GLOBALS['options']['sbs_final_library'][0]['signature']=false;check(is_wp_error(SBS_Final_Print::handle($no_finish,new Request(array('action'=>'final_brand','logo_id'=>'approved-signature','placement'=>array('x'=>.5,'y'=>.8,'width'=>.1,'bends'=>array(array('x'=>.5,'y'=>.1))))))),'Complex logo was allowed to curve');
+ $cached=run($r,'final_check',array('vision'=>true));check(SBS_OpenAI::$calls===1,'Changed artwork visual check not called');$cached=run($cached,'final_check',array('vision'=>true));check(SBS_OpenAI::$calls===1,'Unchanged advisory result was charged again');$unchanged=run($no_finish,'final_check',array('vision'=>true));check(SBS_OpenAI::$calls===1,'No-finish identical source should reuse previous visual evidence');
  $unapproved=$no_finish;$unapproved['approval']=null;unset($unapproved['final_print']);$unapproved=run($unapproved,'final_begin');$unapproved=run($unapproved,'final_keep');check(empty($unapproved['final_print']['finished']['approval']),'Independent import silently approved');
  $changed=$r;$changed['selected']=$out;check(is_wp_error(SBS_Final_Print::handle($changed,new Request(array('action'=>'final_keep')))),'Changed input must invalidate finishing re-entry');$other=$r;$other['uuid']='another';unset($other['final_print']);$other=run($other,'final_begin');check(empty($other['final_print']['finished']),'Another workspace inherited approval');
  check(is_wp_error(SBS_Final_Print::placement(array('width'=>-1))),'Invalid logo geometry accepted');check(is_wp_error(SBS_Final_Print::geometry(array('x'=>.9,'w'=>.4))),'Out-of-bounds template accepted');

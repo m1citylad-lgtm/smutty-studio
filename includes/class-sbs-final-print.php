@@ -136,10 +136,18 @@ final class SBS_Final_Print
         } elseif($action==='final_check'||$action==='final_approve'){
             $which=$q->get_param('which')==='branded'?'branded':'finished';$v=$f[$which];if(!$v||!self::intact($v['asset'])){return self::error('Create or select the candidate before checking it.');}
             $qa=SBS_Finishing::inspect($v['asset'],$o);if(is_wp_error($qa)){return $qa;}$v['qa']=$qa;$v['technical']=array('status'=>empty($qa['warnings'])?'PASS':'REVIEW','reasons'=>$qa['warnings']);
+            if($action==='final_check'&&$q->get_param('vision')===true){
+                if($v['asset']['sha256']===$f['clean']['sha256']){$v['visual']=array('status'=>'REVIEW','reason'=>'Pixels are unchanged; reuse the source review. No duplicate AI check was charged.');}
+                else {
+                    $report=$v['ai_review']??null;
+                    if(!$report||($report['candidate_sha256']??'')!==$v['asset']['sha256']){$report=SBS_OpenAI::review_finishing_artwork($f['clean']['id'],$v['asset']['id'],$r['title'],$o,array(),array('preset'=>$f['finished']['settings']['preset']??'original','branding'=>$which==='branded'));if(is_wp_error($report)){return $report;}$report['candidate_sha256']=$v['asset']['sha256'];}
+                    $v['ai_review']=$report;$v['visual']=array('status'=>($report['overall']??'')==='clear'?'PASS':'REVIEW','reason'=>'Advisory AI: '.($report['summary']??'Review the reported areas.').' Owner acceptance is still required.');
+                }
+            }
             if($action==='final_approve'){
                 if($q->get_param('visual_reviewed')!==true||$q->get_param('warnings_reviewed')!==true){return self::error('Review the whole design and acknowledge its technical/placement warnings before approval.');}
                 $v['approval']=array('at'=>gmdate('c'),'sha256'=>$v['asset']['sha256'],'target'=>$f['target'],'scope'=>'owner_local_review','warnings_accepted'=>$qa['warnings']);$v['visual']=array('status'=>'PASS','reason'=>'Owner reviewed the whole composition and accepted it. Not an automated aesthetic guarantee.');
-            }else{$v['approval']=null;$v['visual']=array('status'=>'REVIEW','reason'=>'Technical checks refreshed. Review the whole design before approving.');}
+            }else{$v['approval']=null;if($q->get_param('vision')!==true){$v['visual']=array('status'=>'REVIEW','reason'=>'Technical checks refreshed. Review the whole design before approving.');}}
             $f[$which]=$v;$f['package_approval']=null;
         } elseif($action==='final_brand'){
             if(empty($f['finished']['approval'])){return self::error('Approve the selected finish or approve keeping the original first.');}
