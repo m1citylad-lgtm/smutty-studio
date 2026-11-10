@@ -257,3 +257,8 @@ Treatment now automatically loads the selected workspace PNG on entering the fin
 ## 10 November 2026 — v0.5.4 treatment script bootstrap
 
 Live v0.5.3 showed correct source handoff but the treatment controller script was absent from document.scripts. WordPress enqueued it, but the isolated Studio template prints an explicit list and omitted sbs-treatment. Added it to that list and added a regression assertion against the production template. Existing browser tests injected their own script list, which is why they missed this production bootstrap defect. Live assessment/preview checks follow installation.
+
+
+## 10 November 2026 — v0.5.5 treatment target/readiness synchronization
+
+Live assessment responded but rejected an older finishing run with a different print target. Stage validity now includes target dimensions and source hash; entering treatment automatically starts the matching run, retaining history. Treatment readiness refreshes after final-stage render, including asynchronous automatic loads. Failed assessment updates its progress message. Browser regression reopens a matching-source/stale-target run and verifies automatic target replacement plus assessment readiness.

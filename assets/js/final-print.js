@@ -75,9 +75,9 @@ function init(){
  }
  $('download-file').onchange=showDownload;
  function render(force=false){
-  const r=state(),f=post(),v=selected(),hash=v&&v.asset.sha256,key=r?r.uuid+':'+hash:'none';apply.disabled=keep.disabled=busy||bridge.isBusy()||!r||!r.approval;
+  const r=state(),f=post(),v=selected(),hash=v&&v.asset.sha256,key=r?r.uuid+':'+hash+':'+target().width+':'+target().height:'none';apply.disabled=keep.disabled=busy||bridge.isBusy()||!r||!r.approval;
   if(key!==lastKey){autoLoadKey='';lastKey=key;Object.assign(artAnchors,JSON.parse(JSON.stringify(defaultArt)));Object.assign(shirtAnchors,JSON.parse(JSON.stringify(defaultShirt)));$('torso').value='none';zones=[];undo=[];logo={x:.5,y:.8,width:.22,bends:[]};print={x:.5,y:.5,width:1,bends:[]};draftKey='';loadedSettings='';dirty=false;['visual','warnings','brand-review','source-reviewed','package-review'].forEach(k=>$(k).checked=false);$('prefix').value=(r&&/^(SB|MB|PW|TT)\b/i.test(r.title)?r.title.slice(0,2):'SB').toUpperCase();}
-  const valid=f&&f.clean.sha256===hash,changeKey=valid?[f.clean.sha256,f.finished&&f.finished.asset.sha256,f.branded&&f.branded.asset.sha256].join(':'):'';
+  const valid=f&&f.clean.sha256===hash&&Array.isArray(f.target)&&Number(f.target[0])===target().width&&Number(f.target[1])===target().height,changeKey=valid?[f.clean.sha256,f.finished&&f.finished.asset.sha256,f.branded&&f.branded.asset.sha256].join(':'):'';
   if(changeKey!==draftKey){draftKey=changeKey;['visual','warnings','brand-review','source-reviewed','package-review'].forEach(k=>$(k).checked=false);if(f&&f.branded){logo=JSON.parse(JSON.stringify(f.branded.settings.placement));$('logo').value=f.branded.settings.logo.id;}toggle=false;}
   if(valid&&JSON.stringify(f.settings)!==loadedSettings&&!dirty){restore(f.settings);loadedSettings=JSON.stringify(f.settings);}
   $('project').textContent=r?r.title+'\nSelected source '+hash.slice(0,12)+(valid?' · '+nextAction():' · Load this source to begin.'): 'Choose a saved artwork or import a high-resolution PNG.';
@@ -93,6 +93,7 @@ function init(){
   $('export-links').replaceChildren();if(valid&&f.archive){[['Open Studio Package',f.archive.url],['Open production register',f.archive.register&&f.archive.register.url]].forEach(([label,url])=>{if(url){const a=document.createElement('a');a.textContent=label;a.href=url;a.target='_blank';a.rel='noopener';a.className='sbs-button';$('export-links').append(a);}});}
   if(stage>1&&r&&!valid&&!processing&&!r.pending&&autoLoadKey!==key){autoLoadKey=key;begin($('load')).catch(()=>{});}
   if(stage>1||force)draw();
+  document.dispatchEvent(new CustomEvent('sbs:final-render'));
  }
  function image(url){if(!url)return Promise.resolve(null);if(!imgCache.has(url)){imgCache.set(url,new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>{imgCache.delete(url);reject(Error('A preview image could not be loaded. Saved artwork is retained.'));};im.src=url;}));}return imgCache.get(url);}
  function clear(canvas,w,h){canvas.width=Math.round(w);canvas.height=Math.round(h);const ctx=canvas.getContext('2d');ctx.clearRect(0,0,w,h);return ctx;}
