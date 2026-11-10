@@ -105,11 +105,11 @@ final class SBS_Final_Print
         if($action==='final_begin'){
             if(!self::intact($a)||($a['mime']??'')!=='image/png'){return self::error('Select a saved high-resolution PNG or import a PNG for direct entry.');}
             $qa=SBS_Finishing::inspect($a,$o);if(is_wp_error($qa)){return $qa;}
-            if(($r['final_print']['clean']['sha256']??'')===$a['sha256']&&($r['final_print']['target']??null)===array($o['width'],$o['height'])){return $r;}
+            if(($r['final_print']['clean']['sha256']??'')===$a['sha256']&&array_map('floatval',(array)($r['final_print']['target']??array()))===array((float)$o['width'],(float)$o['height'])){return $r;}
             self::history($r);$r['final_print']=array('engine'=>self::ENGINE,'clean'=>$a,'clean_qa'=>$qa,'stage1_approval'=>($r['approval']['sha256']??'')===$a['sha256']?$r['approval']:null,'target'=>array($o['width'],$o['height']),'finished'=>null,'branded'=>null,'brand_decision'=>null,'proofs'=>array(),'started_at'=>gmdate('c'),'settings'=>array());return $r;
         }
         $f=$r['final_print']??null;if(!$f||!self::intact($f['clean'])){return self::error('Load a source into Final Finish or Logo & Mockup first.');}
-        if($f['target']!==array($o['width'],$o['height'])){return self::error('The print target changed. Reload this source to start a separate finishing run.');}
+        if(array_map('floatval',(array)$f['target'])!==array((float)$o['width'],(float)$o['height'])){return self::error('The print target changed. Reload this source to start a separate finishing run.');}
         if($a['sha256']!==$f['clean']['sha256']){return self::error('The selected Stage 1 image changed. Load the new source first; the earlier finishing run is retained.');}
         if($action==='final_assess'){
             $preset=(string)$q->get_param('preset');if(!in_array($preset,array('clean','vintage','period','custom'),true)){return self::error('Select a treatment to assess.');}

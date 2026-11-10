@@ -143,10 +143,11 @@ function mockAction(p){calls.push(p.action+(p.pass?':'+p.pass:''));
  // New stages integrate with the same bridge and preserve the original six-step workflow.
  record.pending=null;record.approval={at:'saved',sha256:record.versions.find(v=>v.uuid===record.current_version).asset.sha256};
  await page.evaluate(r=>window.dispatchEvent(new CustomEvent('sbs-finishing-open',{detail:r})),record);
+ record.final_print={clean:record.versions.find(v=>v.uuid===record.current_version).asset,target:[1,1],finished:null,branded:null,proofs:[],settings:{}};await page.evaluate(r=>window.dispatchEvent(new CustomEvent('sbs-finishing-open',{detail:r})),record);
  const paidBefore=calls.filter(x=>['prepare','run'].includes(x)).length;
  await page.getByRole('tab',{name:'2 Final Finish',exact:true}).click();
  await page.waitForFunction(()=>!!window.SBSFinishingBridge.getState().final_print&&!window.SBSFinishingBridge.isBusy());
- assert.equal(await page.locator('#sbs-final-clean').getAttribute('src'),record.final_print.clean.url);assert.equal(await page.locator('#sbs-final-candidate').getAttribute('src'),record.final_print.clean.url);assert.equal(await page.locator('#sbs-final-assess').isEnabled(),true);await page.locator('#sbs-final-preset').selectOption('original');assert.equal(await page.locator('#sbs-final-assess').isEnabled(),false);await page.locator('#sbs-final-preset').selectOption('vintage');assert.equal(await page.locator('#sbs-final-assess').isEnabled(),true);
+ assert.notDeepEqual(record.final_print.target,[1,1],'Old treatment print target was not refreshed');assert.equal(await page.locator('#sbs-final-clean').getAttribute('src'),record.final_print.clean.url);assert.equal(await page.locator('#sbs-final-candidate').getAttribute('src'),record.final_print.clean.url);assert.equal(await page.locator('#sbs-final-assess').isEnabled(),true);await page.locator('#sbs-final-preset').selectOption('original');assert.equal(await page.locator('#sbs-final-assess').isEnabled(),false);await page.locator('#sbs-final-preset').selectOption('vintage');assert.equal(await page.locator('#sbs-final-assess').isEnabled(),true);
  await page.locator('#sbs-final-keep').click();await page.waitForFunction(()=>document.querySelector('[role=tab][aria-selected=true]').textContent==='3 Logo & Mockup');
  assert.equal(await page.locator('#sbs-final-download-file').inputValue(),'');
  assert.equal(await page.locator('#sbs-final-download-link').isVisible(),false);
