@@ -317,11 +317,12 @@ final class SBS_Finishing
     public static function upload($request)
     {
         $files=$request->get_file_params();$file=$files['file']??array();
-        $max_bytes=20*1024*1024;$file_bytes=(int)($file['size']??0);
-        if($file_bytes>$max_bytes){return self::error('too_large','This file is '.number_format($file_bytes/1048576,2,'.','').' MB. The limit is 20 MB. Choose a smaller copy; your original file will not be changed.');}
-        if(!empty($file['error'])||empty($file['tmp_name'])||!is_readable($file['tmp_name'])){return self::error('upload','The file did not finish uploading. Studio can receive images up to 20 MB. Try a smaller copy and upload again.');}
+        $final_entry=(string)$request->get_param('entry')==='final';$max_bytes=($final_entry?64:20)*1024*1024;$file_bytes=(int)($file['size']??0);
+        if($file_bytes>$max_bytes){return self::error('too_large','This file is '.number_format($file_bytes/1048576,2,'.','').' MB. '.($final_entry?'The limit is 64 MB.':'The limit is 20 MB.').' Choose a smaller copy; your original file will not be changed.');}
+        if(!empty($file['error'])||empty($file['tmp_name'])||!is_readable($file['tmp_name'])){return self::error('upload','The file did not finish uploading. '.($final_entry?'Final-stage PNG entry allows 64 MB, subject to the host upload limit.':'Studio can receive images up to 20 MB.').' Use an existing Studio Library source or a smaller copy.');}
         $size=@getimagesize($file['tmp_name']);
         if(!$size||!in_array($size['mime']??'',array('image/png','image/jpeg','image/webp'),true)){return self::error('format','Choose a PNG, JPEG or WebP image. The original file was not changed.');}
+        if($final_entry&&$size['mime']!=='image/png'){return self::error('format','High-resolution direct entry requires a PNG.');}
         if($file_bytes<1||$size[0]*$size[1]>40000000){return self::error('pixels','This image is larger than the 40-million-pixel limit. Choose a smaller copy. The original file was not changed.');}
         $title=$request->get_param('title'); if(!is_string($title)||strlen($title)>500){return self::error('title','Enter a title up to 500 bytes.');}
         $links=self::links(preg_split('/[\s,]+/',trim((string)$request->get_param('ideas')),-1,PREG_SPLIT_NO_EMPTY),(string)$request->get_param('sb'));

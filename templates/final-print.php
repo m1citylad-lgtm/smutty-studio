@@ -3,7 +3,7 @@
  <details id="sbs-final-entry"><summary>Open another saved artwork / import high-resolution PNG</summary>
   <label>Studio Library<select id="sbs-final-sources"><option value="">Choose saved artwork</option></select></label>
   <button type="button" class="sbs-button" id="sbs-final-open">Open selected artwork</button>
-  <form id="sbs-final-import"><label>Artwork title<input id="sbs-final-import-title" maxlength="150" required></label><label>High-resolution transparent PNG<input type="file" id="sbs-final-import-file" accept="image/png" required></label><button class="sbs-button" type="submit">Import PNG — no upscale or AI scan</button></form>
+  <form id="sbs-final-import"><label>Artwork title<input id="sbs-final-import-title" maxlength="150" required></label><label>High-resolution transparent PNG — up to 64 MB (host limit applies)<input type="file" id="sbs-final-import-file" accept="image/png" required></label><button class="sbs-button" type="submit">Import PNG — no upscale or AI scan</button></form>
   <p>Imports keep the original bytes. Technical checks run locally; previous saved Studio candidates keep their existing checks. Drive packages can be reopened by importing their clean PNG; they are preserved as separate workspaces. A Drive URL alone does not import a package.</p>
  </details>
  <button type="button" id="sbs-final-load" class="sbs-button primary">Load current candidate into this stage</button>
