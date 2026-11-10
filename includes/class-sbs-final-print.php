@@ -217,6 +217,7 @@ final class SBS_Final_Print
             if(!$f['proofs']){return self::error('Make and inspect the selected web shirt proofs before package export.');}
             $fingerprint=hash('sha256',wp_json_encode(array($r['uuid'],$f['clean']['sha256'],$f['finished'],$f['branded'],$f['brand_decision'],$f['settings'],$f['proofs'],$r['series'],$r['artwork_name'])));
             $cache_key='sbs_final_export_'.$fingerprint;$snapshot=get_option($cache_key,null);
+            if(!$snapshot&&empty($r['intake_identity_version'])){$legacy=hash('sha256',wp_json_encode(array($r['uuid'],$f['clean']['sha256'],$f['finished'],$f['branded'],$f['brand_decision'],$f['settings'],$f['proofs'],$q->get_param('prefix'))));$old=get_option('sbs_final_export_'.$legacy,null);if($old){$snapshot=$old;$fingerprint=$legacy;}}
             if(!$snapshot){
                 $f['package_approval']=array('at'=>gmdate('c'),'sha256'=>$v['asset']['sha256'],'scope'=>'local_package_only','physical_calibration'=>'UNVERIFIED','placement_reviewed'=>true);$r['final_print']=$f;
                 $artifacts=self::artifacts($r);if(is_wp_error($artifacts)){return $artifacts;}
@@ -225,7 +226,7 @@ final class SBS_Final_Print
                 if(wp_json_encode(get_option($cache_key))!==wp_json_encode($snapshot)){return self::error('Could not save the transfer checkpoint. No files were transferred.');}
             }
             $artifacts=$snapshot['artifacts'];$run=$snapshot['run'];$stamp=$snapshot['stamp'];$f['package_approval']=$snapshot['approval'];
-            $archive=SBS_Google_Drive::save_artifacts($artifacts,$r['uuid'],$v['asset']['sha256'],$stamp,$r['artwork_name'],$r['series'],count($r['versions'])+1,$run);if(is_wp_error($archive)){return $archive;}
+            $archive=SBS_Google_Drive::save_artifacts($artifacts,$r['uuid'],$v['asset']['sha256'],$stamp,$r['package_title'],$r['series'],count($r['versions'])+1,$run);if(is_wp_error($archive)){return $archive;}
             $r=SBS_Intake::complete($r,$archive);$f['last_export_stamp']=$stamp;$f['last_export_run']=$run;$f['archive']=$archive;$ids=array_column($f['exports']??array(),'id');if(!in_array($archive['id'],$ids,true)){$f['exports'][]=$archive;}
         }
         if($action!=='final_export'){unset($f['archive'],$f['last_export_stamp'],$f['last_export_run']);}

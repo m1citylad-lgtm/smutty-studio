@@ -10,7 +10,8 @@ foreach(array('SB','MB','TT','PW') as $series){$i=SBS_Intake::validate($series,'
 check(is_wp_error(SBS_Intake::validate('XX','Artwork')),'Unsupported series accepted');
 check(is_wp_error(SBS_Intake::validate('SB','   ')),'Blank name accepted');
 $r=SBS_Intake::export_record(array('title'=>'MB Original Madam'),'MB');check($r['artwork_name']==='Original Madam','Duplicate series prefix retained');
-$r=SBS_Intake::export_record(array('title'=>'Old title','series'=>'PW','artwork_name'=>'New Name'),'SB');check($r['series']==='PW'&&$r['artwork_name']==='New Name','Saved intake identity did not control export');
+$r=SBS_Intake::export_record(array('title'=>'Old title','series'=>'PW','artwork_name'=>'New Name','intake_identity_version'=>1),'SB');check($r['series']==='PW'&&$r['artwork_name']==='New Name','Saved intake identity did not control export');
+check($r['package_title']==='New Name','New package ignored artwork name');$legacy=SBS_Intake::export_record(array('title'=>'MB Original Madam'),'MB');check($legacy['package_title']==='MB Original Madam','Legacy checkpoint naming changed');
 $r['status']='Awaiting Review';check(SBS_Intake::complete($r,array('verified'=>true))['status']==='Awaiting Review','Missing register verification marked complete');
 check(SBS_Intake::complete($r,array('verified'=>true,'register'=>array('verified'=>true)))['status']===SBS_Intake::COMPLETE,'Verified export did not mark Studio Complete');
 check(strpos(SBS_Intake::report($r),'Series: PW')!==false,'Report identity missing');

@@ -107,7 +107,7 @@ final class SBS_Finishing_Flow
         }elseif($action==='flow_drive'){
             $r=SBS_Intake::export_record($r,$request->get_param('prefix'));
             if(empty($r['approval'])||$r['approval']['version']!==$r['current_version']){return SBS_Finishing::error('flow_approval','Approve the selected version before archiving.',409);}
-            $artifacts=SBS_Finishing::drive_artifacts($r);if(is_wp_error($artifacts)){return $artifacts;}$version=SBS_Finishing::current($r);$run=count($r['flow']['archive_history']??array())+1;$archive=SBS_Google_Drive::save_artifacts($artifacts,$r['uuid'],$asset['sha256'],$r['approval']['at']??'',$r['artwork_name'],$r['series'],$version['number']??1,$run);if(is_wp_error($archive)){return $archive;}$archive['approval_at']=$r['approval']['at'];$r['flow']['archive']=$archive;$ids=array_column($r['flow']['archive_history']??array(),'id');if(!in_array($archive['id'],$ids,true)){$r['flow']['archive_history'][]=$archive;}$r=SBS_Intake::complete($r,$archive);
+            $artifacts=SBS_Finishing::drive_artifacts($r);if(is_wp_error($artifacts)){return $artifacts;}$version=SBS_Finishing::current($r);$run=count($r['flow']['archive_history']??array())+1;$archive=SBS_Google_Drive::save_artifacts($artifacts,$r['uuid'],$asset['sha256'],$r['approval']['at']??'',$r['package_title'],$r['series'],$version['number']??1,$run);if(is_wp_error($archive)){return $archive;}$archive['approval_at']=$r['approval']['at'];$r['flow']['archive']=$archive;$ids=array_column($r['flow']['archive_history']??array(),'id');if(!in_array($archive['id'],$ids,true)){$r['flow']['archive_history'][]=$archive;}$r=SBS_Intake::complete($r,$archive);
         }return $r;
     }
 }

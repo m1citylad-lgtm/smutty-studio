@@ -9,7 +9,7 @@ final class SBS_Intake
         $series=strtoupper(trim((string)$series));$name=sanitize_text_field((string)$name);
         if(!in_array($series,array('SB','MB','TT','PW'),true)){return SBS_Finishing::error('intake_series','Choose Smutty Bear, Madam Butterfly, Torsotopia or Piston Works.');}
         if($name===''||strlen($name)>190){return SBS_Finishing::error('intake_name','Enter an artwork name up to 190 bytes.');}
-        return array('series'=>$series,'artwork_name'=>$name);
+        return array('series'=>$series,'artwork_name'=>$name,'intake_identity_version'=>1);
     }
     public static function export_record($r,$prefix)
     {
@@ -17,6 +17,7 @@ final class SBS_Intake
         $series=$r['series']??strtoupper(trim((string)$prefix));
         $name=$r['artwork_name']??preg_replace('/^'.preg_quote($series,'/').'[ _-]+/i','',(string)$r['title']);
         $r['series']=$series;$r['artwork_name']=$name;
+        $r['package_title']=!empty($r['intake_identity_version'])?$name:$r['title']; // Preserve legacy transfer checkpoint names.
         $r['production_handoff']=array('status_after_verified_export'=>self::COMPLETE,'numbering'=>'Allocated only by Produce the T-shirt','final_id_allocated_by_studio'=>false);
         return $r;
     }
