@@ -121,6 +121,7 @@ final class SBS_Plugin
         wp_enqueue_script('sbs-finishing-flow', SBS_PLUGIN_URL . 'assets/js/finishing-flow.js', array('sbs-finishing','sbs-transparency-correction'), SBS_VERSION, true);
         wp_enqueue_style('sbs-finishing-flow', SBS_PLUGIN_URL . 'assets/css/finishing-flow.css', array('sbs-transparency-correction'), SBS_VERSION);
         wp_enqueue_script('sbs-final-print', SBS_PLUGIN_URL . 'assets/js/final-print.js', array('sbs-finishing-flow'), SBS_VERSION, true);
+        wp_enqueue_script('sbs-treatment', SBS_PLUGIN_URL . 'assets/js/treatment.js', array('sbs-final-print'), SBS_VERSION, true);
         wp_enqueue_style('sbs-final-print', SBS_PLUGIN_URL . 'assets/css/final-print.css', array('sbs-finishing-flow'), SBS_VERSION);
         wp_enqueue_script('sbs-logic-correction', SBS_PLUGIN_URL . 'assets/js/logic-correction.js', array('sbs-studio'), SBS_VERSION, true);
         wp_enqueue_style('sbs-logic-correction', SBS_PLUGIN_URL . 'assets/css/logic-correction.css', array('sbs-studio-theme'), SBS_VERSION);

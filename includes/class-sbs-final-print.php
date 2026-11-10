@@ -9,7 +9,7 @@ final class SBS_Final_Print
     {
         register_rest_route(SBS_REST::NS, '/finishing/final-library', array('methods'=>'GET,POST','callback'=>array(__CLASS__,'library'),'permission_callback'=>array('SBS_Finishing','permission')));
     }
-    public static function handles($a) { return in_array($a,array('final_begin','final_finish','final_keep','final_check','final_approve','final_brand','final_settings','final_proofs','final_export'),true); }
+    public static function handles($a) { return in_array($a,array('final_assess','final_save_preview','final_begin','final_finish','final_keep','final_check','final_approve','final_brand','final_settings','final_proofs','final_export'),true); }
     private static function error($m) { return SBS_Finishing::error('final_print',$m,422); }
     public static function intact($a)
     {
@@ -111,6 +111,24 @@ final class SBS_Final_Print
         $f=$r['final_print']??null;if(!$f||!self::intact($f['clean'])){return self::error('Load a source into Final Finish or Logo & Mockup first.');}
         if($f['target']!==array($o['width'],$o['height'])){return self::error('The print target changed. Reload this source to start a separate finishing run.');}
         if($a['sha256']!==$f['clean']['sha256']){return self::error('The selected Stage 1 image changed. Load the new source first; the earlier finishing run is retained.');}
+        if($action==='final_assess'){
+            $preset=(string)$q->get_param('preset');if(!in_array($preset,array('clean','vintage','period','custom'),true)){return self::error('Select a treatment to assess.');}
+            $cache_key=$f['clean']['sha256'].':'.$preset;
+            if(($f['assessment']['key']??'')!==$cache_key){$assessment=SBS_OpenAI::assess_finish($f['clean']['id'],$preset);if(is_wp_error($assessment)){return $assessment;}$assessment['key']=$cache_key;$assessment['preset']=$preset;$assessment['at']=gmdate('c');$f['assessment']=$assessment;}
+            $r['final_print']=$f;return $r;
+        }
+        if($action==='final_save_preview'){
+            $file=$q->get_file_params()['file']??null;$settings=json_decode((string)$q->get_param('settings'),true);
+            if(!$file||!empty($file['error'])||($file['size']??0)>64*1024*1024||!is_array($settings)||$q->get_param('source_sha256')!==$f['clean']['sha256']){return self::error('The preview source or upload is invalid. Preview again before saving.');}
+            foreach(array('tone','fade','halftone','distress') as $k){if(!is_numeric($settings[$k]??null)||$settings[$k]<0||$settings[$k]>100){return self::error('Preview strengths must be between 0 and 100.');}}
+            $size=@getimagesize($file['tmp_name']);if(!$size||$size['mime']!=='image/png'||$size[0]*$size[1]>40000000){return self::error('Use the PNG produced by Preview treatment.');}
+            $source=self::image($f['clean']);if(is_wp_error($source)){return $source;}
+            if($size[0]!==$source->getImageWidth()||$size[1]!==$source->getImageHeight()){$source->clear();return self::error('Preview dimensions changed. The candidate was not saved.');}
+            $im=new Imagick($file['tmp_name']);$alpha=clone $source;$alpha->setImageAlphaChannel(Imagick::ALPHACHANNEL_EXTRACT);$test=clone $im;$test->setImageAlphaChannel(Imagick::ALPHACHANNEL_EXTRACT);$difference=$alpha->compareImages($test,Imagick::METRIC_MEANABSOLUTEERROR);$test->clear();$difference[0]->clear();
+            if($difference[1]>0){$im->clear();$source->clear();$alpha->clear();return self::error('Preview transparency changed. The candidate was not saved.');}
+            $source->clear();$alpha->clear();$settings['preset']=in_array($settings['preset']??'',array('clean','vintage','period','custom'),true)?$settings['preset']:'custom';$settings['engine']='pixel-treatment-2';$settings['alpha_changed']=false;
+            $out=self::store($im,'candidate-finished',$f['clean'],$settings);if(is_wp_error($out)){return $out;}self::history($r);$f['finished']=self::result($out,$o,$f['clean'],$settings);if(is_wp_error($f['finished'])){return $f['finished'];}$f['branded']=null;$f['brand_decision']=null;$f['proofs']=array();$r['final_print']=$f;return $r;
+        }
         if($action==='final_keep'){
             self::history($r);$f['finished']=self::result($f['clean'],$o,$f['clean'],array('preset'=>'original','operation'=>'identity','file_alias'=>'clean','alpha_changed'=>false));
             if(is_wp_error($f['finished'])){return $f['finished'];}$f['finished']['finish_status']='APPROVED_NO_ADDITIONAL_FINISH';
