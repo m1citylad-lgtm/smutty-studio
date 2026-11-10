@@ -240,3 +240,10 @@ Requested: choose an exact saved file in Artwork Finishing and download the trea
 - Added direct saved-result download beside the treatment comparison, with filename and approval status. Keep Original uses its exact existing bytes. Downloading is separate from Drive package export.
 - Corrected earlier chat guidance: v0.5.0 did not contain the Download finished PNG button described to the owner.
 - Validation and live installation status will be recorded after checks and deployment.
+
+
+## 10 November 2026 — v0.5.2 automatic treatment workflow
+
+Implements AI vision assessment (no image generation), clear recommendations including no-change/unable outcomes, cached by source and preset. Optional 0–100% sliders provide whole-image tonal/fade/shadow-dot/RGB-wear previews from the same unchanged source. Previews remain transient until Save as new candidate. Zero-effect previews offer keeping the source instead of another file. Candidate save checks exact dimensions and alpha before tagging/QA. Full-viewport source/preview comparison includes pinch zoom, pan, zoom buttons and Fit. Manual rectangle selection is removed from the visible interface. Distress simulates restrained RGB ink wear; it does not remove alpha or add objects. Existing stage approval and direct download remain separate.
+
+Limitations: the assessment estimates existing style from appearance; it cannot certify exact prior 70/20/10 compliance. Vision recommendations select global strengths, and shadow weighting is deterministic, not semantic segmentation. Physical print and supplier behaviour still need normal review. Signed release/live installation validation pending.

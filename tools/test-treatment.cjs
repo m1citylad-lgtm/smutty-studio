@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');
+const {pixels}=require('../assets/js/treatment.js');
+const source=new Uint8ClampedArray([100,120,160,255,30,60,90,128,0,0,0,0,240,220,200,255]);
+const zero={tone:0,fade:0,halftone:0,distress:0};
+assert.deepEqual(pixels(source.slice(),2,2,zero),source);
+const s={tone:40,fade:20,halftone:30,distress:20},out=pixels(source.slice(),2,2,s);
+for(let i=3;i<source.length;i+=4)assert.equal(out[i],source[i]);
+assert.notDeepEqual(out,source);
+assert.deepEqual(pixels(source.slice(),2,2,s),out,'Preview is not deterministic');
+assert.deepEqual(pixels(source.slice(),2,2,zero),source,'Reducing strengths did not restore source');
+console.log('Pixel treatment: zero identity, preserved alpha, deterministic reversible source-based previews passed.');
