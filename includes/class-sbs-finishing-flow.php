@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . "/class-sbs-intake.php";
 if(!defined('ABSPATH')){exit;}
 
 /** Guided actions run under the existing finishing workspace lock and revision. */
@@ -104,8 +105,9 @@ final class SBS_Finishing_Flow
             $reviewed=$request->get_param('reviewed')===true||($same_scan&&!empty($previous['reviewed']));
             $r['flow']['pixels']=array('sha256'=>$asset['sha256'],'remaining'=>(int)$count,'alpha'=>$alpha,'policy'=>$policy,'target'=>$target,'accepted_ids'=>$accepted,'reviewed'=>$reviewed,'at'=>gmdate('c'));$r['approval']=null;
         }elseif($action==='flow_drive'){
+            $r=SBS_Intake::export_record($r,$request->get_param('prefix'));
             if(empty($r['approval'])||$r['approval']['version']!==$r['current_version']){return SBS_Finishing::error('flow_approval','Approve the selected version before archiving.',409);}
-            $artifacts=SBS_Finishing::drive_artifacts($r);if(is_wp_error($artifacts)){return $artifacts;}$version=SBS_Finishing::current($r);$run=count($r['flow']['archive_history']??array())+1;$archive=SBS_Google_Drive::save_artifacts($artifacts,$r['uuid'],$asset['sha256'],$r['approval']['at']??'',$r['title'],$request->get_param('prefix'),$version['number']??1,$run);if(is_wp_error($archive)){return $archive;}$archive['approval_at']=$r['approval']['at'];$r['flow']['archive']=$archive;$ids=array_column($r['flow']['archive_history']??array(),'id');if(!in_array($archive['id'],$ids,true)){$r['flow']['archive_history'][]=$archive;}$r['next_action']='Finished: individual files transferred, verified and entered in the Smutty Bear production register';
+            $artifacts=SBS_Finishing::drive_artifacts($r);if(is_wp_error($artifacts)){return $artifacts;}$version=SBS_Finishing::current($r);$run=count($r['flow']['archive_history']??array())+1;$archive=SBS_Google_Drive::save_artifacts($artifacts,$r['uuid'],$asset['sha256'],$r['approval']['at']??'',$r['package_title'],$r['series'],$version['number']??1,$run);if(is_wp_error($archive)){return $archive;}$archive['approval_at']=$r['approval']['at'];$r['flow']['archive']=$archive;$ids=array_column($r['flow']['archive_history']??array(),'id');if(!in_array($archive['id'],$ids,true)){$r['flow']['archive_history'][]=$archive;}$r=SBS_Intake::complete($r,$archive);
         }return $r;
     }
 }

@@ -262,3 +262,8 @@ Live v0.5.3 showed correct source handoff but the treatment controller script wa
 ## 10 November 2026 — v0.5.5 treatment target/readiness synchronization
 
 Live assessment responded but rejected an older finishing run with a different print target. Stage validity now includes target dimensions and source hash; entering treatment automatically starts the matching run, retaining history. Treatment readiness refreshes after final-stage render, including asynchronous automatic loads. Failed assessment updates its progress message. Browser regression reopens a matching-source/stale-target run and verifies automatic target replacement plus assessment readiness.
+
+
+## 10 November 2026 — v0.5.6 series/name intake and production handoff
+
+Added required SB/MB/TT/PW series selection and artwork name to ordinary and high-resolution PNG intake. Saved identity drives new export naming and appears in metadata/report/manifest. Existing workspaces retain their chosen export prefix and derive a name without a redundant leading series. Version/run suffixes remain for safe retries and separate exports; no permanent production ID is assigned. Verified files plus register completion marks Studio Complete — Awaiting Production. Neither final-production file moves, numbering, intake deletion, copy/publishing records nor master-register migration are performed by the Studio update.

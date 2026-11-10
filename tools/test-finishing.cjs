@@ -44,7 +44,7 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0.5.5/);
+assert.match(plugin, /Version: 0.5.6/);
 assert.match(template, /id="sbs-af-clear"/);
 assert.match(template, /id="sbs-af-correction-help"/);
 assert.match(template, /id="sbs-af-correction-open-spinner"/);
@@ -61,7 +61,7 @@ assert.match(finishing, /function render\(\)[\s\S]*?stageRunState=\{\};renderedW
 assert.match(finishing, /el\('sbs-af-clear'\)\.addEventListener/);
 assert.match(finishing, /savedUiState\.workspace='';savedUiState\.checks=\{\}/);
 
-assert.match(plugin, /define\('SBS_VERSION', '0.5.5'\)/);
+assert.match(plugin, /define\('SBS_VERSION', '0.5.6'\)/);
 assert.match(template, /id="sbs-af-seam-review"/);
 assert.match(template, /no AI credits/);
 assert.match(finishing, /function analyzeSeams\(/);
@@ -216,7 +216,7 @@ assert.match(theme, /\[aria-busy="true"\]::before/);
 
 // Simple local workflow UI: no reference entry, Drive transfer, or redundant original download.
 assert.doesNotMatch(template, /sbs-af-(ideas|sb)|sbs-af-original-download|Select from Google Drive|Save Approved Artwork to Drive/);
-assert.match(template, /Artwork title <span class="sbs-af-required">Required<\/span>[^\n]*required aria-required="true"/);
+assert.match(template, /Artwork name <span class="sbs-af-required">Required<\/span>[^\n]*required aria-required="true"/);
 assert.match(template, /Comparison zoom \(display only\)/);
 assert.match(template, /Preview zoom only; it does not change the image/);
 assert.match(template, /Check the image on light and dark backgrounds/);
