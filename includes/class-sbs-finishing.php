@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . "/class-sbs-intake.php";
 if (!defined('ABSPATH')) { exit; }
 
 /** Isolated, local-only finishing workspaces. UUIDs are NOT allocated AF references. */
@@ -273,7 +274,7 @@ final class SBS_Finishing
             if((int)$request->get_param('revision')!==(int)$r['revision']){return self::error('conflict','Workspace changed. Refresh before renaming.',409);}
             $title=sanitize_text_field((string)$request->get_param('title'));
             if($title===''||strlen($title)>190){return self::error('title','Enter a title between 1 and 190 bytes.');}
-            $r['title']=$title;$r['revision']++;$r['updated_at']=gmdate('c');$r['audit'][]=array('at'=>gmdate('c'),'action'=>'Catalogue title renamed');
+            $r['title']=$title;if(isset($r['artwork_name'])){$r['artwork_name']=$title;}$r['revision']++;$r['updated_at']=gmdate('c');$r['audit'][]=array('at'=>gmdate('c'),'action'=>'Catalogue title renamed');
             return self::write($path,$r);
         } finally {flock($lock,LOCK_UN);fclose($lock);}
     }
@@ -325,6 +326,7 @@ final class SBS_Finishing
         if($final_entry&&$size['mime']!=='image/png'){return self::error('format','High-resolution direct entry requires a PNG.');}
         if($file_bytes<1||$size[0]*$size[1]>40000000){return self::error('pixels','This image is larger than the 40-million-pixel limit. Choose a smaller copy. The original file was not changed.');}
         $title=$request->get_param('title'); if(!is_string($title)||strlen($title)>500){return self::error('title','Enter a title up to 500 bytes.');}
+        $identity=SBS_Intake::validate($request->get_param('series'),$title);if(is_wp_error($identity)){return $identity;}
         $links=self::links(preg_split('/[\s,]+/',trim((string)$request->get_param('ideas')),-1,PREG_SPLIT_NO_EMPTY),(string)$request->get_param('sb'));
         if(is_wp_error($links)){return $links;}
         $options=self::options(array());$uuid=wp_generate_uuid4();$path=self::path($uuid);if(is_wp_error($path)){return $path;}
@@ -332,7 +334,7 @@ final class SBS_Finishing
         if(is_wp_error($asset)){return $asset;}
         $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
         $record=array('schema'=>1,'uuid'=>$uuid,'af_id'=>null,'title'=>sanitize_text_field($title)?:$asset['filename'],'links'=>$links,'source_route'=>'device_local','original'=>$asset,'original_qa'=>$qa,'versions'=>array(),'current_version'=>null,'approval'=>null,'metadata_status'=>'TBC','status'=>'Awaiting Finishing','next_action'=>'Choose a local stage and run preview','drive'=>array('original_file_id'=>null,'folder_id'=>null,'approved_master_file_id'=>null,'verified'=>false),'created_at'=>gmdate('c'),'updated_at'=>gmdate('c'),'revision'=>1,'audit'=>array(array('at'=>gmdate('c'),'action'=>'Untouched original stored locally')));
-        return self::write($path,$record);
+        $record=array_merge($record,$identity);return self::write($path,$record);
     }
     public static function action($request)
     {
@@ -736,6 +738,7 @@ final class SBS_Finishing
         if(!$v||!self::intact($r['original'])||!self::intact($v['asset'])||empty($r['approval']['sha256'])||!hash_equals($r['approval']['sha256'],$v['asset']['sha256'])){return self::error('integrity','The selected artwork failed its transfer integrity check.',409);}
         $r['qa_manifest']=SBS_Print_QA::manifest($r);
         $report="SMUTTY STUDIO DIRECT FILE TRANSFER\nNo ZIP archive was created. Files are stored individually in the matching artwork folder.\nThis is not a final print master or a production approval.\n\n";
+        $report.=SBS_Intake::report($r);
         $report.="Artwork: ".sanitize_text_field((string)$r['title'])."\nCandidate version: ".(int)$v['number']."\nHuman approval: ".(string)$r['approval']['at']."\nOriginal SHA-256: ".$r['original']['sha256']."\nCandidate SHA-256: ".$v['asset']['sha256']."\n\nPrint QA:\n".wp_json_encode($v['qa'],JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)."\n";
         $checksums=$r['original']['sha256']."  original/".basename((string)$r['original']['filename'])."\n".$v['asset']['sha256']."  final/".basename((string)$v['asset']['filename'])."\n";
         $metadata=wp_json_encode($r,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);

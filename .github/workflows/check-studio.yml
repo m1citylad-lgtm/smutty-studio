@@ -33,6 +33,7 @@ jobs:
           php tools/test-finishing-drive.php
           php tools/test-finishing-drive-files.php
           php tools/test-final-print.php
+          php tools/test-intake.php
           php -n -d extension=json -d extension=gd -d extension=zip tools/test-print-qa.php
       - name: JavaScript and image export checks
         run: |

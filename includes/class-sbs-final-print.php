@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . "/class-sbs-intake.php";
 if (!defined('ABSPATH')) { exit; }
 
 /** Optional post-processing. All mutations use the existing workspace lock/revision. */
@@ -205,6 +206,7 @@ final class SBS_Final_Print
                 if($template){break;}
             }$f['proofs']=$proofs;$f['package_approval']=null;
         } elseif($action==='final_export'){
+            $r=SBS_Intake::export_record($r,$q->get_param('prefix'));
             if(empty($f['finished']['approval'])||($f['branded']&&empty($f['branded']['approval']))||(!$f['branded']&&$f['brand_decision']!=='APPROVED_NO_LOGO')){return self::error('Approve the finish and branded candidate, or explicitly choose No logo.');}
             if($q->get_param('placement_reviewed')!==true){return self::error('Review shirt placement and any anatomical/calibration warnings before exporting.');}
             if(isset($f['settings']['logo_id'])){
@@ -213,7 +215,7 @@ final class SBS_Final_Print
             }
             $v=$f['branded']?:$f['finished'];foreach($f['proofs'] as $proof){if($proof['source_sha256']!==$v['asset']['sha256']){return self::error('Shirt proofs are for an earlier candidate. Make them again.');}}
             if(!$f['proofs']){return self::error('Make and inspect the selected web shirt proofs before package export.');}
-            $fingerprint=hash('sha256',wp_json_encode(array($r['uuid'],$f['clean']['sha256'],$f['finished'],$f['branded'],$f['brand_decision'],$f['settings'],$f['proofs'],$q->get_param('prefix'))));
+            $fingerprint=hash('sha256',wp_json_encode(array($r['uuid'],$f['clean']['sha256'],$f['finished'],$f['branded'],$f['brand_decision'],$f['settings'],$f['proofs'],$r['series'],$r['artwork_name'])));
             $cache_key='sbs_final_export_'.$fingerprint;$snapshot=get_option($cache_key,null);
             if(!$snapshot){
                 $f['package_approval']=array('at'=>gmdate('c'),'sha256'=>$v['asset']['sha256'],'scope'=>'local_package_only','physical_calibration'=>'UNVERIFIED','placement_reviewed'=>true);$r['final_print']=$f;
@@ -223,8 +225,8 @@ final class SBS_Final_Print
                 if(wp_json_encode(get_option($cache_key))!==wp_json_encode($snapshot)){return self::error('Could not save the transfer checkpoint. No files were transferred.');}
             }
             $artifacts=$snapshot['artifacts'];$run=$snapshot['run'];$stamp=$snapshot['stamp'];$f['package_approval']=$snapshot['approval'];
-            $archive=SBS_Google_Drive::save_artifacts($artifacts,$r['uuid'],$v['asset']['sha256'],$stamp,$r['title'],$q->get_param('prefix'),count($r['versions'])+1,$run);if(is_wp_error($archive)){return $archive;}
-            $f['last_export_stamp']=$stamp;$f['last_export_run']=$run;$f['archive']=$archive;$ids=array_column($f['exports']??array(),'id');if(!in_array($archive['id'],$ids,true)){$f['exports'][]=$archive;}
+            $archive=SBS_Google_Drive::save_artifacts($artifacts,$r['uuid'],$v['asset']['sha256'],$stamp,$r['artwork_name'],$r['series'],count($r['versions'])+1,$run);if(is_wp_error($archive)){return $archive;}
+            $r=SBS_Intake::complete($r,$archive);$f['last_export_stamp']=$stamp;$f['last_export_run']=$run;$f['archive']=$archive;$ids=array_column($f['exports']??array(),'id');if(!in_array($archive['id'],$ids,true)){$f['exports'][]=$archive;}
         }
         if($action!=='final_export'){unset($f['archive'],$f['last_export_stamp'],$f['last_export_run']);}
         $r['final_print']=$f;return $r;
@@ -232,12 +234,13 @@ final class SBS_Final_Print
     public static function artifacts($r)
     {
         $f=$r['final_print'];$v=$f['branded']?:$f['finished'];$assets=array('original'=>$r['original'],'candidate-clean'=>$f['clean'],'candidate-finished'=>$f['finished']['asset']);if($f['branded']){$assets['candidate-branded']=$f['branded']['asset'];}
-        $out=array();$seen=array();$manifest=array('schema'=>1,'engine'=>self::ENGINE,'workspace'=>$r['uuid'],'title'=>$r['title'],'target_inches'=>$f['target'],'files'=>array(),'settings'=>$f['settings'],'finish'=>$f['finished'],'branding'=>$f['branded'],'brand_decision'=>$f['brand_decision'],'proofs'=>$f['proofs'],'approval'=>$f['package_approval'],'production_approved'=>false,'marketplace_published'=>false);
+        $out=array();$seen=array();$manifest=array('schema'=>1,'engine'=>self::ENGINE,'workspace'=>$r['uuid'],'title'=>$r['title'],'series'=>$r['series']??null,'artwork_name'=>$r['artwork_name']??$r['title'],'production_handoff'=>$r['production_handoff']??null,'target_inches'=>$f['target'],'files'=>array(),'settings'=>$f['settings'],'finish'=>$f['finished'],'branding'=>$f['branded'],'brand_decision'=>$f['brand_decision'],'proofs'=>$f['proofs'],'approval'=>$f['package_approval'],'production_approved'=>false,'marketplace_published'=>false);
         foreach($assets as $role=>$asset){if(!self::intact($asset)){return self::error('Package source checksum verification failed. No transfer started.');}$hash=$asset['sha256'];if(isset($seen[$hash])){$manifest['files'][$role]=array('alias'=>$seen[$hash],'sha256'=>$hash,'same_file'=>true);continue;}$name=$role.'.'.(pathinfo($asset['filename'],PATHINFO_EXTENSION)?:'png');$seen[$hash]=$name;$manifest['files'][$role]=array('filename'=>$name,'sha256'=>$hash,'bytes'=>(int)filesize(SBS_Storage::absolute_path($asset)));$out[]=array('type'=>$role,'suffix'=>$name,'asset'=>$asset,'mimeType'=>$asset['mime']);}
         foreach($f['proofs'] as $i=>$p){if(!self::intact($p['asset'])){return self::error('Web proof checksum verification failed.');}$name='web-mockup-'.($i+1).'.webp';$out[]=array('type'=>'web_mockup_'.($i+1),'suffix'=>$name,'asset'=>$p['asset'],'mimeType'=>'image/webp');}
         $checks='';foreach($out as $a){$checks.=$a['asset']['sha256'].'  '.$a['suffix']."\n";}
         $report="STUDIO PACKAGE\nOriginal, clean, finished and branded roles have separate provenance. Identical no-finish outputs reference one file and one SHA-256.\nWEB MOCKUPS ARE NOT PRINT FILES. Physical garment/print calibration remains unverified. Owner local approvals do not allocate SB numbers or publish products.\n";
-        foreach(array('metadata.json'=>wp_json_encode(array('uuid'=>$r['uuid'],'title'=>$r['title'],'original'=>$r['original'],'versions'=>$r['versions'],'approval'=>$r['approval'],'flow'=>$r['flow']??null,'final_print'=>$f),JSON_PRETTY_PRINT),'studio-package-manifest.json'=>wp_json_encode($manifest,JSON_PRETTY_PRINT),'finishing-qa.json'=>wp_json_encode(array('clean'=>$f['clean_qa'],'finish'=>$f['finished']['qa'],'brand'=>$f['branded']['qa']??null,'stage1_manifest'=>$r['qa_manifest']??null),JSON_PRETTY_PRINT),'checksums.sha256'=>$checks,'report.txt'=>$report) as $name=>$bytes){if(!is_string($bytes)){return self::error('Package metadata could not be encoded.');}$mime=substr($name,-5)==='.json'?'application/json':'text/plain';$asset=SBS_Storage::store_bytes($bytes,$name,$mime,'finishing',0,'final_manifest',$r['title']);if(is_wp_error($asset)){return $asset;}$out[]=array('type'=>'manifest_'.str_replace('.','_',$name),'suffix'=>$name,'asset'=>$asset,'mimeType'=>$mime);}
+        $report.=SBS_Intake::report($r);
+        foreach(array('metadata.json'=>wp_json_encode(array('uuid'=>$r['uuid'],'title'=>$r['title'],'series'=>$r['series']??null,'artwork_name'=>$r['artwork_name']??$r['title'],'production_handoff'=>$r['production_handoff']??null,'original'=>$r['original'],'versions'=>$r['versions'],'approval'=>$r['approval'],'flow'=>$r['flow']??null,'final_print'=>$f),JSON_PRETTY_PRINT),'studio-package-manifest.json'=>wp_json_encode($manifest,JSON_PRETTY_PRINT),'finishing-qa.json'=>wp_json_encode(array('clean'=>$f['clean_qa'],'finish'=>$f['finished']['qa'],'brand'=>$f['branded']['qa']??null,'stage1_manifest'=>$r['qa_manifest']??null),JSON_PRETTY_PRINT),'checksums.sha256'=>$checks,'report.txt'=>$report) as $name=>$bytes){if(!is_string($bytes)){return self::error('Package metadata could not be encoded.');}$mime=substr($name,-5)==='.json'?'application/json':'text/plain';$asset=SBS_Storage::store_bytes($bytes,$name,$mime,'finishing',0,'final_manifest',$r['title']);if(is_wp_error($asset)){return $asset;}$out[]=array('type'=>'manifest_'.str_replace('.','_',$name),'suffix'=>$name,'asset'=>$asset,'mimeType'=>$mime);}
         return $out;
     }
 }
