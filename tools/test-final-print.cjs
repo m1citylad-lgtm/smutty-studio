@@ -1,0 +1,16 @@
+const assert=require('node:assert/strict');
+const {fit,centre,align,bendOffset}=require('../assets/js/final-print.js');
+assert.equal(fit(4800,6400,'standard').percent,50);
+assert.ok(Math.abs(fit(4800,6400,'premium').percent-59.8958333333)<1e-8);
+assert.equal(fit(1000,4000,'standard').limitedBy,'height');
+assert.equal(fit(1000,4000,'standard').h,3200);
+assert.equal(fit(4580,5496,'standard').h,2880);
+const p={x:.27,y:.83,width:.2,bends:[{x:.5,y:.1}]},c=centre(p);
+assert.deepEqual(c,centre(c));assert.equal(c.y,p.y);assert.equal(c.width,p.width);assert.equal(p.x,.27);
+const points=[{id:'L',ax:10,ay:20,bx:25,by:43},{id:'R',ax:30,ay:20,bx:65,by:43},{id:'B',ax:20,ay:50,bx:45,by:103}];
+const a=align(points);assert.equal(a.scale,2);assert.equal(a.x,5);assert.equal(a.y,3);assert.ok(a.residuals.every(p=>p.distance<1e-8));
+const mismatch=align([...points.slice(0,2),{id:'B',ax:20,ay:50,bx:45,by:130}]);assert.ok(mismatch.residuals.some(p=>p.distance>5));
+assert.throws(()=>align([{ax:1,ay:1,bx:2,by:2},{ax:1,ay:1,bx:3,by:3}]));
+assert.equal(bendOffset(0,[{x:.5,y:.2}],100),0);assert.equal(bendOffset(1,[{x:.5,y:.2}],100),0);assert.equal(bendOffset(.5,[{x:.5,y:.2}],100),20);
+assert.equal(fit(4800,6400,'premium').physical,'UNVERIFIED');
+console.log('Final print: product width/height fit, centred-X idempotence/Y preservation, proportional torso alignment/residuals and constrained signature curves passed.');

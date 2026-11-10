@@ -1,3 +1,15 @@
+# v0.5.0 — Optional final finish, logo and mockup stages (10 November 2026)
+
+Development candidate; live installation and owner-account verification pending. Do not mark SS-012–SS-016 complete until the release has passed checks and is installed.
+
+- Add three internal stages while retaining the existing six-step preparation flow. Independent library/device PNG entry runs no upscaler or generative model.
+- Keep Original is a real unchanged-file decision; package aliases share the clean SHA-256 and avoid duplicate large files. New deterministic colour/optional owner-masked RGB-dot treatments preserve alpha, dimensions, sRGB and print metadata. Flattened artwork is not automatically semantically segmented; visual review stays explicit.
+- Add reusable imported approved-logo/template records, source/licence notes, version history and archive, horizontal centring, touch movement, nudge/size controls and optional one/two-point signature bends. Logo composites are separate review PNGs, never rewritten masters.
+- Add owner-authorised generic black/white/red/navy photographic references, flat diagnostics, compressed web-only proofs and independent print placement. Generic garments and physical dimensions are estimates. Actual supplier size scaling, exact DTG/underbase appearance and anatomical registration remain unverified.
+- Record Redbubble product-canvas geometry and width/height fit; Gelato nominal file-area reference and explicit unknown physical scaling. Optional T1/T2 torso guides, wearer-side labels, proportional alignment with residuals and downloadable non-printing overlay. No independent x/y body stretching.
+- Export a versioned per-design Studio Package of original/clean/unique finished/branded assets plus hashes, settings, QA and web proofs through the existing read-back-verified Drive/register route. Transfer checkpoints retain identical artifact bytes after a lost response. No SB allocation or marketplace publishing.
+- Device acceptance, exact source-brand approval and physical supplier calibration are separate from automated software checks. Existing originals, accepted candidates and historical exports are retained.
+
 # v0.4.11 — Inspect tiled upscale joins (7 November 2026)
 
 Implementation in progress; local analysis, PHP/JavaScript regressions, guided browser validation and signed publication pending.

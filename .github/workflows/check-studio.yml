@@ -32,6 +32,7 @@ jobs:
           php tools/test-finishing-flow.php
           php tools/test-finishing-drive.php
           php tools/test-finishing-drive-files.php
+          php tools/test-final-print.php
           php -n -d extension=json -d extension=gd -d extension=zip tools/test-print-qa.php
       - name: JavaScript and image export checks
         run: |
@@ -43,6 +44,8 @@ jobs:
           node tools/test-finishing.cjs
           node --check assets/js/finishing-flow.js
           node tools/test-finishing-flow.cjs
+          node --check assets/js/final-print.js
+          node tools/test-final-print.cjs
           node tools/test-print-visibility.cjs
           node tools/test-flat-background.cjs
           node tools/test-development.cjs
