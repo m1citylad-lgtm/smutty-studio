@@ -19,7 +19,7 @@
  <section id="sbs-final-finish" class="sbs-card">
   <h2 tabindex="-1">2 Final Finish</h2>
   <p>Assess the current artwork, preview the suggested pixel treatment, then save when satisfied. No image generation or upscaling is used here.</p>
-  <label>Treatment<select id="sbs-final-preset"><option value="original">Keep Original / No Extra Finish</option><option value="clean">Clean Retro</option><option value="vintage">Vintage 70/20/10</option><option value="period">Period Illustration</option><option value="custom">Custom / Fine-tune</option></select></label>
+  <label>Treatment<select id="sbs-final-preset"><option value="original">Keep Original / No Extra Finish</option><option value="clean">Clean Retro</option><option value="vintage" selected>Vintage 70/20/10</option><option value="period">Period Illustration</option><option value="custom">Custom / Fine-tune</option></select></label>
   <div class="sbs-final-actions"><button type="button" id="sbs-final-apply" class="sbs-button">Preview treatment</button><button type="button" id="sbs-final-keep" class="sbs-button primary">Keep Original &amp; Continue</button></div>
   <button type="button" id="sbs-final-assess" class="sbs-button primary">Assess artwork — AI credits</button>
   <p id="sbs-final-assessment" class="sbs-final-qa" role="status">Choose a treatment and press Assess artwork.</p>
