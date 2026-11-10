@@ -22,6 +22,7 @@
  </section>
  <section id="sbs-final-brand" class="sbs-card" hidden>
   <h2 tabindex="-1">3 Logo &amp; Mockup</h2>
+  <div class="sbs-final-actions"><button type="button" id="sbs-final-brand-original" class="sbs-button">Use loaded source unchanged — no finish</button><button type="button" id="sbs-final-source-approve" class="sbs-button">Approve unchanged source after review</button></div><p id="sbs-final-source-qa" role="status"></p><label id="sbs-final-source-review-row" hidden><input type="checkbox" id="sbs-final-source-reviewed"> I reviewed the unchanged source, its text, details, transparency and technical warnings.</label>
   <label>Approved series logo<select id="sbs-final-logo"><option value="none">None — keep unbranded</option></select></label><button type="button" id="sbs-final-manage" class="sbs-button">Manage logos and T-shirt templates</button>
   <p>Drag the selected logo with one finger. Centre horizontally changes X only; arrows make fine adjustments. Whole-shirt placement below is separate.</p>
   <div class="sbs-final-canvas-wrap"><canvas id="sbs-final-logo-canvas" width="800" height="800" aria-label="Artwork with movable selected logo"></canvas></div>
