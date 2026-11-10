@@ -164,7 +164,7 @@ function mockAction(p){calls.push(p.action+(p.pass?':'+p.pass:''));
  assert.equal(calls.filter(x=>['prepare','run'].includes(x)).length,paidBefore,'Stage re-entry reran upscaling');
  await page.getByRole('tab',{name:'2 Final Finish',exact:true}).click();
  await page.getByText('Optional: adjust effect strengths',{exact:true}).click();
- await page.locator('#sbs-final-effect-tone').fill('20');
+ await page.locator('#sbs-final-preset').selectOption('vintage');await page.locator('#sbs-final-effect-tone').evaluate(e=>{e.value='20';e.dispatchEvent(new Event('input'));});
  const beforePreview=JSON.stringify(record),previewCalls=calls.length;
  await page.locator('#sbs-final-apply').click();await page.waitForFunction(()=>document.getElementById('sbs-final-treatment-message').textContent.includes('Preview ready'));
  assert.equal(JSON.stringify(record),beforePreview,'Preview mutated saved workspace');assert.equal(calls.length,previewCalls);
