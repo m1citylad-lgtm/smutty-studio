@@ -14,3 +14,17 @@ assert.throws(()=>align([{ax:1,ay:1,bx:2,by:2},{ax:1,ay:1,bx:3,by:3}]));
 assert.equal(bendOffset(0,[{x:.5,y:.2}],100),0);assert.equal(bendOffset(1,[{x:.5,y:.2}],100),0);assert.equal(bendOffset(.5,[{x:.5,y:.2}],100),20);
 assert.equal(fit(4800,6400,'premium').physical,'UNVERIFIED');
 console.log('Final print: product width/height fit, centred-X idempotence/Y preservation, proportional torso alignment/residuals and constrained signature curves passed.');
+
+// Download identities distinguish roles and actual saved files, even after a treatment replacement.
+const {workspaceFiles}=require('../assets/js/final-print.js');
+const original={url:'/original/',filename:'original.png',sha256:'a'},treated={url:'/treated/',filename:'finished.png',sha256:'b'};
+const workspace={uuid:'one',original,versions:[{uuid:'v1',number:1,options:{method:'upscale'},asset:original}],current_version:'v1',final_print:{clean:original,finished:{asset:treated,settings:{preset:'vintage'}},proofs:[{colour:'black',asset:{url:'/proof/',filename:'proof.png',sha256:'c'}}]}};
+const snapshot=JSON.stringify(workspace),files=workspaceFiles(workspace);
+assert.equal(files.find(f=>f.key==='finished:b').asset.url,'/treated/');
+assert.equal(files.find(f=>f.key==='version:v1:a').asset.url,'/original/');
+assert.match(files.find(f=>f.asset.sha256==='c').label,/NOT FOR PRINTING/);
+workspace.final_print.finished.asset={...treated,sha256:'replacement',url:'/replacement/'};
+assert.ok(!workspaceFiles(workspace).some(f=>f.key==='finished:b'),'Replaced output retained the old download selection');
+workspace.final_print.finished.asset=treated;assert.equal(JSON.stringify(workspace),snapshot,'Listing downloads changed the workspace');
+assert.deepEqual(workspaceFiles(null),[]);
+console.log('Workspace downloads preserve editing state and identify exact original/version/treatment/proof assets.');
