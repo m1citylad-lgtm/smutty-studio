@@ -1,5 +1,6 @@
 <section class="sbs-panel sbs-af active" data-panel="finishing" aria-labelledby="sbs-af-title">
     <h1 id="sbs-af-title" tabindex="-1">Artwork Finishing</h1>
+    <?php require SBS_PLUGIN_DIR . 'templates/final-print.php'; ?>
     <?php require SBS_PLUGIN_DIR . 'templates/finishing-flow.php'; ?>
     <p class="sbs-af-notice"><strong>Local Artwork Finishing.</strong> Files stay in private Studio storage until you transfer them to Drive. Local finishing approval does not approve production.</p>
     <details id="sbs-af-freestyle-source" hidden><summary>Freestyle source history</summary><p id="sbs-af-freestyle-source-summary"></p><p id="sbs-af-freestyle-source-settings"></p><ol id="sbs-af-freestyle-source-lineage"></ol></details>

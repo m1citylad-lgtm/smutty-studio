@@ -343,7 +343,7 @@ final class SBS_Finishing
             if((int)$request->get_param('revision')!==$r['revision']){return self::error('conflict','Workspace changed. Refresh before retrying.',409);}
             $action=$request->get_param('action');
             if(in_array($action,array('run','poll'),true)&&($r['pending']['method']??'')==='upscale'){self::allow_upscale_time();}
-            if(SBS_Finishing_Flow::handles($action)){$r=SBS_Finishing_Flow::handle($r,$request);if(is_wp_error($r)){return $r;}} elseif($action==='prepare'){
+            if(class_exists('SBS_Final_Print')&&SBS_Final_Print::handles($action)){$r=SBS_Final_Print::handle($r,$request);if(is_wp_error($r)){return $r;}} elseif(SBS_Finishing_Flow::handles($action)){$r=SBS_Finishing_Flow::handle($r,$request);if(is_wp_error($r)){return $r;}} elseif($action==='prepare'){
                 if(!empty($r['pending']['replicate_prediction_id'])){return self::error('upscale_exists','An upscale is already saved. Reopen the workspace to continue that job instead of starting another paid request.',409);}
                 $o=self::options($request->get_param('options'));if(is_wp_error($o)){return $o;}
                 $r['pending']=$o;$r['status']='Queued';$r['approval']=null;$r['next_action']='Run queued local stage or cancel';
@@ -421,7 +421,7 @@ final class SBS_Finishing
                 if(hash_equals($r['original']['sha256'],$v['asset']['sha256'])&&empty($r['flow']['review'])){return self::error('unchanged_candidate','This candidate is identical to the original. Select the upscaled or edited version before approval.',409);}
                 if(($v['review_disposition']??'')==='rejected'){return self::error('rejected','This candidate was rejected. Select another version or create a new one before approval.',409);}
                 $decisions=$v['review_decisions']??array();foreach(array_merge($v['qa']['pixel_review']['findings']??array(),$v['ai_review']['findings']??array()) as $finding){$id=$finding['id']??self::finding_id($finding);if(($decisions[$id]['decision']??'')==='unresolved'||empty($decisions[$id])){return self::error('review_findings','Resolve each flagged area as intentional or false alarm, fix it in a new candidate, or reject this candidate before local approval.',409);}}
-                $r['approval']=array('version'=>$v['uuid'],'sha256'=>$v['asset']['sha256'],'at'=>gmdate('c'),'checks'=>$checks,'scope'=>'local_finishing_only');$r['status']='Finishing Approved (local only)';$r['next_action']='Step 6: save your approved ZIP';
+                $r['approval']=array('version'=>$v['uuid'],'sha256'=>$v['asset']['sha256'],'at'=>gmdate('c'),'checks'=>$checks,'scope'=>'local_finishing_only');$r['status']='Finishing Approved (local only)';$r['next_action']='Apply a Finish or Keep Original & Continue, then export your Studio Package';
             } elseif($action==='export'){
                 if(empty($r['approval'])||$r['approval']['version']!==$r['current_version']){return self::error('approval','Approve the current version first.',409);}
                 $package=self::package($r,$request->get_param('filename'));if(is_wp_error($package)){return $package;}return array('package'=>$package,'drive_saved'=>false,'catalogue_updated'=>false);

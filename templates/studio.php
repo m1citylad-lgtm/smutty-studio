@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow,noarchive">
     <title>Smutty Studio</title>
-    <?php wp_print_styles(array('sbs-studio', 'sbs-studio-hierarchy', 'sbs-studio-theme', 'sbs-logic-correction', 'sbs-finishing', 'sbs-transparency-correction', 'sbs-finishing-flow')); ?>
+    <?php wp_print_styles(array('sbs-studio', 'sbs-studio-hierarchy', 'sbs-studio-theme', 'sbs-logic-correction', 'sbs-finishing', 'sbs-transparency-correction', 'sbs-finishing-flow', 'sbs-final-print')); ?>
 </head>
 <body id="sbs-studio-page" class="sbs-body">
 <div id="sbs-app" class="sbs-shell" data-rest="<?php echo esc_url(rest_url('smutty-bear/v1/')); ?>" data-authenticated="<?php echo SBS_Auth::is_authenticated() ? '1' : '0'; ?>" data-slug="<?php echo esc_attr(SBS_Plugin::studio_slug()); ?>" data-version="<?php echo esc_attr(SBS_VERSION); ?>" data-finishing-csrf="<?php echo SBS_Auth::is_authenticated() ? esc_attr(SBS_Finishing::csrf()) : ''; ?>" data-open-settings="<?php echo isset($_GET['settings']) ? '1' : '0'; ?>">
@@ -203,7 +203,7 @@
     </dialog>
     <footer class="sbs-footer">Private creative workspace · Image filtering: Less restrictive (OpenAI low) · Provider content rules still apply</footer>
 </div>
-<?php wp_print_scripts(array('sbs-fabric', 'sbs-studio', 'sbs-freestyle', 'sbs-logic-correction', 'sbs-finishing', 'sbs-transparency-correction', 'sbs-finishing-flow')); ?>
+<?php wp_print_scripts(array('sbs-fabric', 'sbs-studio', 'sbs-freestyle', 'sbs-logic-correction', 'sbs-finishing', 'sbs-transparency-correction', 'sbs-finishing-flow', 'sbs-final-print')); ?>
 </body>
 </html>
 
