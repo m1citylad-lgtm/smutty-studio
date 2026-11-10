@@ -274,7 +274,7 @@ final class SBS_Finishing
             if((int)$request->get_param('revision')!==(int)$r['revision']){return self::error('conflict','Workspace changed. Refresh before renaming.',409);}
             $title=sanitize_text_field((string)$request->get_param('title'));
             if($title===''||strlen($title)>190){return self::error('title','Enter a title between 1 and 190 bytes.');}
-            $r['title']=$title;if(isset($r['artwork_name'])){$r['artwork_name']=$title;}$r['revision']++;$r['updated_at']=gmdate('c');$r['audit'][]=array('at'=>gmdate('c'),'action'=>'Catalogue title renamed');
+            $r['title']=$title;if(isset($r['artwork_name'])){$r['artwork_name']=preg_replace('/^'.preg_quote((string)($r['series']??''),'/').'[ _-]+/i','',$title);}$r['revision']++;$r['updated_at']=gmdate('c');$r['audit'][]=array('at'=>gmdate('c'),'action'=>'Catalogue title renamed');
             return self::write($path,$r);
         } finally {flock($lock,LOCK_UN);fclose($lock);}
     }
@@ -334,7 +334,7 @@ final class SBS_Finishing
         if(is_wp_error($asset)){return $asset;}
         $qa=self::inspect($asset,$options);if(is_wp_error($qa)){return $qa;}
         $record=array('schema'=>1,'uuid'=>$uuid,'af_id'=>null,'title'=>sanitize_text_field($title)?:$asset['filename'],'links'=>$links,'source_route'=>'device_local','original'=>$asset,'original_qa'=>$qa,'versions'=>array(),'current_version'=>null,'approval'=>null,'metadata_status'=>'TBC','status'=>'Awaiting Finishing','next_action'=>'Choose a local stage and run preview','drive'=>array('original_file_id'=>null,'folder_id'=>null,'approved_master_file_id'=>null,'verified'=>false),'created_at'=>gmdate('c'),'updated_at'=>gmdate('c'),'revision'=>1,'audit'=>array(array('at'=>gmdate('c'),'action'=>'Untouched original stored locally')));
-        $record=array_merge($record,$identity);return self::write($path,$record);
+        $record=array_merge($record,$identity);$record['title']=$identity['series'].' '.$identity['artwork_name'];return self::write($path,$record);
     }
     public static function action($request)
     {
@@ -778,7 +778,7 @@ final class SBS_Finishing
         $zip->addFromString('metadata.json',wp_json_encode($r,JSON_PRETTY_PRINT));
         $zip->addFromString('finishing-qa.json',wp_json_encode($r['qa_manifest'],JSON_PRETTY_PRINT));
         $zip->addFromString('checksums.sha256',$r['original']['sha256'].'  original/'.$r['original']['filename']."\n".$v['asset']['sha256'].'  candidate/'.$v['asset']['filename']."\n");
-        $zip->addFromString('report.txt',"LOCAL FINISHING PREVIEW ONLY\nNo AF number allocated. ZIP archiving is separate from catalogue publication. Not an SB production approval.\n".wp_json_encode($v['qa'],JSON_PRETTY_PRINT)."\nOriginal SHA-256: ".$r['original']['sha256']."\nCandidate SHA-256: ".$v['asset']['sha256']."\nHuman local approval: ".$r['approval']['at']);
+        $zip->addFromString('report.txt',SBS_Intake::report($r)."LOCAL FINISHING PREVIEW ONLY\nNo AF number allocated. ZIP archiving is separate from catalogue publication. Not an SB production approval.\n".wp_json_encode($v['qa'],JSON_PRETTY_PRINT)."\nOriginal SHA-256: ".$r['original']['sha256']."\nCandidate SHA-256: ".$v['asset']['sha256']."\nHuman local approval: ".$r['approval']['at']);
         if(function_exists('imagewebp')&&SBS_Print_QA::gd_memory_available((int)$v['qa']['width']*(int)$v['qa']['height'])){$im=@imagecreatefromstring(file_get_contents(SBS_Storage::absolute_path($v['asset'])));if($im){$thumb=imagescale($im,min(1200,imagesx($im)));if($thumb){imagesavealpha($thumb,true);ob_start();imagewebp($thumb,null,85);$preview=ob_get_clean();if($preview){$zip->addFromString('preview.webp',$preview);}imagedestroy($thumb);}imagedestroy($im);}}
         if(!$zip->close()){@unlink($path);return self::error('zip','Package could not be completed.',500);}
         $filename=self::package_filename($r['title'],$requested_name,$v['number']);
