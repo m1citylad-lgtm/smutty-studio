@@ -7,7 +7,7 @@ function pixels(data,w,h,s){
  function lattice(size,seed){const cols=Math.ceil(w/size)+2,rows=Math.ceil(h/size)+2,a=new Float32Array(cols*rows);for(let y=0;y<rows;y++)for(let x=0;x<cols;x++)a[y*cols+x]=hash(x,y,seed);return (x,y)=>{const xx=x/size,yy=y/size,ix=Math.floor(xx),iy=Math.floor(yy),fx=xx-ix,fy=yy-iy,u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy),i=iy*cols+ix;return (a[i]*(1-u)+a[i+1]*u)*(1-v)+(a[i+cols]*(1-u)+a[i+cols+1]*u)*v;};}
  const coarse=lattice(step*7,11),fine=lattice(step*.8,29);
  const cols=Math.ceil(w/step)+1,rows=Math.ceil(h/step)+1,centres=[];
- for(let cy=0;cy<rows;cy++)for(let cx=0;cx<cols;cx++)centres.push([(cx+.5+(hash(cx,cy,7)-.5)*.65)*step,(cy+.5+(hash(cx,cy,17)-.5)*.65)*step,.12+hash(cx,cy,31)*.15]);
+ for(let cy=0;cy<rows;cy++)for(let cx=0;cx<cols;cx++)centres.push([(cx+.5+(hash(cx,cy,7)-.5)*.4)*step,(cy+.5+(hash(cx,cy,17)-.5)*.4)*step,.10+hash(cx,cy,31)*.11]);
  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
   const i=(y*w+x)*4;if(!data[i+3])continue;
   let r=data[i],g=data[i+1],b=data[i+2],l=.2126*r+.7152*g+.0722*b;
@@ -19,7 +19,7 @@ function pixels(data,w,h,s){
    const edge=Math.max(Math.abs(l-(.2126*original[right]+.7152*original[right+1]+.0722*original[right+2])),Math.abs(l-(.2126*original[down]+.7152*original[down+1]+.0722*original[down+2])),Math.abs(data[i+3]-original[right+3]),Math.abs(data[i+3]-original[down+3]));
    const protect=Math.max(0,1-edge/35),shadow=Math.max(0,Math.min(1,(190-l)/160));
    const c=centres[Math.floor(y/step)*cols+Math.floor(x/step)],distance=Math.hypot(x-c[0],y-c[1])/step;
-   texture=Math.max(0,1-Math.abs(distance-c[2])/.10)*shadow*protect*.24*halftone;
+   texture=Math.max(0,Math.min(1,(c[2]-distance)/.07))*shadow*protect*.24*halftone;
    wear=Math.max(0,(coarse(x,y)*.65+fine(x,y)*.35-.25)/.75)*protect*.32*distress;
   }
   for(const [k,v] of [[0,r],[1,g],[2,b]]){const f=(v-128)*(1-.24*fade)+128+8*fade;data[i+k]=Math.round(Math.max(0,Math.min(255,f*(1-texture)+(255-f)*wear)));}
