@@ -61,7 +61,6 @@
             </div>
             </div>
 
-            <?php require SBS_PLUGIN_DIR . 'templates/mockups.php'; ?>
             <section class="sbs-panel" data-panel="create" hidden>
                 <div class="sbs-panel-heading"><div><p class="sbs-kicker">IDEA ROOM</p><h1><span class="sbs-stage-number">4.</span> Turn a cheeky thought into a scene</h1></div><span class="sbs-pill">Strong innuendo · non-explicit</span></div>
                 <aside class="sbs-tab-help"><span aria-hidden="true">&#128161;</span><div><strong>Use the Idea Room to develop artwork.</strong> Start with a rough joke, choose or edit one of the suggested concepts, then generate drafts. The selected character description and relevant references are included automatically.</div></aside>
@@ -162,6 +161,7 @@
 
             <?php include SBS_PLUGIN_DIR . 'templates/logic-correction.php'; ?>
             <?php include SBS_PLUGIN_DIR . 'templates/finishing.php'; ?>
+            <?php require SBS_PLUGIN_DIR . 'templates/mockups.php'; ?>
             <dialog id="sbs-lc-viewer" class="sbs-lc-viewer" aria-labelledby="sbs-lc-viewer-title">
                 <div class="sbs-lc-viewer-head"><div><h2 id="sbs-lc-viewer-title">Image review</h2><p id="sbs-lc-viewer-caption">Markers are approximate areas to inspect.</p></div><button id="sbs-lc-viewer-close" class="sbs-button" type="button" aria-label="Close image viewer">Close</button></div>
                 <div id="sbs-lc-viewer-stage" class="sbs-lc-viewer-stage" role="img" aria-label="Image with approximate suspected issue areas" tabindex="0">

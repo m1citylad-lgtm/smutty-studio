@@ -44,7 +44,7 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0.7.0/);
+assert.match(plugin, /Version: 0.7.1/);
 assert.match(template, /id="sbs-af-clear"/);
 assert.match(template, /id="sbs-af-correction-help"/);
 assert.match(template, /id="sbs-af-correction-open-spinner"/);
@@ -61,7 +61,7 @@ assert.match(finishing, /function render\(\)[\s\S]*?stageRunState=\{\};renderedW
 assert.match(finishing, /el\('sbs-af-clear'\)\.addEventListener/);
 assert.match(finishing, /savedUiState\.workspace='';savedUiState\.checks=\{\}/);
 
-assert.match(plugin, /define\('SBS_VERSION', '0.7.0'\)/);
+assert.match(plugin, /define\('SBS_VERSION', '0.7.1'\)/);
 assert.match(template, /id="sbs-af-seam-review"/);
 assert.match(template, /no AI credits/);
 assert.match(finishing, /function analyzeSeams\(/);
