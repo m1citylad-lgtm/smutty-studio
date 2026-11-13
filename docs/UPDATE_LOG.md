@@ -1,6 +1,16 @@
+# v0.7.2 — Standalone Mock-ups live verification (13 November 2026)
+
+Signed v0.7.2 is installed and authenticated Live Studio is positively verified at v0.7.2. Final PHP/JavaScript/image and Chromium checks passed (43429672732); signed publication passed (43429838408). Merge e4855de54eaf7a802cc28c62e1e6817f02f01e73. ZIP SHA-256: d81d5475997d99cc5c51d3a827db058bd6dd826b0b556c2489b25ce6fa0687f9.
+
+Live v0.7.0 exposed a Mock-ups include nested in hidden Characters; v0.7.1 moved it beside Finishing and added real-template navigation coverage. v0.7.2 clears stale expansion-credit guidance when returning to Do nothing. Both fixes are live verified.
+
+Authenticated live checks confirmed the new top-level screen, 55 approved artwork options, TAIL (one match), muscle (seven matches), Clear, all 19 colour choices, three expansion modes, nine anchors, ratio help and independent Download after a no-photo FAIL. Add-series opens and cancels correctly. No unwanted series, artwork approval, production ID, live Drive transfer or real paid expansion was created.
+
+The owner-photo template library is empty. First-use upload and reviewed shirt-mask/print-area calibration are required. Genuine model/flat-lay composition, actual provider scene quality and Samsung touch/download/audio acceptance remain open, alongside earlier genuine-logo, Drive/register and physical-print acceptance. Installer activity and new rollback-backup creation were not directly observed; installed version and working controls were observed. The Google change log contains the full delivery/remaining-acceptance record.
+
 # v0.7.0 — Standalone Mock-ups builder (13 November 2026)
 
-SS-017 and SS-018 plus the owner's later two-button/expansion/gallery/search addenda. Implementation prepared; validation, signed publication and live acceptance are recorded separately.
+SS-017 and SS-018 plus the owner's later two-button/expansion/gallery/search addenda. Implemented, signed and live verified through v0.7.2 above; genuine-photo/device acceptance remains separate.
 
 - Add a top-level Mock-ups tab next to Settings, separate from Artwork Finishing and transparent print masters. Reuse saved white-shirt templates or upload more; first-upload calibration saves a reviewed shirt-only mask, excluded foreground/skin areas and four perspective print corners with template history.
 - Two-column lazy photo gallery with one-tap selection; case-insensitive title/series artwork search immediately above the approved-artwork dropdown; tablet image upload remains independent. Colour stays editable after placement; all 19 screenshot-sampled shirt colours are labelled approximate.
