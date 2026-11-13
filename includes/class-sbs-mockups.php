@@ -107,6 +107,6 @@ final class SBS_Mockups
                 self::save_job($path,$job);
             }
             return array('status'=>'complete','asset'=>$out,'frame'=>$job['frame'],'review'=>$job['review']);
-        }catch(Throwable $e){return self::error('The scene expansion could not finish. Download still offers the last usable composition.');}finally{flock($lock,LOCK_UN);fclose($lock);}
+        }catch(Throwable $e){return self::error('The scene expansion could not finish (' . get_class($e) . ', mock-ups line ' . $e->getLine() . '). Download still offers the last usable composition.');}finally{flock($lock,LOCK_UN);fclose($lock);}
     }
 }
