@@ -66,7 +66,7 @@ final class SBS_Mockups
     public static function restore($generated,$source,$frame)
     {
         $generated->resizeImage($frame['width'],$frame['height'],Imagick::FILTER_LANCZOS,1,false);
-        $generated->compositeImage($source,Imagick::COMPOSITE_COPY,$frame['x'],$frame['y']);$generated->setImagePage(0,0,0,0);$generated->setImageFormat('png32');return $generated;
+        $generated->setImageAlphaChannel(Imagick::ALPHACHANNEL_SET);$generated->compositeImage($source,Imagick::COMPOSITE_COPY,$frame['x'],$frame['y']);$generated->setImagePage(0,0,0,0);$generated->setImageFormat('png32');return $generated;
     }
     private static function save_job($path,$job){$tmp=$path.'.tmp';$s=wp_json_encode($job);if(file_put_contents($tmp,$s,LOCK_EX)!==strlen($s)||!rename($tmp,$path)){@unlink($tmp);return false;}@chmod($path,0640);return true;}
     public static function expand($q)
