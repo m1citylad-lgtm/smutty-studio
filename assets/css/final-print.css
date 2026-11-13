@@ -34,5 +34,7 @@ body#sbs-studio-page #sbs-app :focus-visible{outline:3px solid #f0c77e;outline-o
 body#sbs-studio-page #sbs-app .sbs-final-pad{grid-template-columns:48px 7rem 48px;gap:6px}
 body#sbs-studio-page #sbs-app .sbs-final-pad .sbs-button{padding:.35rem .45rem;white-space:nowrap;overflow-wrap:normal;min-width:48px}
 
-body#sbs-studio-page #sbs-app #sbs-final .sbs-number-stepper input[type=number]{width:5.5ch;min-width:5.5ch;max-width:5.5ch;text-align:center}
+body#sbs-studio-page #sbs-app #sbs-final .sbs-number-stepper input[type=number]{width:8ch;min-width:8ch;max-width:8ch;padding:.35rem .4rem;text-align:center;appearance:textfield}
 body#sbs-studio-page #sbs-app #sbs-final .sbs-number-stepper .sbs-button{min-width:48px;flex:0 0 48px;min-height:48px;padding:.35rem .45rem}
+
+#sbs-final .sbs-number-stepper input::-webkit-inner-spin-button,#sbs-final .sbs-number-stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
