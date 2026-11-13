@@ -44,6 +44,7 @@ final class SBS_Plugin
         add_action('rest_api_init', array('SBS_Freestyle', 'register_routes'));
         add_action('rest_api_init', array('SBS_Finishing', 'register_routes'));
         add_action('rest_api_init', array('SBS_Final_Print', 'register_routes'));
+        add_action('rest_api_init', array('SBS_Mockups', 'register_routes'));
         add_action('rest_api_init', array('SBS_Logic_Correction', 'register_routes'));
         add_action('rest_api_init', array('SBS_Google_Drive', 'register_routes'));
         add_action('admin_menu', array('SBS_Admin', 'register_menu'));
@@ -125,6 +126,8 @@ final class SBS_Plugin
         wp_enqueue_style('sbs-final-print', SBS_PLUGIN_URL . 'assets/css/final-print.css', array('sbs-finishing-flow'), SBS_VERSION);
         wp_enqueue_script('sbs-logic-correction', SBS_PLUGIN_URL . 'assets/js/logic-correction.js', array('sbs-studio'), SBS_VERSION, true);
         wp_enqueue_style('sbs-logic-correction', SBS_PLUGIN_URL . 'assets/css/logic-correction.css', array('sbs-studio-theme'), SBS_VERSION);
+        wp_enqueue_script('sbs-mockups', SBS_PLUGIN_URL . 'assets/js/mockups.js', array('sbs-studio'), SBS_VERSION, true);
+        wp_enqueue_style('sbs-mockups', SBS_PLUGIN_URL . 'assets/css/mockups.css', array('sbs-final-print'), SBS_VERSION);
         include SBS_PLUGIN_DIR . 'templates/studio.php';
         exit;
     }

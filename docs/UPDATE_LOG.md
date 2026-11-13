@@ -1,3 +1,14 @@
+# v0.7.0 — Standalone Mock-ups builder (13 November 2026)
+
+SS-017 and SS-018 plus the owner's later two-button/expansion/gallery/search addenda. Implementation prepared; validation, signed publication and live acceptance are recorded separately.
+
+- Add a top-level Mock-ups tab next to Settings, separate from Artwork Finishing and transparent print masters. Reuse saved white-shirt templates or upload more; first-upload calibration saves a reviewed shirt-only mask, excluded foreground/skin areas and four perspective print corners with template history.
+- Two-column lazy photo gallery with one-tap selection; case-insensitive title/series artwork search immediately above the approved-artwork dropdown; tablet image upload remains independent. Colour stays editable after placement; all 19 screenshot-sampled shirt colours are labelled approximate.
+- Deterministic mask-limited recolour and perspective-aware aspect-locked artwork composition retain fabric shading and original assets. Direct drag/resize and a live crop frame support the requested social ratios, original/full-photo fit and advanced custom ratios/formats. Physical print scale and supplier/fabric matching are estimates.
+- Exactly three expansion choices: Do nothing (default, no AI), Smart expand, Full scene outpaint — Advanced. A nine-point anchor control appears only for expansion. AI runs only on deliberate Finish & Check; server checkpoints retain a single submitted job and restore the original web-resolution photo pixels over generated outer scenery. Expanded backgrounds can be reused across local colour/artwork edits. Original high-resolution photo and artwork assets are never rewritten.
+- Finish & Check runs local clipping/mask/contrast inspection and, for AI expansion, outer-scene observations where available. Numbered visible-area findings are advisory. Download remains an independent, always-selectable owner action, even without checks or with FAIL warnings; rendering errors retain the last usable output. No automatic download or production approval.
+- Main controls remain compact; calibration and optional details are tucked away. Local browser draft and expansion tracking survive reload; shared templates persist in private Studio storage. Actual Samsung touch/download acceptance, genuine-photo mask calibration and provider-generated scene quality remain distinct from deterministic tests.
+
 # v0.6.2 — Readable percentages and verified live controls (13 November 2026)
 
 Signed release v0.6.2 published and authenticated Live Studio positively verified at v0.6.2. Final validation and guided-browser checks passed (run 43377986773); signed publication passed (43378122197), merge 6972d6073d43648b56ea14f319119c54f072c90b. v0.6.1 also corrected unsaved-preview restoration/save readiness; v0.6.2 fixes production-style digit clipping and uses the production hierarchy CSS in browser tests.
