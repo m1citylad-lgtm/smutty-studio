@@ -1,6 +1,14 @@
+# v0.6.2 — Readable percentages and verified live controls (13 November 2026)
+
+Signed release v0.6.2 published and authenticated Live Studio positively verified at v0.6.2. Final validation and guided-browser checks passed (run 43377986773); signed publication passed (43378122197), merge 6972d6073d43648b56ea14f319119c54f072c90b. v0.6.1 also corrected unsaved-preview restoration/save readiness; v0.6.2 fixes production-style digit clipping and uses the production hierarchy CSS in browser tests.
+
+Live checks on the existing MB QA Intake Disposable workspace: exact 40/30/30/10 commit; numeric profile save/load; minus/plus controls; unsaved treatment/difference preview; full-screen source toggle at 130%; committed values and profile surviving reload and update sign-in. Final screenshot confirms readable digits. Both Add-series forms opened, cancellation worked, and duplicate SB was rejected. No unwanted test series, saved image candidate, production ID, artwork approval or live Drive transfer was created. The profile 40-30-30-10 remains available.
+
+Actual Samsung touch/audio acceptance, owner vintage-print approval, genuine logos/templates and earlier real package/register acceptance remain open. Live installation activity and creation of a new rollback backup were not observed; the updater was locked. See the authoritative Google pending-changes document for the precise remaining acceptance work.
+
 # v0.6.0 — Stable treatment settings, profiles, custom series and compact controls (13 November 2026)
 
-Implementation prepared; automated validation, signed publication and live acceptance are tracked separately.
+Implemented and published as v0.6.0, with subsequent v0.6.1/v0.6.2 fixes and the live verification above.
 
 - Replace touch sliders with exact 0–100 integer inputs and adjacent one-point minus/plus buttons. Editing, committing all four values, previewing and saving a candidate are separate actions. Fix source-refresh zeroing and automatic assessment overwrites; manual settings are saved per workspace. AI recommendations require explicit selection and confirmation.
 - Persist shared numeric-named settings profiles in Studio, with explicit load/apply, rename, confirmed delete, duplicate prevention and revision checks for concurrent changes. Saving settings never edits or approves artwork.
