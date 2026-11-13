@@ -3,3 +3,33 @@
 #sbs-final-downloads{min-width:0;max-width:100%}#sbs-final-downloads label{display:block}#sbs-final-downloads select{width:100%;min-width:0;min-height:48px}#sbs-final-downloads p{overflow-wrap:anywhere;white-space:pre-line}.sbs-final-download-preview{display:block;max-width:100%;width:240px;height:240px;object-fit:contain;background:repeating-conic-gradient(#53616c 0% 25%,#283b4b 0% 50%) 50%/24px 24px}#sbs-final-downloads [hidden],#sbs-final [hidden]{display:none!important}
 
 #sbs-final-view-dialog{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;box-sizing:border-box;margin:0;padding:12px}#sbs-final-view-canvas{width:100%;height:calc(100dvh - 210px);min-height:220px;touch-action:none;background:repeating-conic-gradient(#53616c 0% 25%,#283b4b 0% 50%) 50%/24px 24px}#sbs-final-assessment{font-size:1.15rem;border:3px solid #d7b775;white-space:pre-line}#sbs-final-finish input[type=range]{width:100%}
+
+/* Compact owner controls, shared across Studio tabs. Keep previews and prose wide. */
+body#sbs-studio-page #sbs-app :is(input,select,button){max-width:100%;min-width:0}
+body#sbs-studio-page #sbs-app :is(select,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden])){width:auto;max-width:100%;min-height:48px}
+body#sbs-studio-page #sbs-app select{width:fit-content;max-width:min(100%,42ch);field-sizing:content}
+body#sbs-studio-page #sbs-app input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]){width:26ch}
+body#sbs-studio-page #sbs-app input[type=number]{width:9ch}
+body#sbs-studio-page #sbs-app label:has(> :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select)){display:inline-flex;flex-direction:column;vertical-align:top;align-items:flex-start;gap:.25rem;width:fit-content;max-width:100%;margin:.4rem .7rem .4rem 0;overflow-wrap:anywhere}
+body#sbs-studio-page #sbs-app label:has(>textarea){display:block;width:100%;max-width:100%}
+body#sbs-studio-page #sbs-app :is(.sbs-row,.sbs-final-actions,.sbs-fs-options){display:flex;flex-wrap:wrap;align-items:end;gap:.6rem;margin:.5rem 0}
+body#sbs-studio-page #sbs-app .sbs-button{width:auto;min-height:48px;white-space:normal;overflow-wrap:anywhere;flex:0 1 auto}
+body#sbs-studio-page #sbs-app :is(.sbs-grid.two:has(>label),.sbs-grid.three:has(>label),.sbs-final-grid){grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),max-content));gap:.65rem}
+body#sbs-studio-page #sbs-app .sbs-card{min-width:0;padding:clamp(12px,2vw,22px)}
+body#sbs-studio-page #sbs-app :is(.sbs-final-actions,.sbs-row) label{margin:0}
+body#sbs-studio-page #sbs-app :is(input[type=checkbox],input[type=radio]){width:24px;min-width:24px;max-width:24px}
+.sbs-series-row{display:inline-flex;gap:.5rem;align-items:end;flex-wrap:wrap;max-width:100%;margin-right:.7rem}
+body#sbs-studio-page #sbs-app .sbs-series-row label{margin-right:0}
+.sbs-effect-grid{display:flex;flex-wrap:wrap;gap:.6rem 1rem;align-items:start}
+body#sbs-studio-page #sbs-app .sbs-effect-grid label{display:flex;flex-direction:column;margin:.4rem 0;max-width:100%}
+.sbs-number-stepper{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem;max-width:100%}
+body#sbs-studio-page #sbs-app .sbs-number-stepper input{width:5.5ch;text-align:center}
+.sbs-number-stepper .sbs-button{min-width:48px;min-height:48px;padding:.4rem .7rem}
+#sbs-series-dialog{background:#172e40;color:#fff3d4;border:2px solid #d7b775;width:min(95vw,36rem);max-height:90dvh;overflow:auto}
+#sbs-series-dialog::backdrop{background:#000b}
+#sbs-final-preview-diff-canvas{width:min(100%,700px);height:auto;background:#172e40}
+body#sbs-studio-page #sbs-app :focus-visible{outline:3px solid #f0c77e;outline-offset:3px}
+@media(max-width:520px){body#sbs-studio-page #sbs-app :is(select,input){max-width:100%}.sbs-effect-grid{gap:.3rem}body#sbs-studio-page #sbs-app .sbs-card{padding:12px}}
+/* Keep the centre label readable inside the compact movement pad. */
+body#sbs-studio-page #sbs-app .sbs-final-pad{grid-template-columns:48px 7rem 48px;gap:6px}
+body#sbs-studio-page #sbs-app .sbs-final-pad .sbs-button{padding:.35rem .45rem;white-space:nowrap;overflow-wrap:normal;min-width:48px}

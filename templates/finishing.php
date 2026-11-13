@@ -7,7 +7,7 @@
 <div class="sbs-grid two sbs-af-workflow-layout">
         <section class="sbs-card sbs-af-workspace-card"><h2>1. Choose artwork</h2>
             <form id="sbs-af-upload">
-                <label for="sbs-af-series">Series<select id="sbs-af-series" required><option value="">Choose a series</option><option value="SB">Smutty Bear (SB)</option><option value="MB">Madam Butterfly (MB)</option><option value="TT">Torsotopia (TT)</option><option value="PW">Piston Works (PW)</option></select></label>
+                <div class="sbs-series-row"><label for="sbs-af-series">Series<select id="sbs-af-series" required><option value="">Choose a series</option><option value="SB">Smutty Bear (SB)</option><option value="MB">Madam Butterfly (MB)</option><option value="TT">Torsotopia (TT)</option><option value="PW">Piston Works (PW)</option></select></label><button type="button" class="sbs-button" data-series-add="sbs-af-series">Add</button></div>
                 <label for="sbs-af-name">Artwork name <span class="sbs-af-required">Required</span><input id="sbs-af-name" type="text" maxlength="190" spellcheck="true" autocapitalize="sentences" required aria-required="true"></label>
                 <label for="sbs-af-file">Browse device — Files / My Files<input id="sbs-af-file" type="file" accept=".png,.jpg,.jpeg,.webp,application/octet-stream" aria-describedby="sbs-af-file-help"></label>
                 <label for="sbs-af-gallery-file">Browse Photos / Gallery on this device<input id="sbs-af-gallery-file" type="file" accept="image/*" aria-describedby="sbs-af-file-help"></label>

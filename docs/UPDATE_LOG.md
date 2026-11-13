@@ -1,3 +1,15 @@
+# v0.6.0 — Stable treatment settings, profiles, custom series and compact controls (13 November 2026)
+
+Implementation prepared; automated validation, signed publication and live acceptance are tracked separately.
+
+- Replace touch sliders with exact 0–100 integer inputs and adjacent one-point minus/plus buttons. Editing, committing all four values, previewing and saving a candidate are separate actions. Fix source-refresh zeroing and automatic assessment overwrites; manual settings are saved per workspace. AI recommendations require explicit selection and confirmation.
+- Persist shared numeric-named settings profiles in Studio, with explicit load/apply, rename, confirmed delete, duplicate prevention and revision checks for concurrent changes. Saving settings never edits or approves artwork.
+- Add a compact Add button beside both intake series selectors. A short name/code form saves a unique two-letter series, selects it immediately, retains other intake fields and makes it available for later workspaces and logo records. Custom series are validated server-side and included in package metadata/reports; Studio allocates no permanent production number.
+- Replace a uniform repeated dot overlay and per-pixel speckles with varied, shadow-weighted screen dots and coherent multiscale RGB ink-density wear, protected at sharp edges. Alpha, geometry, original bytes and the server-side colour/PPI preservation path remain unchanged. This remains geometric processing, not semantic segmentation or a physical print guarantee.
+- Add a prominent measured What changed summary and unsaved-preview changed-area view. A genuinely unchanged result cannot create a redundant saved candidate. Keep Original remains available.
+- Apply compact content-appropriate widths and flexible groupings across Studio controls; keep wide artwork/prose areas and 48px touch targets. Responsive wrapping and high contrast are retained.
+- Existing broader live acceptance (logos, mockups, real Drive/register transfer, intake export and Samsung gestures/audio) remains distinct from automated checks. Do not mark these passed without observation.
+
 # v0.5.0 — Optional final finish, logo and mockup stages (10 November 2026)
 
 Signed v0.5.0 published; the refreshed live Studio and updater reported v0.5.0 on 10 November 2026. Automated PHP, real-image and guided browser regressions passed. Final owner-account workflow acceptance remains open; do not mark the whole change log complete.
