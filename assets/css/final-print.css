@@ -30,3 +30,6 @@ body#sbs-studio-page #sbs-app .sbs-number-stepper input{width:5.5ch;text-align:c
 #sbs-final-preview-diff-canvas{width:min(100%,700px);height:auto;background:#172e40}
 body#sbs-studio-page #sbs-app :focus-visible{outline:3px solid #f0c77e;outline-offset:3px}
 @media(max-width:520px){body#sbs-studio-page #sbs-app :is(select,input){max-width:100%}.sbs-effect-grid{gap:.3rem}body#sbs-studio-page #sbs-app .sbs-card{padding:12px}}
+/* Keep the centre label readable inside the compact movement pad. */
+body#sbs-studio-page #sbs-app .sbs-final-pad{grid-template-columns:48px 7rem 48px;gap:6px}
+body#sbs-studio-page #sbs-app .sbs-final-pad .sbs-button{padding:.35rem .45rem;white-space:nowrap;overflow-wrap:normal;min-width:48px}
