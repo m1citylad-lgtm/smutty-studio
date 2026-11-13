@@ -198,7 +198,7 @@ function mockAction(p){calls.push(p.action+(p.pass?':'+p.pass:''));
  assert.equal(await page.locator('#sbs-final-import-series').inputValue(),'DF');assert.match(await page.locator('#sbs-af-series').textContent(),/Dragonfly/);
  await page.reload();await page.waitForFunction(()=>document.getElementById('sbs-af-series').textContent.includes('Dragonfly'));
  await page.evaluate(r=>window.dispatchEvent(new CustomEvent('sbs-finishing-open',{detail:r})),record);await page.getByRole('tab',{name:'2 Final Finish',exact:true}).click();await page.waitForFunction(()=>document.getElementById('sbs-final-effect-tone').value==='40');assert.equal(await page.locator('#sbs-final-effect-distress').inputValue(),'10');
- for(const width of [1024,512,400]){await page.setViewportSize({width,height:900});const over=await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth+2);assert.equal(over,false,'Horizontal overflow at '+width);}
+ for(const width of [1024,512,400]){await page.setViewportSize({width,height:900});if(width===512)await page.screenshot({path:'build/ui-check/numeric-controls-zoom.png',fullPage:true});const over=await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth+2);assert.equal(over,false,'Horizontal overflow at '+width);}
  await page.setViewportSize({width:1024,height:900});
  await page.getByRole('tab',{name:'3 Logo & Mockup',exact:true}).click();
  await page.locator('#sbs-final-save-brand').click();await page.waitForFunction(()=>window.SBSFinishingBridge.getState().final_print.brand_decision==='APPROVED_NO_LOGO'&&!window.SBSFinishingBridge.isBusy());
