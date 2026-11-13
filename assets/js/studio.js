@@ -81,7 +81,7 @@
                 document.querySelector('[data-panel="usage"]').classList.toggle('active', target === 'usage');
                 document.querySelector('[data-panel="settings"]').classList.toggle('active', target === 'settings');
                 document.querySelector('[data-panel="freestyle"]').classList.toggle('active', target === 'freestyle');
-                ['finishing', 'catalogue', 'logic-correction'].forEach(function (area) { document.querySelector('[data-panel="' + area + '"]').classList.toggle('active', target === area); });
+                ['finishing', 'catalogue', 'logic-correction', 'mockups'].forEach(function (area) { document.querySelector('[data-panel="' + area + '"]').classList.toggle('active', target === area); });
                 if (target === 'freestyle' && freestyle) { freestyle.render(); }
                 if (target === 'usage') { loadUsage(); }
                 if (target === 'settings') { loadUpdates(); }
@@ -1273,6 +1273,7 @@
                 if (button.closest('.sbs-af[data-panel="catalogue"]')) { return; }
                 if (button.closest('.sbs-af[data-panel="finishing"]')) { return; }
                 if (button.closest('.sbs-lc')) { return; }
+                if (button.closest('#sbs-mockups')) { return; }
                 if (button.dataset.sbsInfoAttached || button.closest('.sbs-explain-dialog')) { return; }
                 button.dataset.sbsInfoAttached = '1';
                 var info = document.createElement('button');

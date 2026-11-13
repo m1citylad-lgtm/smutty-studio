@@ -34,6 +34,7 @@ jobs:
           php tools/test-finishing-drive-files.php
           php tools/test-final-print.php
           php tools/test-intake.php
+          php tools/test-mockups.php
           php -n -d extension=json -d extension=gd -d extension=zip tools/test-print-qa.php
       - name: JavaScript and image export checks
         run: |
@@ -49,6 +50,8 @@ jobs:
           node tools/test-final-print.cjs
           node --check assets/js/treatment.js
           node tools/test-treatment.cjs
+          node --check assets/js/mockups.js
+          node tools/test-mockups.cjs
           node tools/test-print-visibility.cjs
           node tools/test-flat-background.cjs
           node tools/test-development.cjs
@@ -71,7 +74,9 @@ jobs:
       - name: Verify the guided screen and actual button sequence
         env:
           NODE_PATH: ${{ runner.temp }}/sbs-ui/node_modules
-        run: node tools/test-finishing-flow-ui.cjs
+        run: |
+          node tools/test-finishing-flow-ui.cjs
+          node tools/test-mockups-ui.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
