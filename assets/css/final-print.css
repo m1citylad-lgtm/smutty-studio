@@ -33,3 +33,6 @@ body#sbs-studio-page #sbs-app :focus-visible{outline:3px solid #f0c77e;outline-o
 /* Keep the centre label readable inside the compact movement pad. */
 body#sbs-studio-page #sbs-app .sbs-final-pad{grid-template-columns:48px 7rem 48px;gap:6px}
 body#sbs-studio-page #sbs-app .sbs-final-pad .sbs-button{padding:.35rem .45rem;white-space:nowrap;overflow-wrap:normal;min-width:48px}
+
+body#sbs-studio-page #sbs-app #sbs-final .sbs-number-stepper input[type=number]{width:5.5ch;min-width:5.5ch;max-width:5.5ch;text-align:center}
+body#sbs-studio-page #sbs-app #sbs-final .sbs-number-stepper .sbs-button{min-width:48px;flex:0 0 48px;min-height:48px;padding:.35rem .45rem}
