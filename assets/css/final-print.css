@@ -14,7 +14,7 @@ body#sbs-studio-page #sbs-app label:has(> :is(input:not([type=checkbox]):not([ty
 body#sbs-studio-page #sbs-app label:has(>textarea){display:block;width:100%;max-width:100%}
 body#sbs-studio-page #sbs-app :is(.sbs-row,.sbs-final-actions,.sbs-fs-options){display:flex;flex-wrap:wrap;align-items:end;gap:.6rem;margin:.5rem 0}
 body#sbs-studio-page #sbs-app .sbs-button{width:auto;min-height:48px;white-space:normal;overflow-wrap:anywhere;flex:0 1 auto}
-body#sbs-studio-page #sbs-app :is(.sbs-grid.two,.sbs-grid.three,.sbs-final-grid){grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),max-content));gap:.65rem}
+body#sbs-studio-page #sbs-app :is(.sbs-grid.two:has(>label),.sbs-grid.three:has(>label),.sbs-final-grid){grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),max-content));gap:.65rem}
 body#sbs-studio-page #sbs-app .sbs-card{min-width:0;padding:clamp(12px,2vw,22px)}
 body#sbs-studio-page #sbs-app :is(.sbs-final-actions,.sbs-row) label{margin:0}
 body#sbs-studio-page #sbs-app :is(input[type=checkbox],input[type=radio]){width:24px;min-width:24px;max-width:24px}
