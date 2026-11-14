@@ -112,7 +112,7 @@ final class SBS_Replicate
         }
         $host = strtolower((string) wp_parse_url($url, PHP_URL_HOST));
         if (!self::host_matches($host, 'replicate.com') && !self::host_matches($host, 'replicate.delivery')) {
-            return new WP_Error('untrusted_output_url', 'Replicate returned an untrusted output host.');
+            return new WP_Error('untrusted_output_url', 'Replicate returned an untrusted output host: '.preg_replace('/[^a-z0-9.-]/','',$host).'. Original retained.');
         }
         $response = wp_safe_remote_get($url, array('timeout' => 60, 'redirection' => 2));
         if (is_wp_error($response)) {
