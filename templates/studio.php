@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow,noarchive">
     <title>Smutty Studio</title>
-    <?php wp_print_styles(array('sbs-studio', 'sbs-studio-hierarchy', 'sbs-studio-theme', 'sbs-logic-correction', 'sbs-finishing', 'sbs-transparency-correction', 'sbs-finishing-flow', 'sbs-final-print', 'sbs-mockups')); ?>
+    <?php wp_print_styles(array('sbs-studio', 'sbs-studio-hierarchy', 'sbs-studio-theme', 'sbs-logic-correction', 'sbs-finishing', 'sbs-transparency-correction', 'sbs-finishing-flow', 'sbs-final-print', 'sbs-mockups', 'sbs-tools')); ?>
 </head>
 <body id="sbs-studio-page" class="sbs-body">
 <div id="sbs-app" class="sbs-shell" data-rest="<?php echo esc_url(rest_url('smutty-bear/v1/')); ?>" data-authenticated="<?php echo SBS_Auth::is_authenticated() ? '1' : '0'; ?>" data-slug="<?php echo esc_attr(SBS_Plugin::studio_slug()); ?>" data-version="<?php echo esc_attr(SBS_VERSION); ?>" data-finishing-csrf="<?php echo SBS_Auth::is_authenticated() ? esc_attr(SBS_Finishing::csrf()) : ''; ?>" data-open-settings="<?php echo isset($_GET['settings']) ? '1' : '0'; ?>">
@@ -16,9 +16,10 @@
             <button data-primary-tab="freestyle">Freestyle</button>
             <button data-primary-tab="catalogue">Catalogue</button>
             <button data-primary-tab="characters">Characters</button>
-            <button data-primary-tab="usage">Usage</button>
-            <button data-primary-tab="settings">Settings</button>
+            <button data-primary-tab="usage" aria-label="Usage and costs" title="Usage and costs">£</button>
+            <button data-primary-tab="settings" aria-label="Settings" title="Settings">⚙</button>
             <button data-primary-tab="mockups">Mock-ups</button>
+            <button data-primary-tab="fix">Fix</button>
         </nav>
         <div class="sbs-header-right"><div class="sbs-header-brand"><div class="sbs-wordmark"><span>Smutty Studio</span></div><span class="sbs-version">v<?php echo esc_html(SBS_VERSION); ?></span></div><button id="sbs-guide-open" class="sbs-guide-open" type="button" <?php echo SBS_Auth::is_authenticated() ? '' : 'hidden'; ?>><span aria-hidden="true">?</span> Guide</button></div>
     </header>
@@ -161,7 +162,8 @@
 
             <?php include SBS_PLUGIN_DIR . 'templates/logic-correction.php'; ?>
             <?php include SBS_PLUGIN_DIR . 'templates/finishing.php'; ?>
-            <?php require SBS_PLUGIN_DIR . 'templates/mockups.php'; ?>
+            <?php require SBS_PLUGIN_DIR . 'templates/photo-mockups.php'; ?>
+            <?php require SBS_PLUGIN_DIR . 'templates/fix.php'; ?>
             <dialog id="sbs-lc-viewer" class="sbs-lc-viewer" aria-labelledby="sbs-lc-viewer-title">
                 <div class="sbs-lc-viewer-head"><div><h2 id="sbs-lc-viewer-title">Image review</h2><p id="sbs-lc-viewer-caption">Markers are approximate areas to inspect.</p></div><button id="sbs-lc-viewer-close" class="sbs-button" type="button" aria-label="Close image viewer">Close</button></div>
                 <div id="sbs-lc-viewer-stage" class="sbs-lc-viewer-stage" role="img" aria-label="Image with approximate suspected issue areas" tabindex="0">
@@ -205,7 +207,7 @@
     </dialog>
     <footer class="sbs-footer">Private creative workspace · Image filtering: Less restrictive (OpenAI low) · Provider content rules still apply</footer>
 </div>
-<?php wp_print_scripts(array('sbs-fabric', 'sbs-studio', 'sbs-freestyle', 'sbs-logic-correction', 'sbs-finishing', 'sbs-transparency-correction', 'sbs-finishing-flow', 'sbs-final-print', 'sbs-treatment', 'sbs-mockups')); ?>
+<?php wp_print_scripts(array('sbs-feedback', 'sbs-fabric', 'sbs-studio', 'sbs-freestyle', 'sbs-logic-correction', 'sbs-finishing', 'sbs-transparency-correction', 'sbs-finishing-flow', 'sbs-final-print', 'sbs-treatment', 'sbs-photo-math', 'sbs-mockups', 'sbs-fix')); ?>
 </body>
 </html>
 
