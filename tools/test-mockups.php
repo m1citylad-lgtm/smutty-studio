@@ -19,6 +19,10 @@ try{
  check(is_wp_error(SBS_Mockups::calibration(array('quad'=>array(array(0,0),array(1,1),array(1,0),array(0,1))))),'Crossing print corners accepted');
  $a=array('sha256'=>'one');$r=array('final_print'=>array('finished'=>array('asset'=>$a,'approval'=>array('sha256'=>'other'))));check(SBS_Mockups::artwork($r)===null,'Unapproved asset offered');$r['final_print']['finished']['approval']['sha256']='one';check(SBS_Mockups::artwork($r)===$a,'Approved artwork missing');
  $im=new Imagick();$im->newImage(120,100,new ImagickPixel('transparent'),'png');$draw=new ImagickDraw();$draw->setFillColor('rgba(220,230,240,0.6)');$draw->rectangle(1,1,119,99);$draw->setFillColor('red');$draw->rectangle(10,10,40,50);$im->drawImage($draw);$im->setImageAlphaChannel(Imagick::ALPHACHANNEL_ACTIVATE);$im->setImageFormat('png32');$source=SBS_Storage::store_bytes($im->getImageBlob(),'photo.png','image/png','mockups',0,'mockup_template','Test white shirt');$im->clear();
+ // A lost upload response reuses the same immutable photo with the same request key.
+ $uploadFile=array('tmp_name'=>$source['path'],'name'=>'white-shirt.png','size'=>filesize($source['path']),'error'=>0);
+ $uq=new Q(array('kind'=>'template','request_id'=>'cccccccc-0000-4000-8000-000000000001'),array('file'=>$uploadFile));
+ $first=SBS_Mockups::upload($uq);check(!is_wp_error($first),'Photo import failed');$assetCount=count(SBS_Storage::$assets);$retry=SBS_Mockups::upload($uq);check($retry['asset']['id']===$first['asset']['id']&&count(SBS_Storage::$assets)===$assetCount,'Photo retry duplicated its source');
  $q=new Q(array('job'=>'bbbbbbbb-0000-4000-8000-000000000001','operation'=>'start','asset_id'=>$source['id'],'mode'=>'smart','ratio'=>.5625,'anchor'=>2,'consent'=>true));
  $start=SBS_Mockups::expand($q);check(!is_wp_error($start),is_wp_error($start)?$start->message:'');check($start['status']==='processing','Start failed');check(SBS_OpenAI::$submits===1,'Generation not submitted exactly once');
  SBS_Mockups::expand($q);check(SBS_OpenAI::$submits===1,'Retry submitted paid work twice');

@@ -27,8 +27,19 @@ final class SBS_Mockups
         $file=$q->get_file_params()['file']??null;$kind=$q->get_param('kind');
         if(!in_array($kind,array('template','artwork'),true)||!$file||!empty($file['error'])||($file['size']??0)>64*1024*1024){return self::error('Choose an image up to 64 MB.');}
         $size=@getimagesize($file['tmp_name']);if(!$size||!in_array($size['mime'],array('image/png','image/jpeg','image/webp'),true)||$size[0]*$size[1]>40000000){return self::error('Use a PNG, JPEG or WebP up to 40 million pixels.');}
-        $a=SBS_Storage::store_upload($file,'mockups',0,'mockup_'.$kind,sanitize_text_field($file['name']));if(is_wp_error($a)){return $a;}
-        return array('asset'=>$a,'width'=>$size[0],'height'=>$size[1]);
+        $key=(string)$q->get_param('request_id');$lock=null;$path=null;
+        if($kind==='template'&&$key!==''){
+            if(!preg_match('/^[a-f0-9-]{36}$/D',$key)){return self::error('Choose the photo again to start a valid import.');}
+            SBS_Storage::ensure_directories();$dir=SBS_Storage::base_dir().'/mockups';if(!is_dir($dir)){wp_mkdir_p($dir);}$path=$dir.'/import-'.$key.'.json';$lock=fopen($path.'.lock','c');
+            if(!$lock||!flock($lock,LOCK_EX|LOCK_NB)){if($lock){fclose($lock);}return self::error('This photo is already importing. Wait, then retry the same import.',409);}
+        }
+        try{
+            $hash=hash_file('sha256',$file['tmp_name']);
+            if($path&&is_file($path)){$saved=json_decode(file_get_contents($path),true);if(!$saved||$saved['sha256']!==$hash){return self::error('This import belongs to a different file. Choose the photo again.',409);}$a=SBS_Storage::get_asset($saved['asset_id']);if(!$a||!SBS_Final_Print::intact($a)){return self::error('The retained photo is unavailable. Choose the photo again.');}return array('asset'=>$a,'width'=>$size[0],'height'=>$size[1],'reused'=>true);}
+            $a=SBS_Storage::store_upload($file,'mockups',0,'mockup_'.$kind,sanitize_text_field($file['name']));if(is_wp_error($a)){return $a;}
+            if($path&&!self::save_job($path,array('sha256'=>$hash,'asset_id'=>$a['id']))){return self::error('The photo was stored but import tracking could not be saved. Reopen your saved work before retrying.');}
+            return array('asset'=>$a,'width'=>$size[0],'height'=>$size[1]);
+        }finally{if($lock){flock($lock,LOCK_UN);fclose($lock);}}
     }
     public static function calibration($s)
     {
