@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
-const {palette,homography,inverse,point,frame,cropRect,recolour,composite,artRect,detectMask}=require('../assets/js/mockups.js');
+const {palette,homography,inverse,point,frame,cropRect,recolour,composite,artRect,detectMask,smartRegion}=require('../assets/js/mockups.js');
 assert.equal(palette.length,19);assert.equal(palette[7][1],'#BED4E9');
 const quad=[[.2,.15],[.8,.2],[.7,.85],[.25,.8]],m=homography(quad),inv=inverse(m);
 [[0,0],[1,0],[1,1],[0,1]].forEach((p,i)=>point(m,...p).forEach((v,k)=>assert.ok(Math.abs(v-quad[i][k])<1e-9)));
@@ -24,3 +24,11 @@ assert.match(mockupJs,/m\.data\[i\]=57;m\.data\[i\+1\]=255;m\.data\[i\+2\]=20;m\
 assert.match(stylesheet,/#sbs-mu-cal-canvas\{max-height:none;border:0\}/);
 assert.match(stylesheet,/#sbs-mockups #sbs-mu-cal-dialog\{border:0;box-shadow:none\}/);
 console.log('Mock-ups: palette, projective geometry, nine anchors, crop ratios, mask-only recolour, protected artwork/alpha, vivid green calibration mask, frameless editor and independent download passed.');
+
+// Smart regions stop at colour/edge boundaries and never mutate source or input mask.
+const rw=120,rh=120,raw=new Uint8ClampedArray(rw*rh*4),rm=new Uint8ClampedArray(raw.length);
+for(let y=0;y<rh;y++)for(let x=0;x<rw;x++){let i=(y*rw+x)*4;const fabric=x>=30&&x<90&&y>=20&&y<100;raw[i]=fabric?235:40;raw[i+1]=fabric?235:70;raw[i+2]=fabric?235:90;raw[i+3]=255;if(fabric&&x<80)rm[i+3]=255;}
+const beforeRaw=raw.slice(),beforeMask=rm.slice(),added=smartRegion(raw,rw,rh,83,55,rm,false),removed=smartRegion(raw,rw,rh,60,55,rm,true);
+assert.ok(added.count>0&&added.bounded);assert.equal(added.region[55*rw+95],0,'Smart add crossed a colour boundary');assert.ok(removed.count>0);assert.equal(removed.region[55*rw+85],0,'Smart remove included an unselected pixel');assert.deepEqual(raw,beforeRaw);assert.deepEqual(rm,beforeMask);
+assert.equal(smartRegion(raw,rw,rh,5,5,rm,true).count,0);assert.ok(added.count<rw*rh*.15,'Smart suggestion flooded a large background');
+console.log('Calibration: bounded reversible smart suggestions retain input photo and mask bytes.');
