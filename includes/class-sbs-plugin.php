@@ -46,6 +46,7 @@ final class SBS_Plugin
         add_action('rest_api_init', array('SBS_Final_Print', 'register_routes'));
         add_action('rest_api_init', array('SBS_Mockups', 'register_routes'));
         add_action('rest_api_init', array('SBS_Studio_Tools', 'register_routes'));
+        add_action('rest_api_init', array('SBS_Photo_Enhance', 'register_routes'));
         add_action('rest_api_init', array('SBS_Logic_Correction', 'register_routes'));
         add_action('rest_api_init', array('SBS_Google_Drive', 'register_routes'));
         add_action('admin_menu', array('SBS_Admin', 'register_menu'));
@@ -129,8 +130,10 @@ final class SBS_Plugin
         wp_enqueue_script('sbs-logic-correction', SBS_PLUGIN_URL . 'assets/js/logic-correction.js', array('sbs-studio'), SBS_VERSION, true);
         wp_enqueue_style('sbs-logic-correction', SBS_PLUGIN_URL . 'assets/css/logic-correction.css', array('sbs-studio-theme'), SBS_VERSION);
         wp_enqueue_script('sbs-photo-math', SBS_PLUGIN_URL . 'assets/js/photo-math.js', array('sbs-studio'), SBS_VERSION, true);
-        wp_enqueue_script('sbs-mockups', SBS_PLUGIN_URL . 'assets/js/photo-mockups.js', array('sbs-photo-math'), SBS_VERSION, true);
-        wp_enqueue_script('sbs-fix', SBS_PLUGIN_URL . 'assets/js/fix.js', array('sbs-photo-math'), SBS_VERSION, true);
+        wp_enqueue_script('sbs-canvas-gestures', SBS_PLUGIN_URL . 'assets/js/canvas-gestures.js', array('sbs-photo-math'), SBS_VERSION, true);
+        wp_enqueue_script('sbs-photo-surface', SBS_PLUGIN_URL . 'assets/js/photo-surface.js', array('sbs-photo-math'), SBS_VERSION, true);
+        wp_enqueue_script('sbs-mockups', SBS_PLUGIN_URL . 'assets/js/photo-mockups.js', array('sbs-photo-math','sbs-photo-surface','sbs-canvas-gestures'), SBS_VERSION, true);
+        wp_enqueue_script('sbs-fix', SBS_PLUGIN_URL . 'assets/js/fix.js', array('sbs-photo-math','sbs-canvas-gestures'), SBS_VERSION, true);
         wp_enqueue_style('sbs-tools', SBS_PLUGIN_URL . 'assets/css/studio-tools.css', array('sbs-mockups'), SBS_VERSION);
         wp_enqueue_style('sbs-mockups', SBS_PLUGIN_URL . 'assets/css/mockups.css', array('sbs-final-print'), SBS_VERSION);
         include SBS_PLUGIN_DIR . 'templates/studio.php';
