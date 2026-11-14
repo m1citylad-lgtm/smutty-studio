@@ -2,7 +2,7 @@
 
 Prepared on 14 November 2026 in PR https://github.com/m1citylad-lgtm/smutty-studio/pull/76.
 
-Status: implementation branch; not merged, signed, installed or accepted on the live site. The last observed live version is 0.8.1. Do not mark the complete historical changelog installed from this document.
+Status: v0.9.0 LIVE, authenticated and checked on 14 November 2026. PR 76 merged at 0505585cf11e5773bc0c824e583dfd3628b0aca8. Signed release build https://github.com/m1citylad-lgtm/smutty-studio/actions/runs/43623826576 passed. The updater reported Installed v0.9.0 and a fresh authenticated reload showed the new UI. No separate installer-button action was needed or observed. Do not mark the complete historical backlog closed.
 
 ## Prepared changes
 
@@ -20,10 +20,10 @@ CI runs PHP 7.4 with GD/Imagick and Chromium. New checks cover native protected 
 
 These are deterministic and stub-provider tests. They do not prove actual AI repair quality or guarantee that garment geometry inferred from a real photograph is correct. A purchased angled-shirt photo, flat lay, shadows/patterns/occlusions and real five-legged-animal/fairground repair must still be reviewed. Advanced creative photo enhancement, dense fold deformation, third-party model comparisons and Canva/Photoshop/Caimera benchmarks are not implemented or claimed complete. No unsupported model names or unverified endpoints were added. A full physical Samsung-tablet audio/gesture and every-button acceptance sweep remains open.
 
-## Continue installation
+## Live verification and remaining work
 
-1. Obtain explicit permission to tick the live Studio adult-confirmation checkbox. Automatic approval review rejected this checkbox on 14 November; do not bypass it. Password entry itself was allowed. Keep credentials in browserAuth, never chat or model-visible tools.
-2. Check the latest PR head and both CI jobs. Resolve failures before merging.
-3. Merge the reviewed head. Verify the signed release workflow, then install through the authenticated Studio updater if needed. Do not claim an installer action or backup without observing it.
-4. Verify the authenticated live version and the Fix, Mock-ups and navigation screens. Run non-destructive checks with disposable artwork; avoid modifying production approvals or registers.
-5. Record installed and verified items separately from remaining actual-provider/physical-device acceptance. Keep outstanding research and unsupported integrations open.
+The owner explicitly authorised the adult-confirmation checkbox, resolving the earlier automatic-review rejection. Studio and privileged updater sign-in succeeded through secure browserAuth. Both CI jobs passed at 608e3c6883683c6d43d9f5acbcc57ca6297692d2. The updater lists retained 0.8.1 and 0.9.0 backup packages; creating or restoring those backups was not directly performed in this session.
+
+Live checks passed: Fix refreshed workspaces/custom series, loaded the existing MB QA Intake Disposable source, painted a temporary mark and visibly undid it. Mock-ups loaded a synthetic blue-shirt photo temporarily, composited the real approved SB Muscle Bear Red artwork, rotated/undid and completed a web download labelled NOT FOR PRINTING. Finishing Add opened its name/two-letter-code form and was cancelled without adding a test series. Gold selected navigation and accessible cog/£ controls appeared. Refresh/import/export loading and terminal result messages were observed.
+
+No paid AI repair or garment analysis ran during live verification, no repaired candidate was accepted, and no production approvals or registers changed. Actual provider output quality and physical Samsung audio/gesture acceptance remain open, along with the advanced enhancements and comparisons listed above. Continue with those outstanding checks; do not repeat installation of the same version merely because this handover preserves historical implementation notes.
