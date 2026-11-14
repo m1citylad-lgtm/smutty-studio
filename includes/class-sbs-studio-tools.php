@@ -47,7 +47,7 @@ final class SBS_Studio_Tools
         }
         if(!$selected){throw new RuntimeException('Paint an area to fix first.');}
         $result->setImageDepth($source->getImageDepth()>8?16:8);$result->setImageFormat('png');$result->setOption('png:color-type','6');$result->setImagePage(0,0,0,0);$bytes=$result->getImageBlob();$check=new Imagick();$check->readImageBlob($bytes);$tolerance=1/65535/2;
-        for($y=0;$y<$h;$y++){$m=$mask->exportImagePixels(0,$y,$w,1,'A',Imagick::PIXEL_DOUBLE);$old=$source->exportImagePixels(0,$y,$w,1,'RGBA',Imagick::PIXEL_DOUBLE);$new=$check->exportImagePixels(0,$y,$w,1,'RGBA',Imagick::PIXEL_DOUBLE);foreach($m as $x=>$coverage){if($coverage>0){continue;}for($k=0;$k<4;$k++){if(abs($old[$x*4+$k]-$new[$x*4+$k])>$tolerance){throw new RuntimeException('Protected pixels changed. No repair was saved.');}}}}
+        for($y=0;$y<$h;$y++){$m=$mask->exportImagePixels(0,$y,$w,1,'A',Imagick::PIXEL_DOUBLE);$old=$source->exportImagePixels(0,$y,$w,1,'RGBA',Imagick::PIXEL_DOUBLE);$new=$check->exportImagePixels(0,$y,$w,1,'RGBA',Imagick::PIXEL_DOUBLE);foreach($m as $x=>$coverage){if($coverage>0){continue;}for($k=0;$k<4;$k++){if(abs($old[$x*4+$k]-$new[$x*4+$k])>$tolerance){throw new RuntimeException('Protected pixels changed at '.$x.','.$y.' channel '.$k.' ('.$old[$x*4+$k].' / '.$new[$x*4+$k].'). No repair was saved.');}}}}
         foreach($profile as $name=>$value){if($check->getImageProfile($name)!==$value){throw new RuntimeException('The colour profile could not be preserved.');}}
         $check->clear();$result->clear();return $bytes;
     }
@@ -76,7 +76,7 @@ final class SBS_Studio_Tools
             }
             if($op==='cancel') {if(!empty($job['response_id'])&&empty($job['preview'])){$cancel=SBS_OpenAI::cancel($job['response_id']);if(is_wp_error($cancel)){return $cancel;}}$job['status']='cancelled';self::save($path,$job);return array('status'=>'cancelled');}
             if($op==='accept') {
-                if(empty($job['preview'])){return self::error('Wait for a verified preview before saving.');}
+                if(empty($job['preview'])||!in_array($job['status'],array('ready','accepted'),true)){return self::error('Wait for a verified preview before saving.');}
                 if(empty($job['workspace'])){$record=SBS_Finishing::import_fix($job['source'],$job['preview'],(string)$q->get_param('title'),(string)$q->get_param('series'),$id);if(is_wp_error($record)){return $record;}$job['workspace']=$record['uuid'];$job['status']='accepted';self::save($path,$job);}
                 return array('status'=>'accepted','workspace'=>$job['workspace'],'preview'=>$job['preview']);
             }
