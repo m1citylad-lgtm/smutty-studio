@@ -1,0 +1,21 @@
+/* Deterministic fabric projection: only the supplied PNG provides ink pixels. */
+(function(){'use strict';
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function sampleGrid(grid,u,v){const n=Math.round(Math.sqrt(grid.length)),x=clamp(u,0,1)*(n-1),y=clamp(v,0,1)*(n-1),ix=Math.min(n-2,Math.floor(x)),iy=Math.min(n-2,Math.floor(y)),fx=x-ix,fy=y-iy;return [0,1].map(k=>grid[iy*n+ix][k]*(1-fx)*(1-fy)+grid[iy*n+ix+1][k]*fx*(1-fy)+grid[(iy+1)*n+ix][k]*(1-fx)*fy+grid[(iy+1)*n+ix+1][k]*fx*fy);}
+function validGrid(grid){if(!Array.isArray(grid)||grid.length!==25||grid.some(p=>!Array.isArray(p)||p.length!==2||p.some(v=>!Number.isFinite(v))))return false;for(let y=0;y<4;y++)for(let x=0;x<4;x++){const a=grid[y*5+x],b=grid[y*5+x+1],c=grid[(y+1)*5+x+1],d=grid[(y+1)*5+x];for(const [p,q,r] of [[a,b,c],[a,c,d]])if((q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0])<.00001)return false;}return true;}
+function inside(p,poly){let hit=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])hit=!hit;}return hit;}
+function luminance(p,w,h){const sum=new Float64Array((w+1)*(h+1));for(let y=0;y<h;y++){let row=0;for(let x=0;x<w;x++){const at=(y*w+x)*4;row+=.2126*p[at]+.7152*p[at+1]+.0722*p[at+2];sum[(y+1)*(w+1)+x+1]=sum[y*(w+1)+x+1]+row;}}return (x,y,r)=>{const l=Math.max(0,x-r),t=Math.max(0,y-r),rr=Math.min(w,x+r+1),b=Math.min(h,y+r+1);return (sum[b*(w+1)+rr]-sum[t*(w+1)+rr]-sum[b*(w+1)+l]+sum[t*(w+1)+l])/Math.max(1,(rr-l)*(b-t));};}
+function project(original,w,h,art,aw,ah,grid,options={}){
+ if(!validGrid(grid))throw Error('Needs manual adjustment — the fabric surface overlaps itself.');
+ const output=new Uint8ClampedArray(original),ink=new Uint8ClampedArray(w*h*4),covered=new Uint8Array(w*h),light=options.lighting===false?null:luminance(original,w,h),occlusions=options.occlusions||[];let pixels=0,hidden=0,contrast=0,clipped=grid.some(p=>p[0]<0||p[0]>1||p[1]<0||p[1]>1);
+ const vertices=grid.map((p,i)=>({x:p[0]*w,y:p[1]*h,u:(i%5)/4,v:Math.floor(i/5)/4}));
+ function triangle(a,b,c){const det=(b.y-c.y)*(a.x-c.x)+(c.x-b.x)*(a.y-c.y);if(Math.abs(det)<1e-6)return;const left=clamp(Math.floor(Math.min(a.x,b.x,c.x)),0,w-1),right=clamp(Math.ceil(Math.max(a.x,b.x,c.x)),0,w-1),top=clamp(Math.floor(Math.min(a.y,b.y,c.y)),0,h-1),bottom=clamp(Math.ceil(Math.max(a.y,b.y,c.y)),0,h-1);
+ for(let y=top;y<=bottom;y++)for(let x=left;x<=right;x++){const at=y*w+x;if(covered[at])continue;const aa=((b.y-c.y)*(x+.5-c.x)+(c.x-b.x)*(y+.5-c.y))/det,bb=((c.y-a.y)*(x+.5-c.x)+(a.x-c.x)*(y+.5-c.y))/det,cc=1-aa-bb;if(Math.min(aa,bb,cc)<-1e-7)continue;covered[at]=1;const u=clamp(aa*a.u+bb*b.u+cc*c.u,0,1),v=clamp(aa*a.v+bb*b.v+cc*c.v,0,1),sx=u*(aw-1),sy=v*(ah-1),ix=Math.floor(sx),iy=Math.floor(sy),fx=sx-ix,fy=sy-iy;let alpha=0;const colour=[0,0,0];
+ for(const [xx,yy,weight] of [[ix,iy,(1-fx)*(1-fy)],[Math.min(aw-1,ix+1),iy,fx*(1-fy)],[ix,Math.min(ah-1,iy+1),(1-fx)*fy],[Math.min(aw-1,ix+1),Math.min(ah-1,iy+1),fx*fy]]){const j=(yy*aw+xx)*4,a=art[j+3]/255*weight;alpha+=a;for(let k=0;k<3;k++)colour[k]+=art[j+k]*a;}
+ if(alpha<1/255)continue;pixels++;if(occlusions.some(poly=>inside([x/w,y/h],poly))){hidden++;continue;}const i=at*4;let shade=1;if(light){const small=light(x,y,Math.max(2,Math.round(w*.005))),broad=light(x,y,Math.max(12,Math.round(w*.045)));shade=clamp((small+12)/(broad+12),.65,1.18);}let lum=0;const oldAlpha=original[i+3]/255,outAlpha=alpha+oldAlpha*(1-alpha);for(let k=0;k<3;k++){const value=clamp(colour[k]/alpha*shade,0,255);ink[i+k]=value;output[i+k]=Math.round((original[i+k]*oldAlpha*(1-alpha)+value*alpha)/Math.max(outAlpha,1e-9));lum+=Math.abs(value-original[i+k]);}ink[i+3]=Math.round(alpha*255);output[i+3]=Math.round(outAlpha*255);contrast+=lum/3;}
+ }
+ for(let y=0;y<4;y++)for(let x=0;x<4;x++){const a=vertices[y*5+x],b=vertices[y*5+x+1],c=vertices[(y+1)*5+x+1],d=vertices[(y+1)*5+x];triangle(a,b,c);triangle(a,c,d);}
+ return {pixels:output,ink,stats:{inkPixels:pixels,hiddenPixels:hidden,clipped,contrast:pixels?contrast/Math.max(1,pixels-hidden):0,integrity:'Original PNG only; deterministic geometry and fabric illumination'}};
+}
+const api={sampleGrid,validGrid,project};if(typeof module!=='undefined')module.exports=api;if(typeof window!=='undefined')window.SBSPhotoSurface=api;
+})();

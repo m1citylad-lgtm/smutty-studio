@@ -73,6 +73,22 @@ final class SBS_Replicate
         return $result;
     }
 
+    public static function photo_schema($model) {
+        if(!in_array($model,array('openai/gpt-image-2.6-sunburst','google/nano-banana-2','google/nano-banana-2.1'),true)){return new WP_Error('photo_model','This photo model is not supported.');}
+        $r=self::request('GET','/models/'.$model);if(is_wp_error($r)){return $r;}
+        $schema=$r['latest_version']['openapi_schema']['components']['schemas']['Input']??array();$p=$schema['properties']??array();$key=null;
+        foreach(array('image_input','input_images','images','image') as $k){if(isset($p[$k])&&in_array($p[$k]['type']??'',array('array','string'),true)){$key=$k;break;}}
+        if(!$key||!isset($p['prompt'])){return new WP_Error('photo_schema','This provider has no verified photo-editing input schema.');}
+        foreach($schema['required']??array() as $k){if(!in_array($k,array('prompt',$key),true)&&!array_key_exists('default',$p[$k]??array())){return new WP_Error('photo_schema','This provider requires an unsupported input.');}}
+        return array('model'=>$model,'key'=>$key,'array'=>($p[$key]['type']??'')==='array','properties'=>$p,'version'=>$r['latest_version']['id']??'');
+    }
+    public static function submit_photo($schema,$photo,$prompt) {
+        $input=array('prompt'=>$prompt,$schema['key']=>$schema['array']?array($photo):$photo);$p=$schema['properties'];
+        if(in_array('png',$p['output_format']['enum']??array(),true)){$input['output_format']='png';}
+        if(in_array('match_input_image',$p['aspect_ratio']['enum']??array(),true)){$input['aspect_ratio']='match_input_image';}
+        return self::request('POST','/models/'.$schema['model'].'/predictions',array('input'=>$input));
+    }
+
     public static function poll($prediction_id)
     {
         if (!preg_match('/^[A-Za-z0-9_\-]+$/', $prediction_id)) {
