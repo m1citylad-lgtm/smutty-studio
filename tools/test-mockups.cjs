@@ -17,4 +17,10 @@ const detected=detectMask(photo,w,h,.5,.4);assert.ok(detected.some((v,i)=>i%4===
 const template=fs.readFileSync('templates/mockups.php','utf8');assert.match(template,/Finish &amp; Check/);assert.match(template,/<button type="button" id="sbs-mu-download" class="sbs-button primary">Download<\/button>/);assert.ok(!/id="sbs-mu-download"[^>]*(disabled|hidden)/.test(template));
 assert.ok(template.indexOf('id="sbs-mu-search"')<template.indexOf('id="sbs-mu-artwork"'));
 const php=fs.readFileSync('templates/studio.php','utf8');assert.match(php,/data-primary-tab="settings"[\s\S]*data-primary-tab="mockups"/);assert.match(php,/wp_print_scripts\([\s\S]*'sbs-mockups'/);assert.match(php,/wp_print_styles\([\s\S]*'sbs-mockups'/);
-console.log('Mock-ups: palette, projective geometry, nine anchors, crop ratios, mask-only recolour, protected artwork/alpha and independent download passed.');
+const stylesheet=fs.readFileSync('assets/css/mockups.css','utf8');
+const mockupJs=fs.readFileSync('assets/js/mockups.js','utf8');
+assert.match(template,/Bright luminous green shading shows the selected shirt fabric, NOT the print area/);
+assert.match(mockupJs,/m\.data\[i\]=57;m\.data\[i\+1\]=255;m\.data\[i\+2\]=20;m\.data\[i\+3\]=Math\.round\(m\.data\[i\+3\]\*\.58\)/);
+assert.match(stylesheet,/#sbs-mu-cal-canvas\{max-height:none;border:0\}/);
+assert.match(stylesheet,/#sbs-mockups #sbs-mu-cal-dialog\{border:0;box-shadow:none\}/);
+console.log('Mock-ups: palette, projective geometry, nine anchors, crop ratios, mask-only recolour, protected artwork/alpha, vivid green calibration mask, frameless editor and independent download passed.');
