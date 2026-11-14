@@ -1,3 +1,16 @@
+# v0.8.1 — Accessible photo import and calibration, live verified (14 November 2026)
+
+The new 14 November software requests are installed and authenticated Live Studio is positively verified at v0.8.1. Full PHP/JavaScript/image and Chromium checks passed (43589996350); signed publication passed (43590166737). Final merge c60b605902ec4c02b0a32a37d10fc0ad2665cb0b; ZIP SHA-256 4ac3044a4639a42cd3e22d96ce75cc6b69feba812d209e5764812566dd9fbe14.
+
+- Immediate gallery/import loading feedback, selected-file preview, explicit Import photo, guarded taps, bounded waits and actionable retry. Upload checkpoints and retained decode sources prevent duplicate imports on the same request.
+- Safe scrolling default; separate pan, fit/reset, zoom buttons/percentage and two-finger pinch/pan. View-only navigation preserves the mask and print geometry. One-pixel numeric brush entry, size preview and cancellation of pending strokes during two-finger navigation address accidental painting.
+- Undo/Redo and re-auto-selection; bounded colour/edge-aware Smart add/remove previews require Apply and support Cancel. These are local suggestions requiring owner review, not semantic garment detection. Save remains explicit with prior revision/history protection.
+- v0.8.1 fixes live-observed brush input width/labeling and the review checkbox layout. Tests cover genuine touch events in Chromium, safe panning/scrolling, one-pixel edits, undo/reselection, import errors/retries, mask PNG save/reopen and existing finishing/download behavior.
+
+Live verification used the labelled synthetic Studio-calibration-QA.png, not owner photo 8005.png. Confirmed import spinner/readiness, green/red selection, 225% zoom/fit, pan without painting, Clear/Undo/Redo, smart-remove preview/Apply/Undo, re-selection and final readable one-pixel brush input. Two test source uploads remain private; both calibrations were cancelled and no test template, artwork approval, Drive transfer or paid generation was created. Final live version is observed; installer action/new rollback backup is not observed.
+
+Actual Samsung normal/200%/250% touch and genuine-photo mask quality/save/reopen remain open, along with earlier logo/Drive/register/physical-print acceptance. The Google log records exact pass/remaining details; this release does not close every historical acceptance item.
+
 # v0.7.2 — Standalone Mock-ups live verification (13 November 2026)
 
 Signed v0.7.2 is installed and authenticated Live Studio is positively verified at v0.7.2. Final PHP/JavaScript/image and Chromium checks passed (43429672732); signed publication passed (43429838408). Merge e4855de54eaf7a802cc28c62e1e6817f02f01e73. ZIP SHA-256: d81d5475997d99cc5c51d3a827db058bd6dd826b0b556c2489b25ce6fa0687f9.
