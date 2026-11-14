@@ -315,6 +315,16 @@ final class SBS_Finishing
         return array('width'=>$size[0],'height'=>$size[1],'mime'=>$size['mime'],'sha256'=>hash_file('sha256',$path),'effective_ppi'=>round($ppi,1),'alpha'=>$alpha,'warnings'=>$warnings,'export_metadata'=>$metadata,'pixel_review'=>$pixel_review,'print_export'=>$asset_metadata['print_export']??null,'generation_provenance'=>$asset_metadata['native_generation']??null);
     }
     private static function finding_id($finding){return substr(hash('sha256',wp_json_encode(array($finding['area']??'', $finding['issue']??'', $finding['action']??'', $finding['focus']??null))),0,24);}
+    public static function import_fix($original,$candidate,$title,$series,$job) {
+        $identity=SBS_Intake::validate($series,$title);if(is_wp_error($identity)){return $identity;}
+        // Deterministic workspace identity makes accepting the same repair idempotent.
+        $uuid=$job;$path=self::path($uuid);if(is_wp_error($path)){return $path;}if(is_file($path)){return self::read($path);}
+        $options=self::options(array());$qa=self::inspect($candidate,$options);if(is_wp_error($qa)){return $qa;}$original_qa=self::inspect($original,$options);if(is_wp_error($original_qa)){return $original_qa;}
+        $version=array('uuid'=>wp_generate_uuid4(),'number'=>1,'asset'=>$candidate,'options'=>array_merge($options,array('method'=>'protected_local_fix','outside_selection_verified'=>true)),'qa'=>$qa,'created_at'=>gmdate('c'));
+        $record=array_merge(array('schema'=>1,'uuid'=>$uuid,'af_id'=>null,'links'=>array(),'title'=>$title,'source_route'=>'fix','original'=>$original,'original_qa'=>$original_qa,'versions'=>array($version),'current_version'=>$version['uuid'],'approval'=>null,'metadata_status'=>'TBC','status'=>'Awaiting Review','next_action'=>'Review the repaired candidate in Finishing','drive'=>array('verified'=>false),'created_at'=>gmdate('c'),'updated_at'=>gmdate('c'),'revision'=>1,'audit'=>array(array('at'=>gmdate('c'),'action'=>'Saved selected-area repair; protected pixels verified; production approval required'))),$identity);
+        return self::write($path,$record);
+    }
+
     public static function upload($request)
     {
         $files=$request->get_file_params();$file=$files['file']??array();

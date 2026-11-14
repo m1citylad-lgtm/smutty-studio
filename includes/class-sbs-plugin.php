@@ -45,6 +45,7 @@ final class SBS_Plugin
         add_action('rest_api_init', array('SBS_Finishing', 'register_routes'));
         add_action('rest_api_init', array('SBS_Final_Print', 'register_routes'));
         add_action('rest_api_init', array('SBS_Mockups', 'register_routes'));
+        add_action('rest_api_init', array('SBS_Studio_Tools', 'register_routes'));
         add_action('rest_api_init', array('SBS_Logic_Correction', 'register_routes'));
         add_action('rest_api_init', array('SBS_Google_Drive', 'register_routes'));
         add_action('admin_menu', array('SBS_Admin', 'register_menu'));
@@ -112,7 +113,8 @@ final class SBS_Plugin
         wp_enqueue_style('sbs-studio-hierarchy', SBS_PLUGIN_URL . 'assets/css/studio-hierarchy.css', array('sbs-studio'), SBS_VERSION);
         wp_enqueue_style('sbs-studio-theme', SBS_PLUGIN_URL . 'assets/css/studio-theme.css', array('sbs-studio-hierarchy'), SBS_VERSION);
         wp_enqueue_script('sbs-fabric', SBS_PLUGIN_URL . 'assets/vendor/fabric.min.js', array(), '5.3.0', true);
-        wp_enqueue_script('sbs-studio', SBS_PLUGIN_URL . 'assets/js/studio.js', array('sbs-fabric'), SBS_VERSION, true);
+        wp_enqueue_script('sbs-feedback', SBS_PLUGIN_URL . 'assets/js/studio-feedback.js', array(), SBS_VERSION, true);
+        wp_enqueue_script('sbs-studio', SBS_PLUGIN_URL . 'assets/js/studio.js', array('sbs-fabric','sbs-feedback'), SBS_VERSION, true);
         wp_enqueue_script('sbs-flat-background', SBS_PLUGIN_URL . 'assets/js/flat-background.js', array(), SBS_VERSION, true);
         wp_enqueue_script('sbs-freestyle', SBS_PLUGIN_URL . 'assets/js/freestyle.js', array('sbs-studio', 'sbs-flat-background'), SBS_VERSION, true);
         wp_enqueue_script('sbs-finishing', SBS_PLUGIN_URL . 'assets/js/finishing.js', array('sbs-studio', 'sbs-flat-background'), SBS_VERSION, true);
@@ -126,7 +128,10 @@ final class SBS_Plugin
         wp_enqueue_style('sbs-final-print', SBS_PLUGIN_URL . 'assets/css/final-print.css', array('sbs-finishing-flow'), SBS_VERSION);
         wp_enqueue_script('sbs-logic-correction', SBS_PLUGIN_URL . 'assets/js/logic-correction.js', array('sbs-studio'), SBS_VERSION, true);
         wp_enqueue_style('sbs-logic-correction', SBS_PLUGIN_URL . 'assets/css/logic-correction.css', array('sbs-studio-theme'), SBS_VERSION);
-        wp_enqueue_script('sbs-mockups', SBS_PLUGIN_URL . 'assets/js/mockups.js', array('sbs-studio'), SBS_VERSION, true);
+        wp_enqueue_script('sbs-photo-math', SBS_PLUGIN_URL . 'assets/js/photo-math.js', array('sbs-studio'), SBS_VERSION, true);
+        wp_enqueue_script('sbs-mockups', SBS_PLUGIN_URL . 'assets/js/photo-mockups.js', array('sbs-photo-math'), SBS_VERSION, true);
+        wp_enqueue_script('sbs-fix', SBS_PLUGIN_URL . 'assets/js/fix.js', array('sbs-photo-math'), SBS_VERSION, true);
+        wp_enqueue_style('sbs-tools', SBS_PLUGIN_URL . 'assets/css/studio-tools.css', array('sbs-mockups'), SBS_VERSION);
         wp_enqueue_style('sbs-mockups', SBS_PLUGIN_URL . 'assets/css/mockups.css', array('sbs-final-print'), SBS_VERSION);
         include SBS_PLUGIN_DIR . 'templates/studio.php';
         exit;
