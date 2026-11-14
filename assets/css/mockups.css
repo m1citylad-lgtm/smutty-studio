@@ -16,3 +16,8 @@
 #sbs-mockups .sbs-mu-busy::before{content:'';display:inline-block;width:18px;height:18px;border:3px solid #fff3d4;border-right-color:transparent;border-radius:50%;vertical-align:middle;margin-right:.5rem;animation:sbs-mu-spin 1s linear infinite}
 @media(max-width:440px){#sbs-mockups #sbs-mu-cal-dialog{width:98vw;padding:.6rem}#sbs-mu-cal-view{height:48dvh}}
 @media(prefers-reduced-motion:reduce){#sbs-mockups .sbs-mu-busy::before{animation:none}}
+
+body#sbs-studio-page #sbs-app #sbs-mockups #sbs-mu-brush{width:6ch;min-width:6ch;max-width:6ch;box-sizing:content-box}
+
+body#sbs-studio-page #sbs-app #sbs-mockups label.sbs-mu-review{display:flex;flex-direction:row;align-items:center;gap:.6rem;min-height:48px;padding:.5rem 0}
+body#sbs-studio-page #sbs-app #sbs-mockups #sbs-mu-cal-review{width:24px;min-width:24px;max-width:24px;height:24px;min-height:24px;flex:none}
