@@ -23,9 +23,14 @@ final class SBS_Studio_Tools
     public static function source($q) {
         if(!class_exists('Imagick')) { return self::error('Fix needs the server image tools.'); }
         $f=$q->get_file_params()['file']??array();
-        if(empty($f['tmp_name'])||!empty($f['error'])||($f['size']??0)>67108864){return self::error('Choose a PNG, JPEG or WebP up to 64 MB.');}
-        $s=@getimagesize($f['tmp_name']);if(!$s||!in_array($s['mime'],array('image/png','image/jpeg','image/webp'),true)||$s[0]*$s[1]>20000000){return self::error('Fix accepts PNG, JPEG or WebP up to 20 million pixels.');}
-        $a=SBS_Storage::store_upload($f,'fix',0,'fix_original',sanitize_text_field($f['name']));return is_wp_error($a)?$a:array('asset'=>$a);
+        if(!$f){$asset=SBS_Storage::get_asset((int)$q->get_param('source'));if(!$asset||!SBS_Final_Print::intact($asset)){return self::error('The selected source is unavailable.');}$path=SBS_Storage::absolute_path($asset);}else{
+            if(empty($f['tmp_name'])||!empty($f['error'])||($f['size']??0)>67108864){return self::error('Choose a PNG, JPEG or WebP up to 64 MB.');}$path=$f['tmp_name'];
+        }
+        $s=@getimagesize($path);if(!$s||!in_array($s['mime'],array('image/png','image/jpeg','image/webp'),true)||$s[0]*$s[1]>20000000){return self::error('Fix accepts PNG, JPEG or WebP up to 20 million pixels.');}
+        if($f){$asset=SBS_Storage::store_upload($f,'fix',0,'fix_original',sanitize_text_field($f['name']));if(is_wp_error($asset)){return $asset;}}
+        $probe=new Imagick($path);if(!in_array($probe->getImageColorspace(),array(Imagick::COLORSPACE_RGB,Imagick::COLORSPACE_SRGB),true)){return self::error('Choose RGB artwork for a protected repair. No AI request was made.');}if($probe->getNumberImages()!==1){return self::error('Choose a single-frame image.');}
+        if($probe->getImageOrientation()>Imagick::ORIENTATION_TOPLEFT){$probe->autoOrientImage();$probe->setImageOrientation(Imagick::ORIENTATION_TOPLEFT);$probe->setImageFormat('png');$normalized=SBS_Storage::store_bytes($probe->getImageBlob(),'fix-oriented-source.png','image/png','fix',0,'fix_oriented_original','Orientation-correct source; original file retained',array('original_asset_id'=>$asset['id']));if(is_wp_error($normalized)){return $normalized;}$asset=$normalized;}
+        $probe->clear();return array('asset'=>$asset);
     }
     private static function save($path,$job) {
         $text=wp_json_encode($job);$tmp=$path.'.tmp';if(file_put_contents($tmp,$text,LOCK_EX)!==strlen($text)||!rename($tmp,$path)){@unlink($tmp);throw new RuntimeException('The repair checkpoint could not be saved.');}@chmod($path,0640);
@@ -61,7 +66,7 @@ final class SBS_Studio_Tools
             if(!$job) {
                 if($op!=='start'||$q->get_param('consent')!==true){return self::error('Start a repair and confirm the provider cost.');}
                 $a=SBS_Storage::get_asset((int)$q->get_param('source'));if(!$a||!SBS_Final_Print::intact($a)||!in_array($a['mime'],array('image/png','image/jpeg','image/webp'),true)){return self::error('The selected original is unavailable.');}
-                $source=new Imagick(SBS_Storage::absolute_path($a));if($source->getNumberImages()!==1||$source->getImageWidth()*$source->getImageHeight()>20000000){return self::error('Use a single image up to 20 million pixels.');}
+                $source=new Imagick(SBS_Storage::absolute_path($a));if(!in_array($source->getImageColorspace(),array(Imagick::COLORSPACE_RGB,Imagick::COLORSPACE_SRGB),true)){return self::error('Choose RGB artwork for a protected repair. No AI request was made.');}if($source->getNumberImages()!==1||$source->getImageWidth()*$source->getImageHeight()>20000000){return self::error('Use a single image up to 20 million pixels.');}
                 $maskUrl=(string)$q->get_param('mask');if(strlen($maskUrl)>16000000||!preg_match('#^data:image/png;base64,([A-Za-z0-9+/=]+)$#D',$maskUrl,$match)){return self::error('Paint a selection first.');}
                 $mask=new Imagick();$mask->readImageBlob(base64_decode($match[1],true));$w=$source->getImageWidth();$h=$source->getImageHeight();if($mask->getImageWidth()!==$w||$mask->getImageHeight()!==$h){return self::error('Selection dimensions do not match the original.');}
                 $left=$w;$top=$h;$right=-1;$bottom=-1;for($y=0;$y<$h;$y++){foreach($mask->exportImagePixels(0,$y,$w,1,'A',Imagick::PIXEL_DOUBLE) as $x=>$v){if($v>0){$left=min($left,$x);$right=max($right,$x);$top=min($top,$y);$bottom=max($bottom,$y);}}}if($right<0){return self::error('Paint an area first.');}
