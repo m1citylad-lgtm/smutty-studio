@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) { exit; }
 final class SBS_Studio_Tools
 {
     public static function register_routes() {
-        foreach(array('artwork'=>array('GET','artwork'),'fit'=>array('POST','fit'),'source'=>array('POST','source'),'fix'=>array('POST','fix')) as $path=>$route) {
+        foreach(array('repairs'=>array('GET','repairs'),'artwork'=>array('GET','artwork'),'fit'=>array('POST','fit'),'source'=>array('POST','source'),'fix'=>array('POST','fix')) as $path=>$route) {
             register_rest_route(SBS_REST::NS,'/tools/'.$path,array('methods'=>$route[0],'callback'=>array(__CLASS__,$route[1]),'permission_callback'=>array('SBS_Finishing','permission')));
         }
     }
@@ -15,10 +15,15 @@ final class SBS_Studio_Tools
         if(strlen($photo)>3000000||!preg_match('#^data:image/jpeg;base64,[A-Za-z0-9+/=]+$#D',$photo)) { return self::error('Choose a photo again.'); }
         if($q->get_param('consent')!==true) { return self::error('Confirm the provider cost before analysing the photo.'); }
         // Cache geometry only, never the source photo. Lock prevents concurrent paid retries.
-        $key='sbs_fit_'.hash('sha256',$photo); $cached=get_transient($key);if($cached){return $cached;}
+        $key='sbs_fit_'.hash('sha256',SBS_VERSION.'|'.$photo); $cached=get_transient($key);if($cached){return $cached;}
         if(!add_option($key.'_lock',time(),'','no')) { return self::error('This photo is already being analysed. Wait before trying again.',409); }
         try { $r=SBS_OpenAI::fit_garment($photo);if(!is_wp_error($r)){set_transient($key,$r,HOUR_IN_SECONDS);}return $r; }
         finally { delete_option($key.'_lock'); }
+    }
+    public static function repairs() {
+        $paths=glob(SBS_Storage::base_dir().'/fix/*.json')?:array();usort($paths,function($a,$b){return filemtime($b)<=>filemtime($a);});$repairs=array();
+        foreach(array_slice($paths,0,100) as $path){$job=json_decode(@file_get_contents($path),true);$id=basename($path,'.json');if(!preg_match('/^[a-f0-9-]{36}$/D',$id)||!is_array($job)||!in_array($job['status']??'',array('submitting','pending','ready','accepted','uncertain'),true)||empty($job['source'])||!SBS_Final_Print::intact($job['source'])){continue;}$repairs[]=array('id'=>$id,'status'=>$job['status'],'source'=>$job['source'],'mask'=>$job['mask']??null,'preview'=>$job['preview']??null,'workspace'=>$job['workspace']??null,'replacement'=>$job['replacement']??'','created_at'=>$job['created_at']??'');}
+        return array('repairs'=>$repairs);
     }
     public static function source($q) {
         if(!class_exists('Imagick')) { return self::error('Fix needs the server image tools.'); }
@@ -75,7 +80,7 @@ final class SBS_Studio_Tools
                 $providerMask=clone $mask;$providerMask->cropImage($b['w'],$b['h'],$b['x'],$b['y']);$providerMask->setImagePage(0,0,0,0);$providerMask->negateImage(false,Imagick::CHANNEL_ALPHA);$providerMask->setImageFormat('png');
                 $input=SBS_Storage::store_bytes($crop->getImageBlob(),'fix-context.png','image/png','fix',0,'fix_context','Repair context');$pm=SBS_Storage::store_bytes($providerMask->getImageBlob(),'fix-provider-mask.png','image/png','fix',0,'fix_mask','Provider edit mask');$savedMask=SBS_Storage::store_bytes($mask->getImageBlob(),'fix-selection.png','image/png','fix',0,'fix_selection','Confirmed selection');foreach(array($input,$pm,$savedMask) as $asset){if(is_wp_error($asset)){return $asset;}}
                 $replacement=sanitize_textarea_field((string)$q->get_param('replacement'));if(strlen($replacement)>500){return self::error('Keep the replacement instruction under 500 characters.');}
-                $job=array('status'=>'submitting','source'=>$a,'mask'=>$savedMask,'bounds'=>$b,'created_at'=>gmdate('c'));self::save($path,$job);
+                $job=array('status'=>'submitting','source'=>$a,'mask'=>$savedMask,'bounds'=>$b,'replacement'=>$replacement,'created_at'=>gmdate('c'));self::save($path,$job);
                 $prompt=($replacement!==''?'Replace only the selected object with: '.$replacement:'Remove only the selected object and naturally complete the surrounding background, including transparency where appropriate.').' Preserve the same crop framing, art style, correct anatomy, lettering and colour. Preserve all unselected details. Normal skin, clothes and boots must remain normal.';
                 $response=SBS_OpenAI::submit_image($prompt,array($input['id']),array('purpose'=>'local_fix','action'=>'edit','quality'=>'high','size'=>'auto','background'=>'transparent','mask_asset_id'=>$pm['id']));
                 if(is_wp_error($response)){ $job['status']='uncertain';self::save($path,$job);return $response; }$job['response_id']=$response['id']??'';self::save($path,$job);
