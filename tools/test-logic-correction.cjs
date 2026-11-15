@@ -5,7 +5,7 @@ const backend = fs.readFileSync('includes/class-sbs-logic-correction.php', 'utf8
 const openai = fs.readFileSync('includes/class-sbs-openai.php', 'utf8');
 const studio = fs.readFileSync('templates/studio.php', 'utf8');
 const js = fs.readFileSync('assets/js/logic-correction.js', 'utf8');
-assert.ok(studio.indexOf('data-primary-tab="logic-correction"') < studio.indexOf('data-primary-tab="finishing"'));
+assert.match(studio, /id="sbs-more-sections"[\s\S]*data-primary-tab="logic-correction"/);
 assert.match(ui, /id="sbs-lc-file"/);
 assert.match(ui, /id="sbs-lc-camera"/);
 assert.match(ui, /id="sbs-lc-run-all"[^>]*>Run all checks/);
