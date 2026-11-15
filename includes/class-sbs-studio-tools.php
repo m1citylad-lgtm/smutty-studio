@@ -22,7 +22,7 @@ final class SBS_Studio_Tools
     }
     public static function repairs() {
         $paths=glob(SBS_Storage::base_dir().'/fix/*.json')?:array();usort($paths,function($a,$b){return filemtime($b)<=>filemtime($a);});$repairs=array();
-        foreach(array_slice($paths,0,100) as $path){$job=json_decode(@file_get_contents($path),true);$id=basename($path,'.json');if(!preg_match('/^[a-f0-9-]{36}$/D',$id)||!is_array($job)||!in_array($job['status']??'',array('submitting','pending','ready','accepted','uncertain'),true)||empty($job['source'])||!SBS_Final_Print::intact($job['source'])){continue;}$repairs[]=array('id'=>$id,'status'=>$job['status'],'source'=>$job['source'],'mask'=>$job['mask']??null,'preview'=>$job['preview']??null,'workspace'=>$job['workspace']??null,'replacement'=>$job['replacement']??'','visual'=>$job['visual']??null,'created_at'=>$job['created_at']??'');}
+        foreach(array_slice($paths,0,100) as $path){$job=json_decode(@file_get_contents($path),true);$id=basename($path,'.json');if(!preg_match('/^[a-f0-9-]{36}$/D',$id)||!is_array($job)||!in_array($job['status']??'',array('submitting','pending','ready','accepted','uncertain'),true)||empty($job['source'])||!SBS_Final_Print::intact($job['source'])){continue;}$repairs[]=array('id'=>$id,'status'=>$job['status'],'source'=>$job['source'],'mask'=>$job['mask']??null,'preview'=>$job['preview']??null,'workspace'=>$job['workspace']??null,'replacement'=>$job['replacement']??'','visual'=>$job['visual']??null,'changes'=>$job['changes']??null,'created_at'=>$job['created_at']??'');}
         return array('repairs'=>$repairs);
     }
     public static function source($q) {
@@ -62,6 +62,24 @@ final class SBS_Studio_Tools
         $before=$source->getImageResolution();$after=$check->getImageResolution();$bu=$source->getImageUnits()===Imagick::RESOLUTION_PIXELSPERCENTIMETER?2.54:1;$au=$check->getImageUnits()===Imagick::RESOLUTION_PIXELSPERCENTIMETER?2.54:1;foreach(array('x','y') as $axis){if(abs($before[$axis]*$bu-$after[$axis]*$au)>.03){throw new RuntimeException('Image resolution metadata could not be preserved.');}}
         $check->clear();$result->clear();return $bytes;
     }
+    /** Visible change is distinct from outside-mask integrity and semantic quality. */
+    public static function selected_change($source,$mask,$preview) {
+        $w=$source->getImageWidth();$h=$source->getImageHeight();$selected=0;$changed=0;$left=$w;$top=$h;$right=-1;$bottom=-1;$cells=array();
+        $resolution=$source->getImageResolution();$ppi=(float)($resolution['x']??300);if($source->getImageUnits()===Imagick::RESOLUTION_PIXELSPERCENTIMETER){$ppi*=2.54;}if($ppi<72||$ppi>2400){$ppi=300;}
+        // Adjacent visible differences at about 0.25 mm; isolated pixels and RGB
+        // changes under fully transparent pixels do not establish a repair.
+        $cell=max(2,(int)ceil($ppi/100));$cluster=false;
+        for($y=0;$y<$h;$y++){$m=$mask->exportImagePixels(0,$y,$w,1,'A',Imagick::PIXEL_DOUBLE);$old=$source->exportImagePixels(0,$y,$w,1,'RGBA',Imagick::PIXEL_DOUBLE);$new=$preview->exportImagePixels(0,$y,$w,1,'RGBA',Imagick::PIXEL_DOUBLE);
+            foreach($m as $x=>$coverage){if($coverage<=0){continue;}$selected++;$i=$x*4;$delta=abs($old[$i+3]-$new[$i+3]);for($k=0;$k<3;$k++){$delta=max($delta,abs($old[$i+$k]*$old[$i+3]-$new[$i+$k]*$new[$i+3]));}if($delta<8/255){continue;}$changed++;$left=min($left,$x);$right=max($right,$x);$top=min($top,$y);$bottom=max($bottom,$y);$key=(int)floor($x/$cell).':'.(int)floor($y/$cell);$cells[$key]=($cells[$key]??0)+1;if($cells[$key]>=min(4,$cell*$cell)){$cluster=true;}}
+        }
+        return array('selected_pixels'=>$selected,'changed_pixels'=>$changed,'changed_percent'=>$selected?round(100*$changed/$selected,2):0,'meaningful'=>$cluster,'bounds'=>$right>=0?array('x'=>$left,'y'=>$top,'w'=>$right-$left+1,'h'=>$bottom-$top+1):null,'ppi'=>$ppi);
+    }
+    private static function result(&$job) {
+        if(empty($job['changes'])){$job['changes']=self::selected_change(new Imagick(SBS_Storage::absolute_path($job['source'])),new Imagick(SBS_Storage::absolute_path($job['mask'])),new Imagick(SBS_Storage::absolute_path($job['preview'])));}
+        $visual=$job['visual']??array('status'=>'unable','reason'=>'A visual check was not recorded. Review the marked region yourself.');
+        $quality=empty($job['changes']['meaningful'])?'no_change':(($visual['status']??'')==='pass'?'pass':'check');
+        return array('status'=>'ready','preview'=>$job['preview'],'visual'=>$visual,'changes'=>$job['changes'],'quality'=>$quality,'outside_selection'=>'PASS — all protected pixels verified');
+    }
     public static function fix($q) {
         if(!class_exists('Imagick')){return self::error('Fix needs the server image tools.');}
         @set_time_limit(180);$id=(string)$q->get_param('job');if(!preg_match('/^[a-f0-9-]{36}$/D',$id)){return self::error('Start a new repair.');}
@@ -77,7 +95,11 @@ final class SBS_Studio_Tools
                 $left=$w;$top=$h;$right=-1;$bottom=-1;for($y=0;$y<$h;$y++){foreach($mask->exportImagePixels(0,$y,$w,1,'A',Imagick::PIXEL_DOUBLE) as $x=>$v){if($v>0){$left=min($left,$x);$right=max($right,$x);$top=min($top,$y);$bottom=max($bottom,$y);}}}if($right<0){return self::error('Paint an area first.');}
                 $b=array('x'=>max(0,$left-96),'y'=>max(0,$top-96));$b['w']=min($w,$right+97)-$b['x'];$b['h']=min($h,$bottom+97)-$b['y'];if($b['w']*$b['h']>4000000){return self::error('Select a smaller local area; repair context is limited to four million pixels.');}
                 $crop=clone $source;$crop->cropImage($b['w'],$b['h'],$b['x'],$b['y']);$crop->setImagePage(0,0,0,0);$crop->setImageFormat('png');
-                $providerMask=clone $mask;$providerMask->cropImage($b['w'],$b['h'],$b['x'],$b['y']);$providerMask->setImagePage(0,0,0,0);$providerMask->negateImage(false,Imagick::CHANNEL_ALPHA);$providerMask->setImageFormat('png');
+                // Explicit RGBA alpha avoids palette/alpha-channel differences across
+                // ImageMagick builds: provider edits transparent, protects opaque.
+                $providerMask=new Imagick();$providerMask->newImage($b['w'],$b['h'],'white','png');$providerMask->setImageAlphaChannel(Imagick::ALPHACHANNEL_SET);
+                for($row=0;$row<$b['h'];$row++){$coverage=$mask->exportImagePixels($b['x'],$b['y']+$row,$b['w'],1,'A',Imagick::PIXEL_DOUBLE);$alpha=array_map(function($v){return 1-$v;},$coverage);$providerMask->importImagePixels(0,$row,$b['w'],1,'A',Imagick::PIXEL_DOUBLE,$alpha);}$providerMask->setOption('png:color-type','6');$providerMask->setImageFormat('png');
+
                 $input=SBS_Storage::store_bytes($crop->getImageBlob(),'fix-context.png','image/png','fix',0,'fix_context','Repair context');$pm=SBS_Storage::store_bytes($providerMask->getImageBlob(),'fix-provider-mask.png','image/png','fix',0,'fix_mask','Provider edit mask');$savedMask=SBS_Storage::store_bytes($mask->getImageBlob(),'fix-selection.png','image/png','fix',0,'fix_selection','Confirmed selection');foreach(array($input,$pm,$savedMask) as $asset){if(is_wp_error($asset)){return $asset;}}
                 $replacement=sanitize_textarea_field((string)$q->get_param('replacement'));if(strlen($replacement)>500){return self::error('Keep the replacement instruction under 500 characters.');}
                 $job=array('status'=>'submitting','source'=>$a,'mask'=>$savedMask,'bounds'=>$b,'replacement'=>$replacement,'created_at'=>gmdate('c'));self::save($path,$job);
@@ -88,11 +110,12 @@ final class SBS_Studio_Tools
             if($op==='cancel') {if(!empty($job['response_id'])&&empty($job['preview'])){$cancel=SBS_OpenAI::cancel($job['response_id']);if(is_wp_error($cancel)){return $cancel;}}$job['status']='cancelled';self::save($path,$job);return array('status'=>'cancelled');}
             if($op==='accept') {
                 if(empty($job['preview'])||!in_array($job['status'],array('ready','accepted'),true)){return self::error('Wait for a verified preview before saving.');}
+                $report=self::result($job);if($report['quality']==='no_change'){return self::error('NOT FIXED — no meaningful visible change. Improve the selection or try again.');}if($q->get_param('reviewed')!==true){return self::error('Review Before and Preview, then tick the review confirmation.');}if($report['quality']!=='pass'&&$q->get_param('accept_uncertain')!==true){return self::error('CHECK REPAIR — confirm explicitly if you still want to save this unapproved candidate.');}
                 if(empty($job['workspace'])){$record=SBS_Finishing::import_fix($job['source'],$job['preview'],(string)$q->get_param('title'),(string)$q->get_param('series'),$id);if(is_wp_error($record)){return $record;}$job['workspace']=$record['uuid'];$job['status']='accepted';self::save($path,$job);}
                 return array('status'=>'accepted','workspace'=>$job['workspace'],'preview'=>$job['preview']);
             }
             if(in_array($job['status'],array('cancelled','uncertain','failed'),true)){return self::error($job['error']??'This request stopped. An uncertain provider submission will not be charged again automatically.');}
-            if(!empty($job['preview'])){return array('status'=>'ready','preview'=>$job['preview'],'visual'=>$job['visual']??array('status'=>'unable','reason'=>'Review the selected region; a visual quality check was not recorded.'),'outside_selection'=>'PASS — all protected pixels verified');}
+            if(!empty($job['preview'])){$report=self::result($job);self::save($path,$job);return $report;}
             if(empty($job['response_id'])){return self::error('Provider submission is uncertain. This request will not be repeated automatically.');}
             if(empty($job['generated'])) {
                 $response=SBS_OpenAI::poll($job['response_id']);if(is_wp_error($response)){return $response;}$p=SBS_OpenAI::parse_image_response($response);if(in_array($p['status']??'',array('queued','in_progress'),true)){return array('status'=>'pending');}
@@ -101,7 +124,7 @@ final class SBS_Studio_Tools
             }
             if(!SBS_Final_Print::intact($job['source'])||!SBS_Final_Print::intact($job['mask'])){return self::error('The original or selection failed its checksum.');}
             $source=new Imagick(SBS_Storage::absolute_path($job['source']));$mask=new Imagick(SBS_Storage::absolute_path($job['mask']));$gen=new Imagick(SBS_Storage::absolute_path($job['generated']));
-            $bytes=self::protected_patch($source,$mask,$gen,$job['bounds']);$a=SBS_Storage::store_bytes($bytes,'fix-preview.png','image/png','fix',0,'fix_preview','Verified local repair',array('outside_selection_verified'=>true,'source_sha256'=>$job['source']['sha256']));if(is_wp_error($a)){return $a;}$job['preview']=$a;$job['status']='ready';$job['visual']=array('status'=>'unable','reason'=>'The visual check did not finish. Review the repaired region yourself.');self::save($path,$job);try{$visual=SBS_OpenAI::review_fix($job['source'],$a,$job['mask'],$job['replacement']??'');$job['visual']=is_wp_error($visual)?array('status'=>'unable','reason'=>'Visual check unavailable. Review the repaired region yourself.'):$visual;self::save($path,$job);}catch(Throwable $review_error){}return array('status'=>'ready','preview'=>$a,'visual'=>$job['visual']??array('status'=>'unable','reason'=>'Review the selected region; a visual quality check was not recorded.'),'outside_selection'=>'PASS — all protected pixels verified');
+            $bytes=self::protected_patch($source,$mask,$gen,$job['bounds']);$a=SBS_Storage::store_bytes($bytes,'fix-preview.png','image/png','fix',0,'fix_preview','Verified local repair',array('outside_selection_verified'=>true,'source_sha256'=>$job['source']['sha256']));if(is_wp_error($a)){return $a;}$job['preview']=$a;$job['changes']=self::selected_change($source,$mask,new Imagick(SBS_Storage::absolute_path($a)));$job['status']='ready';$job['visual']=array('status'=>'unable','reason'=>'The visual check did not finish. Review the repaired region yourself.');self::save($path,$job);try{if(empty($job['changes']['meaningful'])){return self::result($job);}$visual=SBS_OpenAI::review_fix($job['source'],$a,$job['mask'],$job['replacement']??'');$job['visual']=is_wp_error($visual)?array('status'=>'unable','reason'=>'Visual check unavailable. Review the repaired region yourself.'):$visual;self::save($path,$job);}catch(Throwable $review_error){}return self::result($job);
         } catch(Throwable $e){return self::error($e->getMessage());} finally {flock($lock,LOCK_UN);fclose($lock);}
     }
 }

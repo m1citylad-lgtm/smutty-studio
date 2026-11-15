@@ -16,7 +16,7 @@ const r=artRect(p,20,30,q,w,h);assert.ok(Math.abs(r.height/r.width-(30/20)*(w/h)
 const detected=detectMask(photo,w,h,.5,.4);assert.ok(detected.some((v,i)=>i%4===3&&v));assert.equal(detected[3],0);
 const template=fs.readFileSync('templates/mockups.php','utf8');assert.match(template,/Finish &amp; Check/);assert.match(template,/<button type="button" id="sbs-mu-download" class="sbs-button primary">Download<\/button>/);assert.ok(!/id="sbs-mu-download"[^>]*(disabled|hidden)/.test(template));
 assert.ok(template.indexOf('id="sbs-mu-search"')<template.indexOf('id="sbs-mu-artwork"'));
-const php=fs.readFileSync('templates/studio.php','utf8');assert.match(php,/data-primary-tab="settings"[\s\S]*data-primary-tab="mockups"/);assert.match(php,/wp_print_scripts\([\s\S]*'sbs-mockups'/);assert.match(php,/wp_print_styles\([\s\S]*'sbs-mockups'/);
+const php=fs.readFileSync('templates/studio.php','utf8');assert.match(php,/data-primary-tab="finishing"[\s\S]*data-primary-tab="mockups"[\s\S]*data-primary-tab="fix"/);assert.match(php,/wp_print_scripts\([\s\S]*'sbs-mockups'/);assert.match(php,/wp_print_styles\([\s\S]*'sbs-mockups'/);
 const stylesheet=fs.readFileSync('assets/css/mockups.css','utf8');
 const mockupJs=fs.readFileSync('assets/js/mockups.js','utf8');
 assert.match(template,/Bright luminous green shading shows the selected shirt fabric, NOT the print area/);

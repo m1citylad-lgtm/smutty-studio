@@ -37,6 +37,7 @@ jobs:
           php tools/test-mockups.php
           php tools/test-studio-tools.php
           php tools/test-photo-enhance.php
+          php tools/test-mockup-queue.php
           php -n -d extension=json -d extension=gd -d extension=zip tools/test-print-qa.php
       - name: JavaScript and image export checks
         run: |
@@ -55,6 +56,8 @@ jobs:
           node tools/test-photo-surface.cjs
           node --check assets/js/photo-surface.js
           node --check assets/js/canvas-gestures.js
+          node --check assets/js/mockup-queue.js
+          node --check assets/js/studio-header.js
           node --check assets/js/studio-feedback.js
           node --check assets/js/photo-mockups.js
           node --check assets/js/fix.js
@@ -86,6 +89,8 @@ jobs:
           node tools/test-finishing-flow-ui.cjs
           node tools/test-mockups-ui.cjs
           node tools/test-studio-tools-ui.cjs
+          node tools/test-studio-header-ui.cjs
+          node tools/test-mockup-queue-ui.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

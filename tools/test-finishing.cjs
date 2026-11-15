@@ -44,7 +44,7 @@ assert.match(template, /Red = opaque · Amber = partial alpha · Green = transpa
 assert.match(theme, /\.sbs-transparency-label\{[^}]*color:#fff/);
 assert.match(theme, /\.sbs-transparency-indicator\[data-state="opaque"\].*#d32f2f/);
 
-assert.match(plugin, /Version: 0.10.2/);
+assert.match(plugin, /Version: 0.11.0/);
 assert.match(template, /id="sbs-af-clear"/);
 assert.match(template, /id="sbs-af-correction-help"/);
 assert.match(template, /id="sbs-af-correction-open-spinner"/);
@@ -61,7 +61,7 @@ assert.match(finishing, /function render\(\)[\s\S]*?stageRunState=\{\};renderedW
 assert.match(finishing, /el\('sbs-af-clear'\)\.addEventListener/);
 assert.match(finishing, /savedUiState\.workspace='';savedUiState\.checks=\{\}/);
 
-assert.match(plugin, /define\('SBS_VERSION', '0.10.2'\)/);
+assert.match(plugin, /define\('SBS_VERSION', '0.11.0'\)/);
 assert.match(template, /id="sbs-af-seam-review"/);
 assert.match(template, /no AI credits/);
 assert.match(finishing, /function analyzeSeams\(/);
@@ -70,9 +70,10 @@ assert.match(backend, /inherit_tile_seams/);
 assert.match(backend, /tile_seams/);
 assert.match(studio, /button\.closest\('\.sbs-character-page-menu'\)\) \{ return; \}/, 'Character menu entries must not receive information buttons');
 const mainNav = studioTemplate.match(/<nav id="sbs-primary-nav"[\s\S]*?<\/nav>/)[0];
-assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="freestyle"'));
-assert.ok(mainNav.indexOf('data-primary-tab="freestyle"') < mainNav.indexOf('data-primary-tab="catalogue"'));
-assert.ok(mainNav.indexOf('data-primary-tab="catalogue"') < mainNav.indexOf('data-primary-tab="characters"'));
+assert.ok(mainNav.indexOf('data-primary-tab="finishing"') < mainNav.indexOf('data-primary-tab="mockups"'));
+const moreNav=studioTemplate.match(/<nav id="sbs-more-sections"[\s\S]*?<\/nav>/)[0];
+assert.ok(moreNav.indexOf('data-primary-tab="freestyle"') < moreNav.indexOf('data-primary-tab="catalogue"'));
+assert.ok(moreNav.indexOf('data-primary-tab="catalogue"') < moreNav.indexOf('data-primary-tab="characters"'));
 assert.match(mainNav, /data-primary-tab="finishing" class="active"/);
 assert.match(studioTemplate, /class="sbs-character-page-heading">Character pages/);
 assert.match(studioTemplate, /id="sbs-character-page-menu"[^>]*aria-label="Character pages"(?![^>]*hidden)/);

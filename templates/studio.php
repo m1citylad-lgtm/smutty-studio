@@ -11,17 +11,26 @@
 <div id="sbs-app" class="sbs-shell" data-rest="<?php echo esc_url(rest_url('smutty-bear/v1/')); ?>" data-authenticated="<?php echo SBS_Auth::is_authenticated() ? '1' : '0'; ?>" data-slug="<?php echo esc_attr(SBS_Plugin::studio_slug()); ?>" data-version="<?php echo esc_attr(SBS_VERSION); ?>" data-finishing-csrf="<?php echo SBS_Auth::is_authenticated() ? esc_attr(SBS_Finishing::csrf()) : ''; ?>" data-open-settings="<?php echo isset($_GET['settings']) ? '1' : '0'; ?>">
     <header class="sbs-header">
         <nav id="sbs-primary-nav" class="sbs-primary-tabs" aria-label="Main studio areas" <?php echo SBS_Auth::is_authenticated() ? '' : 'hidden'; ?>>
-            <button data-primary-tab="logic-correction">Logic Correction</button>
             <button data-primary-tab="finishing" class="active">Finishing</button>
-            <button data-primary-tab="freestyle">Freestyle</button>
-            <button data-primary-tab="catalogue">Catalogue</button>
-            <button data-primary-tab="characters">Characters</button>
-            <button data-primary-tab="usage" aria-label="Usage and costs" title="Usage and costs">£</button>
-            <button data-primary-tab="settings" aria-label="Settings" title="Settings">⚙</button>
             <button data-primary-tab="mockups">Mock-ups</button>
             <button data-primary-tab="fix">Fix</button>
         </nav>
-        <div class="sbs-header-right"><div class="sbs-header-brand"><div class="sbs-wordmark"><span>Smutty Studio</span></div><span class="sbs-version">v<?php echo esc_html(SBS_VERSION); ?></span></div><button id="sbs-guide-open" class="sbs-guide-open" type="button" <?php echo SBS_Auth::is_authenticated() ? '' : 'hidden'; ?>><span aria-hidden="true">?</span> Guide</button></div>
+        <div class="sbs-header-right">
+            <div class="sbs-header-brand"><div class="sbs-wordmark"><span>Studio</span></div><span class="sbs-version">v<?php echo esc_html(SBS_VERSION); ?></span></div>
+            <button id="sbs-guide-open" class="sbs-guide-open" type="button" aria-label="Studio guide" data-sbs-info-attached="1" <?php echo SBS_Auth::is_authenticated() ? '' : 'hidden'; ?>>?</button>
+            <button id="sbs-header-info" class="sbs-info-button" type="button" aria-label="Studio information" <?php echo SBS_Auth::is_authenticated() ? '' : 'hidden'; ?>>i</button>
+            <div class="sbs-more-wrap" <?php echo SBS_Auth::is_authenticated() ? '' : 'hidden'; ?>>
+                <button id="sbs-more" type="button" aria-label="More Studio sections" aria-expanded="false" aria-controls="sbs-more-sections" data-sbs-info-attached="1">☰</button>
+                <nav id="sbs-more-sections" class="sbs-primary-tabs sbs-more-sections" aria-label="More Studio sections" hidden>
+                    <button data-primary-tab="logic-correction">Logic Correction</button>
+                    <button data-primary-tab="freestyle">Freestyle</button>
+                    <button data-primary-tab="catalogue">Catalogue</button>
+                    <button data-primary-tab="characters">Characters</button>
+                    <button data-primary-tab="usage">£ Usage</button>
+                    <button data-primary-tab="settings">⚙ Settings</button>
+                </nav>
+            </div>
+        </div>
     </header>
 
     <main>
@@ -207,7 +216,7 @@
     </dialog>
     <footer class="sbs-footer">Private creative workspace · Image filtering: Less restrictive (OpenAI low) · Provider content rules still apply</footer>
 </div>
-<?php wp_print_scripts(array('sbs-feedback', 'sbs-fabric', 'sbs-studio', 'sbs-freestyle', 'sbs-logic-correction', 'sbs-finishing', 'sbs-transparency-correction', 'sbs-finishing-flow', 'sbs-final-print', 'sbs-treatment', 'sbs-photo-math', 'sbs-canvas-gestures', 'sbs-photo-surface', 'sbs-mockups', 'sbs-fix')); ?>
+<?php wp_print_scripts(array('sbs-header', 'sbs-feedback', 'sbs-fabric', 'sbs-studio', 'sbs-freestyle', 'sbs-logic-correction', 'sbs-finishing', 'sbs-transparency-correction', 'sbs-finishing-flow', 'sbs-final-print', 'sbs-treatment', 'sbs-photo-math', 'sbs-canvas-gestures', 'sbs-photo-surface', 'sbs-mockups', 'sbs-mockup-queue', 'sbs-fix')); ?>
 </body>
 </html>
 
