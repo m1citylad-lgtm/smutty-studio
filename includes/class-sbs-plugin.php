@@ -133,6 +133,7 @@ final class SBS_Plugin
         wp_enqueue_script('sbs-canvas-gestures', SBS_PLUGIN_URL . 'assets/js/canvas-gestures.js', array('sbs-photo-math'), SBS_VERSION, true);
         wp_enqueue_script('sbs-photo-surface', SBS_PLUGIN_URL . 'assets/js/photo-surface.js', array('sbs-photo-math'), SBS_VERSION, true);
         wp_enqueue_script('sbs-mockups', SBS_PLUGIN_URL . 'assets/js/photo-mockups.js', array('sbs-photo-math','sbs-photo-surface','sbs-canvas-gestures'), SBS_VERSION, true);
+        wp_enqueue_script('sbs-header', SBS_PLUGIN_URL . 'assets/js/studio-header.js', array('sbs-studio'), SBS_VERSION, true);
         wp_enqueue_script('sbs-fix', SBS_PLUGIN_URL . 'assets/js/fix.js', array('sbs-photo-math','sbs-canvas-gestures'), SBS_VERSION, true);
         wp_enqueue_style('sbs-tools', SBS_PLUGIN_URL . 'assets/css/studio-tools.css', array('sbs-mockups'), SBS_VERSION);
         wp_enqueue_style('sbs-mockups', SBS_PLUGIN_URL . 'assets/css/mockups.css', array('sbs-final-print'), SBS_VERSION);

@@ -55,6 +55,7 @@ jobs:
           node tools/test-photo-surface.cjs
           node --check assets/js/photo-surface.js
           node --check assets/js/canvas-gestures.js
+          node --check assets/js/studio-header.js
           node --check assets/js/studio-feedback.js
           node --check assets/js/photo-mockups.js
           node --check assets/js/fix.js
@@ -86,6 +87,7 @@ jobs:
           node tools/test-finishing-flow-ui.cjs
           node tools/test-mockups-ui.cjs
           node tools/test-studio-tools-ui.cjs
+          node tools/test-studio-header-ui.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
