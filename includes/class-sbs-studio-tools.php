@@ -95,7 +95,11 @@ final class SBS_Studio_Tools
                 $left=$w;$top=$h;$right=-1;$bottom=-1;for($y=0;$y<$h;$y++){foreach($mask->exportImagePixels(0,$y,$w,1,'A',Imagick::PIXEL_DOUBLE) as $x=>$v){if($v>0){$left=min($left,$x);$right=max($right,$x);$top=min($top,$y);$bottom=max($bottom,$y);}}}if($right<0){return self::error('Paint an area first.');}
                 $b=array('x'=>max(0,$left-96),'y'=>max(0,$top-96));$b['w']=min($w,$right+97)-$b['x'];$b['h']=min($h,$bottom+97)-$b['y'];if($b['w']*$b['h']>4000000){return self::error('Select a smaller local area; repair context is limited to four million pixels.');}
                 $crop=clone $source;$crop->cropImage($b['w'],$b['h'],$b['x'],$b['y']);$crop->setImagePage(0,0,0,0);$crop->setImageFormat('png');
-                $providerMask=clone $mask;$providerMask->cropImage($b['w'],$b['h'],$b['x'],$b['y']);$providerMask->setImagePage(0,0,0,0);$providerMask->negateImage(false,Imagick::CHANNEL_ALPHA);$providerMask->setImageFormat('png');
+                // Explicit RGBA alpha avoids palette/alpha-channel differences across
+                // ImageMagick builds: provider edits transparent, protects opaque.
+                $providerMask=new Imagick();$providerMask->newImage($b['w'],$b['h'],'white','png');$providerMask->setImageAlphaChannel(Imagick::ALPHACHANNEL_SET);
+                for($row=0;$row<$b['h'];$row++){$coverage=$mask->exportImagePixels($b['x'],$b['y']+$row,$b['w'],1,'A',Imagick::PIXEL_DOUBLE);$alpha=array_map(function($v){return 1-$v;},$coverage);$providerMask->importImagePixels(0,$row,$b['w'],1,'A',Imagick::PIXEL_DOUBLE,$alpha);}$providerMask->setOption('png:color-type','6');$providerMask->setImageFormat('png');
+
                 $input=SBS_Storage::store_bytes($crop->getImageBlob(),'fix-context.png','image/png','fix',0,'fix_context','Repair context');$pm=SBS_Storage::store_bytes($providerMask->getImageBlob(),'fix-provider-mask.png','image/png','fix',0,'fix_mask','Provider edit mask');$savedMask=SBS_Storage::store_bytes($mask->getImageBlob(),'fix-selection.png','image/png','fix',0,'fix_selection','Confirmed selection');foreach(array($input,$pm,$savedMask) as $asset){if(is_wp_error($asset)){return $asset;}}
                 $replacement=sanitize_textarea_field((string)$q->get_param('replacement'));if(strlen($replacement)>500){return self::error('Keep the replacement instruction under 500 characters.');}
                 $job=array('status'=>'submitting','source'=>$a,'mask'=>$savedMask,'bounds'=>$b,'replacement'=>$replacement,'created_at'=>gmdate('c'));self::save($path,$job);
