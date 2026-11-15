@@ -216,7 +216,7 @@
     </dialog>
     <footer class="sbs-footer">Private creative workspace · Image filtering: Less restrictive (OpenAI low) · Provider content rules still apply</footer>
 </div>
-<?php wp_print_scripts(array('sbs-header', 'sbs-feedback', 'sbs-fabric', 'sbs-studio', 'sbs-freestyle', 'sbs-logic-correction', 'sbs-finishing', 'sbs-transparency-correction', 'sbs-finishing-flow', 'sbs-final-print', 'sbs-treatment', 'sbs-photo-math', 'sbs-canvas-gestures', 'sbs-photo-surface', 'sbs-mockups', 'sbs-fix')); ?>
+<?php wp_print_scripts(array('sbs-header', 'sbs-feedback', 'sbs-fabric', 'sbs-studio', 'sbs-freestyle', 'sbs-logic-correction', 'sbs-finishing', 'sbs-transparency-correction', 'sbs-finishing-flow', 'sbs-final-print', 'sbs-treatment', 'sbs-photo-math', 'sbs-canvas-gestures', 'sbs-photo-surface', 'sbs-mockups', 'sbs-mockup-queue', 'sbs-fix')); ?>
 </body>
 </html>
 

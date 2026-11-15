@@ -37,6 +37,7 @@ require_once SBS_PLUGIN_DIR . 'includes/class-sbs-final-print.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-mockups.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-studio-tools.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-photo-enhance.php';
+require_once SBS_PLUGIN_DIR . 'includes/class-sbs-mockup-queue.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-finishing-flow.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-finishing-image.php';
 require_once SBS_PLUGIN_DIR . 'includes/class-sbs-finishing-tiles.php';

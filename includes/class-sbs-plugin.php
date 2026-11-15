@@ -47,6 +47,9 @@ final class SBS_Plugin
         add_action('rest_api_init', array('SBS_Mockups', 'register_routes'));
         add_action('rest_api_init', array('SBS_Studio_Tools', 'register_routes'));
         add_action('rest_api_init', array('SBS_Photo_Enhance', 'register_routes'));
+        add_action('rest_api_init', array('SBS_Mockup_Queue', 'register_routes'));
+        add_action('sbs_mockup_reconcile', array('SBS_Mockup_Queue','cron'));
+        add_action('init',function(){if(!wp_next_scheduled('sbs_mockup_reconcile'))wp_schedule_event(time()+DAY_IN_SECONDS,'daily','sbs_mockup_reconcile');});
         add_action('rest_api_init', array('SBS_Logic_Correction', 'register_routes'));
         add_action('rest_api_init', array('SBS_Google_Drive', 'register_routes'));
         add_action('admin_menu', array('SBS_Admin', 'register_menu'));
@@ -133,6 +136,7 @@ final class SBS_Plugin
         wp_enqueue_script('sbs-canvas-gestures', SBS_PLUGIN_URL . 'assets/js/canvas-gestures.js', array('sbs-photo-math'), SBS_VERSION, true);
         wp_enqueue_script('sbs-photo-surface', SBS_PLUGIN_URL . 'assets/js/photo-surface.js', array('sbs-photo-math'), SBS_VERSION, true);
         wp_enqueue_script('sbs-mockups', SBS_PLUGIN_URL . 'assets/js/photo-mockups.js', array('sbs-photo-math','sbs-photo-surface','sbs-canvas-gestures'), SBS_VERSION, true);
+        wp_enqueue_script('sbs-mockup-queue', SBS_PLUGIN_URL . 'assets/js/mockup-queue.js', array('sbs-mockups'), SBS_VERSION, true);
         wp_enqueue_script('sbs-header', SBS_PLUGIN_URL . 'assets/js/studio-header.js', array('sbs-studio'), SBS_VERSION, true);
         wp_enqueue_script('sbs-fix', SBS_PLUGIN_URL . 'assets/js/fix.js', array('sbs-photo-math','sbs-canvas-gestures'), SBS_VERSION, true);
         wp_enqueue_style('sbs-tools', SBS_PLUGIN_URL . 'assets/css/studio-tools.css', array('sbs-mockups'), SBS_VERSION);
