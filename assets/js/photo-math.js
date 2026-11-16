@@ -8,6 +8,7 @@ function point(m,x,y){const z=m[6]*x+m[7]*y+m[8];return [(m[0]*x+m[1]*y+m[2])/z,
 // template by shirt-relative coordinates. This avoids asking vision to guess
 // an absolute print size on each new photograph.
 function mapQuadBetweenPlanes(printQuad,referenceShirtQuad,targetShirtQuad){const from=inverse(homography(referenceShirtQuad)),to=homography(targetShirtQuad);return printQuad.map(p=>point(to,...point(from,p[0],p[1])));}
+function quadBoundsInPlane(quad,plane){const inv=inverse(homography(plane)),pts=quad.map(p=>point(inv,p[0],p[1])),xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);return {left:Math.min(...xs),top:Math.min(...ys),right:Math.max(...xs),bottom:Math.max(...ys),width:Math.max(...xs)-Math.min(...xs),height:Math.max(...ys)-Math.min(...ys)};}
 function frame(w,h,ratio,anchor=4){const width=Math.max(w,Math.ceil(h*ratio)),height=Math.max(h,Math.ceil(w/ratio));return {width,height,x:Math.round((width-w)*(anchor%3)/2),y:Math.round((height-h)*Math.floor(anchor/3)/2)};}
 function cropRect(w,h,ratio,crop={cx:.5,cy:.5,scale:1}){let width=Math.min(w,h*ratio)*clamp(crop.scale,.15,1),height=width/ratio;return {x:clamp(crop.cx*w-width/2,0,w-width),y:clamp(crop.cy*h-height/2,0,h-height),width,height};}
 function rgb(hex){return [1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));}
@@ -30,5 +31,5 @@ function smartRegion(pixels,w,h,x,y,mask,remove=false){
  }
  return {region,count,bounded};
 }
-window.SBSPhotoMath={homography,inverse,point,mapQuadBetweenPlanes,smartRegion};
+window.SBSPhotoMath={homography,inverse,point,mapQuadBetweenPlanes,quadBoundsInPlane,smartRegion};
 })();
