@@ -54,6 +54,7 @@ jobs:
           node --check assets/js/fix.js
           node --check assets/js/mockups.js
           node tools/test-mockups.cjs
+          node --check assets/js/mockup-queue.js
           node tools/test-print-visibility.cjs
           php tools/test-finishing-delete.php
           node tools/test-flat-background.cjs
@@ -75,6 +76,7 @@ jobs:
           php tools/test-final-print.php
           php tools/test-intake.php
           php tools/test-mockups.php
+          php tools/test-mockup-queue.php
           php tools/test-studio-tools.php
           php tools/test-photo-enhance.php
           php -n -d extension=json -d extension=gd -d extension=zip tools/test-print-qa.php
