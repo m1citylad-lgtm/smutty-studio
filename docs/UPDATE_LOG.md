@@ -1,3 +1,7 @@
+# v0.11.12 — Correct and review failed model/reference fits
+
+Adds Adjust model / flat lay placement on each queue output. A large preview and reference comparison support move/size controls; Save archives only the affected previous output, updates the active queue and reusable artwork/template placement, and rerenders. Redo reference fit explicitly requests fresh AI analysis rather than reusing the cached estimate. Uncertain fits cannot be approved until their placement has been reviewed and saved. Automatic vision remains an estimate; no exact physical garment fit is claimed. Installation and real owner-image acceptance remain pending.
+
 # v0.11.11 — Accessible selection and clearable reviewed-pair queue (development)
 
 Requested Studio corrections: make model/flat-lay and artwork selection high contrast (green selected button, square image/card borders, green outline, larger green-accent artwork checkboxes); add a visible Clear Queue action beside Start Queue. Clear Queue archives the current queue and its generated image references before removing it from the active screen, clears the current selection, and leaves already rendered files intact. Errors continue to be shown in the live status message so a failed retry displays the reason again. Existing Finish / Discard Queue control remains for compatibility.
