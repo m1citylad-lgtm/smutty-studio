@@ -13,6 +13,10 @@ function quadBoundsInPlane(quad,plane){const inv=inverse(homography(plane)),pts=
 // can extend a nominally transparent canvas by hundreds of pixels and shrink
 // the visible design. Pixels inside the returned bounds are left untouched.
 function alphaBounds(data,w,h,threshold=24){let left=w,top=h,right=-1,bottom=-1;for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(data[(y*w+x)*4+3]>=threshold){left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x);bottom=Math.max(bottom,y);}return right<left||bottom<top?null:{left,top,right,bottom,width:right-left+1,height:bottom-top+1};}
+// Preserve the artwork aspect ratio while matching the reference's long axis.
+// Any excess stays centered around the mapped print bounds instead of shrinking
+// a vertically tall print to fit a narrow, imperfectly detected rectangle.
+function coverAspect(artAspect,boxAspect){if(!(artAspect>0&&boxAspect>0))throw Error('Artwork or print-area proportions are invalid.');return artAspect>boxAspect?{width:artAspect/boxAspect,height:1}:{width:1,height:boxAspect/artAspect};}
 function frame(w,h,ratio,anchor=4){const width=Math.max(w,Math.ceil(h*ratio)),height=Math.max(h,Math.ceil(w/ratio));return {width,height,x:Math.round((width-w)*(anchor%3)/2),y:Math.round((height-h)*Math.floor(anchor/3)/2)};}
 function cropRect(w,h,ratio,crop={cx:.5,cy:.5,scale:1}){let width=Math.min(w,h*ratio)*clamp(crop.scale,.15,1),height=width/ratio;return {x:clamp(crop.cx*w-width/2,0,w-width),y:clamp(crop.cy*h-height/2,0,h-height),width,height};}
 function rgb(hex){return [1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));}
@@ -35,5 +39,5 @@ function smartRegion(pixels,w,h,x,y,mask,remove=false){
  }
  return {region,count,bounded};
 }
-window.SBSPhotoMath={homography,inverse,point,mapQuadBetweenPlanes,quadBoundsInPlane,alphaBounds,smartRegion};
+window.SBSPhotoMath={homography,inverse,point,mapQuadBetweenPlanes,quadBoundsInPlane,alphaBounds,coverAspect,smartRegion};
 })();
