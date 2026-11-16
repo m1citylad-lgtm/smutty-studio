@@ -61,7 +61,7 @@ assert.match(finishing, /function render\(\)[\s\S]*?stageRunState=\{\};renderedW
 assert.match(finishing, /el\('sbs-af-clear'\)\.addEventListener/);
 assert.match(finishing, /savedUiState\.workspace='';savedUiState\.checks=\{\}/);
 
-assert.match(plugin, /define\('SBS_VERSION', '0.11.10'\)/);
+assert.match(plugin, /define\('SBS_VERSION', '0.11.11'\)/);
 assert.match(template, /id="sbs-af-seam-review"/);
 assert.match(template, /no AI credits/);
 assert.match(finishing, /function analyzeSeams\(/);
