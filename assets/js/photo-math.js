@@ -4,6 +4,10 @@ const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 function homography(q){const a=[],b=[];[[0,0],[1,0],[1,1],[0,1]].forEach(([u,v],i)=>{const [x,y]=q[i];a.push([u,v,1,0,0,0,-x*u,-x*v]);b.push(x);a.push([0,0,0,u,v,1,-y*u,-y*v]);b.push(y);});for(let i=0;i<8;i++){let pivot=i;for(let k=i+1;k<8;k++)if(Math.abs(a[k][i])>Math.abs(a[pivot][i]))pivot=k;[a[i],a[pivot]]=[a[pivot],a[i]];[b[i],b[pivot]]=[b[pivot],b[i]];const f=a[i][i];if(Math.abs(f)<1e-10)throw Error('Print-area corners overlap. Recalibrate this photo.');for(let j=i;j<8;j++)a[i][j]/=f;b[i]/=f;for(let k=0;k<8;k++)if(k!==i){const f=a[k][i];for(let j=i;j<8;j++)a[k][j]-=f*a[i][j];b[k]-=f*b[i];}}return [...b,1];}
 function inverse(m){const [a,b,c,d,e,f,g,h,i]=m,k=[e*i-f*h,c*h-b*i,b*f-c*e,f*g-d*i,a*i-c*g,c*d-a*f,d*h-e*g,b*g-a*h,a*e-b*d],det=a*k[0]+b*k[3]+c*k[6];if(Math.abs(det)<1e-12)throw Error('Print-area geometry is invalid.');return k.map(v=>v/det);}
 function point(m,x,y){const z=m[6]*x+m[7]*y+m[8];return [(m[0]*x+m[1]*y+m[2])/z,(m[3]*x+m[4]*y+m[5])/z];}
+// Transfer a print rectangle from a photographed reference shirt to a saved
+// template by shirt-relative coordinates. This avoids asking vision to guess
+// an absolute print size on each new photograph.
+function mapQuadBetweenPlanes(printQuad,referenceShirtQuad,targetShirtQuad){const from=inverse(homography(referenceShirtQuad)),to=homography(targetShirtQuad);return printQuad.map(p=>point(to,...point(from,p[0],p[1])));}
 function frame(w,h,ratio,anchor=4){const width=Math.max(w,Math.ceil(h*ratio)),height=Math.max(h,Math.ceil(w/ratio));return {width,height,x:Math.round((width-w)*(anchor%3)/2),y:Math.round((height-h)*Math.floor(anchor/3)/2)};}
 function cropRect(w,h,ratio,crop={cx:.5,cy:.5,scale:1}){let width=Math.min(w,h*ratio)*clamp(crop.scale,.15,1),height=width/ratio;return {x:clamp(crop.cx*w-width/2,0,w-width),y:clamp(crop.cy*h-height/2,0,h-height),width,height};}
 function rgb(hex){return [1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));}
@@ -26,5 +30,5 @@ function smartRegion(pixels,w,h,x,y,mask,remove=false){
  }
  return {region,count,bounded};
 }
-window.SBSPhotoMath={homography,inverse,point,smartRegion};
+window.SBSPhotoMath={homography,inverse,point,mapQuadBetweenPlanes,smartRegion};
 })();

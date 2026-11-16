@@ -55,6 +55,7 @@ jobs:
           node --check assets/js/mockups.js
           node tools/test-mockups.cjs
           node --check assets/js/mockup-queue.js
+          node tools/test-relative-fit.cjs
           node tools/test-print-visibility.cjs
           php tools/test-finishing-delete.php
           node tools/test-flat-background.cjs
