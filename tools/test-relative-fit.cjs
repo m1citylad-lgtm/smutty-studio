@@ -15,4 +15,7 @@ mapped.forEach((p,i)=>p.forEach((v,k)=>assert.ok(Math.abs(v-expected[i][k])<1e-1
 const back=M.mapQuadBetweenPlanes(mapped,targetShirt,referenceShirt);
 back.forEach((p,i)=>p.forEach((v,k)=>assert.ok(Math.abs(v-print[i][k])<1e-9)));
 assert.notDeepEqual(mapped,print,'target template geometry must control the transfer');
+const alpha=new Uint8ClampedArray(100*100*4);for(let y=20;y<80;y++)for(let x=30;x<70;x++)alpha[(y*100+x)*4+3]=255;alpha[3]=1;alpha[(99*100+99)*4+3]=8;
+assert.equal(JSON.stringify(M.alphaBounds(alpha,100,100)),JSON.stringify({left:30,top:20,right:69,bottom:79,width:40,height:60}),'faint transparent-canvas flecks must not shrink visible artwork');
+assert.equal(M.alphaBounds(new Uint8ClampedArray(16),2,2),null,'fully transparent artwork returns no crop bounds');
 console.log('Reference print size and position map deterministically between shirt planes.');
