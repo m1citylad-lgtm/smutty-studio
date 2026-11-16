@@ -1,3 +1,9 @@
+# v0.11.11 — Accessible selection and clearable reviewed-pair queue (development)
+
+Requested Studio corrections: make model/flat-lay and artwork selection high contrast (green selected button, square image/card borders, green outline, larger green-accent artwork checkboxes); add a visible Clear Queue action beside Start Queue. Clear Queue archives the current queue and its generated image references before removing it from the active screen, clears the current selection, and leaves already rendered files intact. Errors continue to be shown in the live status message so a failed retry displays the reason again. Existing Finish / Discard Queue control remains for compatibility.
+
+Testing status: PHP archive/clear regression and guided browser checks are added. Release and live verification pending. Live Studio currently displays “Studio authentication is required”; no catalogue ID or Redbubble image upload has been saved in this session. Do not report references linked until the live cards visibly show the verified ID and reference.
+
 # v0.8.1 — Accessible photo import and calibration, live verified (14 November 2026)
 
 The new 14 November software requests are installed and authenticated Live Studio is positively verified at v0.8.1. Full PHP/JavaScript/image and Chromium checks passed (43589996350); signed publication passed (43590166737). Final merge c60b605902ec4c02b0a32a37d10fc0ad2665cb0b; ZIP SHA-256 4ac3044a4639a42cd3e22d96ce75cc6b69feba812d209e5764812566dd9fbe14.

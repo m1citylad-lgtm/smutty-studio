@@ -21,3 +21,14 @@ body#sbs-studio-page #sbs-app #sbs-mockups #sbs-mu-brush{width:6ch;min-width:6ch
 
 body#sbs-studio-page #sbs-app #sbs-mockups label.sbs-mu-review{display:flex;flex-direction:row;align-items:center;gap:.6rem;min-height:48px;padding:.5rem 0}
 body#sbs-studio-page #sbs-app #sbs-mockups #sbs-mu-cal-review{width:24px;min-width:24px;max-width:24px;height:24px;min-height:24px;flex:none}
+
+/* Reviewed pair queue: square photo frames and high-contrast green selection. */
+#sbs-mq .sbs-mq-card{border-radius:0!important}
+#sbs-mq .sbs-mq-card>button:first-child{border-radius:0!important;border:2px solid #718090;overflow:hidden}
+#sbs-mq .sbs-mq-card>button:first-child img{display:block;border:1px solid #718090;border-radius:0!important;object-fit:contain}
+#sbs-mq .sbs-mq-card.is-selected{border:3px solid #36b653;border-radius:0!important;box-shadow:0 0 0 2px #fff3d4}
+#sbs-mq .sbs-mq-select-template[aria-pressed=true]{background:#187a37!important;color:#fff!important;border-color:#36d15d!important;outline:3px solid #36d15d;outline-offset:1px}
+#sbs-mq .sbs-mq-artwork>article{border-radius:0!important}
+#sbs-mq .sbs-mq-artwork>article.is-selected{border:3px solid #36b653;border-radius:0!important;box-shadow:0 0 0 2px #fff3d4}
+#sbs-mq .sbs-mq-artwork input[type=checkbox]{width:30px;height:30px;min-width:30px;min-height:30px;accent-color:#20a443;flex:none}
+#sbs-mq-clear{border-color:#36b653;color:#eaffef}
